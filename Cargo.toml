@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "handy_core",
+    "cli",
+    "solver",
+]
+
+[profile.release]
+debug = true

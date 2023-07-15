@@ -1,0 +1,9 @@
+[package]
+name = "solver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+handy_core = { path = "../handy_core" }
+priq = "0.2.0"
+chrono = "0.4.26"
