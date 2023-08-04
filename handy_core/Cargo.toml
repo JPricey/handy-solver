@@ -8,17 +8,13 @@ enum-map = "2.6.0"
 strum = "0.25"
 strum_macros = "0.25"
 text_io = "0.1.12"
-rand = "0.8.5"
-regex = "1.9.1"
 colored = "2.0.4"
 queues = "1.0.2"
 bitflags = "2.3.3"
 lazy_static = "1.4.0"
 itertools = "0.11.0"
 pretty_assertions = "1.4.0"
-clap = { version = "4.3.19", features = ["derive"] }
-rand_seeder = "0.2.3"
-rand_pcg = "0.3.1"
+regex = { workspace = true }
 # jemallocator = "0.5"
 # jemalloc-sys = {version = "0.5", features = ["stats"]}
 # libc = "0.2"

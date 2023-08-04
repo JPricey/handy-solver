@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 handy_core = { path = "../handy_core" }
+cli_lib = { path = "../cli_lib" }
 text_io = "0.1.12"

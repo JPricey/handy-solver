@@ -1,0 +1,12 @@
+[package]
+name = "cli_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+handy_core = { path = "../handy_core" }
+rand = "0.8.5"
+clap = { version = "4.3.19", features = ["derive"] }
+rand_seeder = "0.2.3"
+rand_pcg = "0.3.1"
+regex = { workspace = true }

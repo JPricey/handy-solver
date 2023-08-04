@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 handy_core = { path = "../handy_core" }
+cli_lib = { path = "../cli_lib" }
 priq = "0.2.0"
 chrono = "0.4.26"

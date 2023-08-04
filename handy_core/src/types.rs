@@ -239,6 +239,10 @@ impl CardPtrAsId {
         self.card_id
     }
 
+    pub fn get_card_face(&self) -> FaceKey {
+        self.key
+    }
+
     pub fn get_card_def(&self) -> &CardDef {
         &CARDS.get_card(self.card_id as usize)
     }
@@ -276,6 +280,10 @@ impl CardPtrAsRef {
 
     pub fn get_card_id(&self) -> CardId {
         self.card_def.id
+    }
+
+    pub fn get_card_face(&self) -> FaceKey {
+        self.key
     }
 
     pub fn get_card_def(&self) -> &CardDef {

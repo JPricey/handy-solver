@@ -5,6 +5,8 @@ use itertools::Itertools;
 use std::cmp;
 use strum::IntoEnumIterator;
 
+const NO_ENERGY_USED: EnergyIds = vec![];
+
 // Public
 
 pub fn resolve_top_card<T: EngineGameState>(state: &T) -> Vec<T> {
@@ -1620,7 +1622,7 @@ fn is_action_prevented(pile: &Pile, feature: Features, active_idx: usize) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interface_utils::{string_to_card_ptr, string_to_pile};
+    use crate::pile_utils::{string_to_card_ptr, string_to_pile};
     use pretty_assertions::assert_eq;
     use std::collections::HashSet;
     use std::fmt::Debug;

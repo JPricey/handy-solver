@@ -3,7 +3,11 @@ members = [
     "handy_core",
     "cli",
     "solver",
+    "cli_lib",
 ]
 
 [profile.release]
 debug = true
+
+[workspace.dependencies]
+regex = "1.9.1"

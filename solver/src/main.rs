@@ -1,8 +1,7 @@
 use handy_core::game_state::*;
 use handy_core::game_utils::*;
-use handy_core::interface_utils::*;
 use handy_core::types::*;
-use handy_core::arg_parse::get_starting_pile;
+use cli_lib::*;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -47,7 +46,7 @@ fn print_solution(pile: &Pile, seen_state: &SeenMap) {
         for path in &possible_paths {
             if &path.pile == pile {
                 for e in &path.events {
-                    println!("\t{}", format_event_for_cli(e.clone()));
+                    println!("\t{}", format_event_for_cli(e));
                 }
                 println!("{:?}", pile);
                 return;
