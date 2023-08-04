@@ -1,0 +1,88 @@
+pub mod training_utils;
+pub mod paths;
+pub mod run_a_star;
+pub use training_utils::*;
+pub use paths::*;
+
+use chrono::offset::Utc;
+use chrono::DateTime;
+use clap::{ArgGroup, Parser};
+use handy_core::game::*;
+use handy_core::utils::*;
+use rand::thread_rng;
+use rand::RngCore;
+use rand_pcg::Pcg64;
+use rand_seeder::Seeder;
+use std::time::SystemTime;
+
+pub fn get_datetime_stamp() -> String {
+    Into::<DateTime<Utc>>::into(SystemTime::now())
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string()
+}
+
+#[derive(Parser, Debug)]
+#[clap(group(
+            ArgGroup::new("boop")
+                .required(true)
+                .args(&["pile", "classes"]),
+        ))]
+struct StandardArgs {
+    #[clap(short, long, value_parser=string_to_pile_result)]
+    pile: Option<Pile>,
+    #[clap(short, long, num_args = 2)]
+    classes: Option<Vec<Class>>,
+    #[clap(short, long)]
+    seed: Option<String>,
+}
+
+fn get_starting_pile_from_args(args: StandardArgs) -> Pile {
+    if let Some(pile) = args.pile {
+        pile
+    } else {
+        let classes = args.classes.unwrap();
+        let mut rng: Box<dyn RngCore> = if let Some(seed) = args.seed {
+            Box::new(Seeder::from(seed).make_rng::<Pcg64>())
+        } else {
+            Box::new(thread_rng())
+        };
+
+        get_start_from_classes(classes[0], classes[1], &mut rng)
+    }
+}
+
+pub fn get_starting_pile() -> Pile {
+    let args = StandardArgs::parse();
+    get_starting_pile_from_args(args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use handy_core::utils::string_to_pile;
+
+    #[test]
+    fn test_empty_pile() {
+        let result = StandardArgs::try_parse_from(["cmd", "--pile", "beep"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_regular_pile_long() {
+        let result = StandardArgs::try_parse_from(["cmd", "--pile", "1A2B3c"]);
+        assert_eq!(result.unwrap().pile.unwrap(), string_to_pile("1 2B 3C"))
+    }
+
+    #[test]
+    fn test_regular_pile_short() {
+        let result = StandardArgs::try_parse_from(["cmd", "-p", "1A2A3A"]);
+        assert_eq!(result.unwrap().pile.unwrap(), string_to_pile("1 2 3"))
+    }
+
+    #[test]
+    fn test_classes_with_seed() {
+        let args = StandardArgs::parse_from(["cmd", "--classes", "paladin", "ogre", "--seed", "abc"]);
+        let pile = get_starting_pile_from_args(args);
+        assert_eq!(pile, string_to_pile("3A 9A 4A 1A 5A 7A 2A 8A 6A"));
+    }
+}

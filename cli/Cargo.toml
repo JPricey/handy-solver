@@ -3,7 +3,25 @@ name = "cli"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name="cli"
+path="src/lib.rs"
+
 [dependencies]
 handy_core = { path = "../handy_core" }
-cli_lib = { path = "../cli_lib" }
-text_io = "0.1.12"
+clap = { workspace = true }
+regex = { workspace = true }
+rand = { workspace = true }
+rand_seeder = { workspace = true }
+rand_pcg = { workspace = true }
+chrono = "0.4.26"
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+serde-jsonlines = { workspace = true }
+enum-map = { workspace = true }
+itertools = { workspace = true }
+vectorize_derive = { path = "../vectorize_derive" }
+text_io = { workspace = true }
+priq = {workspace=true}
+lazy_static = {workspace=true}
