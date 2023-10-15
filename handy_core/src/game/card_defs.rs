@@ -605,8 +605,8 @@ impl CardDefs {
         };
 
         {
-            let paladin = CharBuilder::new(Class::Warrior, Allegiance::Hero);
-            card_defs.register_card(paladin.card(
+            let warrior = CharBuilder::new(Class::Warrior, Allegiance::Hero);
+            card_defs.register_card(warrior.card(
                 1,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
@@ -646,7 +646,7 @@ impl CardDefs {
                 },
             ));
 
-            card_defs.register_card(paladin.card(
+            card_defs.register_card(warrior.card(
                 2,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
@@ -688,7 +688,7 @@ impl CardDefs {
                 },
             ));
 
-            card_defs.register_card(paladin.card(
+            card_defs.register_card(warrior.card(
                 3,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
@@ -727,7 +727,7 @@ impl CardDefs {
                 },
             ));
 
-            card_defs.register_card(paladin.card(
+            card_defs.register_card(warrior.card(
                 4,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
@@ -768,7 +768,7 @@ impl CardDefs {
                 },
             ));
 
-            card_defs.register_card(paladin.card(
+            card_defs.register_card(warrior.card(
                 5,
                 enum_map! {
                     FaceKey::A => side(Health::Full)

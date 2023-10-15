@@ -77,10 +77,10 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::AttackCard(card_idx, card_ptr) => {
+        Event::AttackCard(card_idx, card_ptr, hit_type) => {
             view! { cx,
                 <span>
-                    Attack <CardIdPill card_ptr=card_ptr/> {format!("({})", card_idx + 1)}
+                    Attack <CardIdPill card_ptr=card_ptr/> {format!("({}) ({:?})", card_idx + 1, hit_type)}
                 </span>
             }
         }

@@ -1,6 +1,7 @@
 pub mod training_utils;
 pub mod paths;
 pub mod run_a_star;
+
 pub use training_utils::*;
 pub use paths::*;
 
@@ -81,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_classes_with_seed() {
-        let args = StandardArgs::parse_from(["cmd", "--classes", "paladin", "ogre", "--seed", "abc"]);
+        let args = StandardArgs::parse_from(["cmd", "--classes", "warrior", "ogre", "--seed", "abc"]);
         let pile = get_starting_pile_from_args(args);
         assert_eq!(pile, string_to_pile("3A 9A 4A 1A 5A 7A 2A 8A 6A"));
     }

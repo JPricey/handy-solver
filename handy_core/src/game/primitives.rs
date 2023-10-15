@@ -20,11 +20,11 @@ pub type Pile = ArrayVecPile;
 
 pub type PayEnergyArrType = ArrayVec<(usize, CardPtr), 4>;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Health {
-    Full,
-    Half,
     Empty,
+    Half,
+    Full,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -260,8 +260,7 @@ pub enum Event {
 
     SkipAction(CardPtr, WrappedAction),
     // StartAction(CardPtr, WrappedAction),
-
-    AttackCard(usize, CardPtr),
+    AttackCard(usize, CardPtr, HitType),
     Damage(usize, CardPtr, HitType, FaceKey),
 
     // Special Attacks
@@ -274,10 +273,9 @@ pub enum Event {
     // Delay(usize, CardPtr, usize),
     // MoveOne(usize, CardPtr, MoveType),
     // DoneMove(MoveType),
-
     MoveTarget(usize, CardPtr, MoveType), // index, ptr, type, amount
     MoveBy(usize, CardPtr, MoveType, usize), // anchor_index, anchor_card, move_type, distance
-    MoveResult(MoveType, usize), // type, amount
+    MoveResult(MoveType, usize),          // type, amount
 
     Pull(usize, CardPtr),
     Push(usize, CardPtr),
@@ -307,4 +305,25 @@ pub enum Event {
     Swarm(usize, CardPtr),
     UseActionAssist(usize, CardPtr, usize), // card_id, card_ptr, row
     SkipReactActionAssist,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_health_order() {
+        assert!(Health::Full == Health::Full);
+        assert!(Health::Full > Health::Half);
+        assert!(Health::Full > Health::Empty);
+
+        assert!(Health::Half < Health::Full);
+        assert!(Health::Half == Health::Half);
+        assert!(Health::Half > Health::Empty);
+
+        assert!(Health::Empty < Health::Full);
+        assert!(Health::Empty < Health::Half);
+        assert!(Health::Empty == Health::Empty);
+    }
 }

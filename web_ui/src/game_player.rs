@@ -6,10 +6,10 @@ use crate::game_player_types::*;
 use crate::oracle_panel::*;
 use crate::screens::*;
 use crate::types::*;
+use closure::closure;
 use handy_core::game::*;
 use leptos::leptos_dom::helpers::window_event_listener;
 use leptos::*;
-use closure::closure;
 
 fn get_combined_interaction_buttons(
     interaction_options: &InteractionOptions,
@@ -96,6 +96,7 @@ fn hotkey_to_face_key(hotkey: Hotkey) -> Option<FaceKey> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum ActionOption {
     MoveOption(MoveOption),
     CardSelection(CardId),
@@ -242,7 +243,9 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
     window_event_listener(ev::keydown, move |ev| {
         let code = ev.code();
         if let Some(hotkey) = code_to_hotkeyable(&code) {
-            if let Some(outcome) = hotkey_to_outcome(hotkey, &interaction_getter.get()) {
+            let hotkey_outcome = hotkey_to_outcome(hotkey, &interaction_getter.get());
+            log!("{:?}", hotkey_outcome);
+            if let Some(outcome) = hotkey_outcome {
                 match outcome {
                     ActionOption::MoveOption(move_option) => {
                         game_state.apply_option(&move_option);

@@ -418,7 +418,7 @@ fn resolve_player_action<T: EngineGameState>(
 
                 let state_with_target = state
                     .clone()
-                    .append_event(Event::AttackCard(target_idx, target_card));
+                    .append_event(Event::AttackCard(target_idx, target_card, HitType::Hit));
 
                 results.extend(attack_card_get_all_outcomes(
                     &state_with_target,
@@ -446,7 +446,7 @@ fn resolve_player_action<T: EngineGameState>(
                 results.extend(attack_card_get_all_outcomes(
                     &state
                         .clone()
-                        .append_event(Event::AttackCard(target_idx, target_card_ptr)),
+                        .append_event(Event::AttackCard(target_idx, target_card_ptr, HitType::Arrow)),
                     target_idx,
                     HitType::Arrow,
                 ));
@@ -476,6 +476,7 @@ fn resolve_player_action<T: EngineGameState>(
                 let base_state = state.clone().append_event(Event::AttackCard(
                     target_idx_1,
                     state.get_pile()[target_idx_1],
+                    HitType::Arrow
                 ));
 
                 {
@@ -488,7 +489,7 @@ fn resolve_player_action<T: EngineGameState>(
                             }
                             let target_idx_2 = arrow_targets[j];
                             let base_state_2 = first_arrow_state.clone().append_event(
-                                Event::AttackCard(target_idx_2, state.get_pile()[target_idx_2]),
+                                Event::AttackCard(target_idx_2, state.get_pile()[target_idx_2], HitType::Arrow),
                             );
 
                             for second_arrow_state in attack_card_get_all_outcomes(
@@ -600,7 +601,7 @@ fn resolve_player_action<T: EngineGameState>(
                 let target_face = target_card_ptr.get_active_face();
                 let target_health = target_face.health;
                 let rotated_key = rotate_key(target_card_ptr.key);
-                if target_card_ptr.get_card_def().faces[rotated_key].health == target_health {
+                if target_card_ptr.get_card_def().faces[rotated_key].health <= target_health {
                     let mut new_state = state.clone();
                     new_state.get_pile_mut()[target_idx].key = rotated_key;
                     new_state.mut_append_event(Event::Manouver(target_idx, target_card_ptr));
@@ -1098,7 +1099,7 @@ fn resolve_enemy_action<T: EngineGameState>(
 
                 let state_with_target = state
                     .clone()
-                    .append_event(Event::AttackCard(target_idx, target_card));
+                    .append_event(Event::AttackCard(target_idx, target_card, HitType::Hit));
                 let blockers_results = find_blockers_for_hit_outcomes(
                     &state_with_target,
                     active_idx,
@@ -2038,7 +2039,7 @@ mod tests {
     fn test_bug7() {
         // When an enemy can't make an action, their other actions are ignored
         let pile = string_to_pile("9A 7A 8A 6B 4A 5A 2A 1D 3B");
-        let new_states = resolve_top_card(&T::new(pile));
+        let new_states = resolve_top_card(&T::new(pile.clone()));
 
         assert_actual_vs_expected_piles(&new_states, vec!["7A 8A 6B 4A 5A 2A 1D 3B 9A"]);
         assert_eq!(
@@ -3250,5 +3251,31 @@ mod tests {
             attack_card_get_all_outcomes(&T::new(string_to_pile("43D 1 4 2 5 3")), 0, HitType::Hit);
 
         assert_actual_vs_expected_piles(&new_states, vec!["43B 1D 4 2D 5 3D"]);
+    }
+
+
+    #[test]
+    fn test_manouver() {
+        let pile = string_to_pile("11B 13A 10D 12D");
+
+        let new_states = resolve_player_action(
+            &T::new(pile),
+            &WrappedAction {
+                action: Action::Manouver,
+                target: Target::Ally,
+            },
+            0,
+            &NO_ENERGY_USED,
+        );
+
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                "11B 13A 10D 12D", // Skip
+                "11B 13B 10D 12D", // Rotate 13
+                "11B 13A 10C 12D", // Rotate 10, which damages it
+                // 12 cannot rotate, which would result in a heal
+            ],
+        );
     }
 }

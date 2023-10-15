@@ -105,8 +105,8 @@ pub fn format_event_for_cli(event: &Event) -> String {
             format_wrapped_action(wrapped_action)
         ),
         Event::SkipArrow => format!("Skip Arrow"),
-        Event::AttackCard(card_idx, card_ptr) => {
-            format!("{:?}@{}: Targetted", card_ptr, card_idx)
+        Event::AttackCard(card_idx, card_ptr, hit_type) => {
+            format!("{:?}@{}: Targetted ({:?})", card_ptr, card_idx, hit_type)
         }
         Event::Damage(card_idx, card_ptr, hit_type, result_face) => format!(
             "{:?}@{}: Damage({:?})=>{:?}",

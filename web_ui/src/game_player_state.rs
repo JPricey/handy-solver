@@ -165,6 +165,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .insert("Target Inspire".to_owned());
             }
             Event::Pull(_, card_ptr) => {
+                // Allow both targets and interaction button options
                 add_clickable_card_option(
                     card_ptr.get_card_id(),
                     ClickableCardReason::Move(available_move.clone()),
@@ -180,6 +181,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .insert("Target Pull".to_owned());
             }
             Event::Push(_, card_ptr) => {
+                // Allow both targets and interaction button options
                 add_clickable_card_option(
                     card_ptr.get_card_id(),
                     ClickableCardReason::Move(available_move.clone()),
@@ -188,7 +190,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .interaction_buttons
                     .push(InteractionButton {
                         move_option: available_move.clone(),
-                        text: "Pull".to_owned(),
+                        text: "Push".to_owned(),
                     });
                 new_interaction_options
                     .hints
@@ -281,7 +283,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Perform Move".to_string());
             }
-            Event::AttackCard(_, card_ptr) => {
+            Event::AttackCard(_, card_ptr, _) => {
                 add_clickable_card_option(
                     card_ptr.get_card_id(),
                     ClickableCardReason::Move(available_move.clone()),
@@ -716,6 +718,7 @@ impl GamePlayerState {
     }
 
     pub fn set_history(self, game_history: GameHistory) {
+        self.clear_animation();
         self.game_history.set(game_history)
     }
 

@@ -32,11 +32,20 @@ pub fn get_random_face<R: Rng>(rng: &mut R) -> FaceKey {
         _ => panic!(),
     }
 }
+pub fn string_to_card_id_result(input: &str) -> Result<CardId, String> {
+    let card_id: CardId = input.parse().map_err(|err| format!("{err:?}"))?;
 
-pub fn string_to_card_ptr_result(input: &str) -> Result<CardPtr, ()> {
+    if CARDS.get_card_if_exists(card_id as usize).is_some() {
+        Ok(card_id)
+    } else {
+        return Err("Card Id does not exist".to_owned());
+    }
+}
+
+pub fn string_to_card_ptr_result(input: &str) -> Result<CardPtr, String> {
     let re = Regex::new(r"(\d+)([a-dA-D]?)").unwrap();
     let Some(captures) = re.captures(input) else {
-        return Err(());
+        return Err("Could not parse card ptr".to_owned());
     };
     let (_, [id_str, key_str]) = captures.extract();
     let key: FaceKey = key_str
@@ -46,13 +55,13 @@ pub fn string_to_card_ptr_result(input: &str) -> Result<CardPtr, ()> {
         .unwrap_or(FaceKey::A);
 
     let Ok(id) = id_str.parse::<u8>() else {
-        return Err(());
+        return Err("Card Id does not exist".to_owned());
     };
 
     if CARDS.get_card_if_exists(id as usize).is_some() {
         Ok(CardPtr::new_from_id(id, key))
     } else {
-        Err(())
+        return Err("Card Id does not exist".to_owned());
     }
 }
 
@@ -66,13 +75,11 @@ pub fn string_to_pile_result(input: &str) -> Result<Pile, String> {
     let re = Regex::new(r"(\d+[a-dA-D]?)").unwrap();
 
     for (_, [card_ptr_str]) in re.captures_iter(input).map(|c| c.extract()) {
-        let Ok(card_ptr) = string_to_card_ptr_result(card_ptr_str) else {
-            return Err(card_ptr_str.to_owned());
-        };
+        let card_ptr = string_to_card_ptr_result(card_ptr_str)?;
         result.push(card_ptr);
 
         if result.len() == 9 {
-            return Ok(result)
+            return Ok(result);
         }
     }
 

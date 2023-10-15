@@ -18,7 +18,6 @@ fn get_full_path(suffix: &str) -> String {
     let base_uri = document().document_uri().unwrap();
     let base_url = Url::parse(&base_uri).unwrap().join(suffix);
     let result = base_url.unwrap().to_string();
-    log!("result: {:?}", result);
     return result;
 }
 
