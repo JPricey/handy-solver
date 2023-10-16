@@ -171,14 +171,10 @@ pub fn action_button(cx: Scope, text: String, is_skip: bool) -> impl IntoView {
     };
 
     view! {cx,
-        <button
-            style:position="relative"
-            style:width={move || wrap_px(placer_getter.get().scale(CHOICE_BUTTON_WIDTH_PX))}
-            style:height={move || wrap_px(placer_getter.get().scale(CHOICE_BUTTON_HEIGHT_PX))}
-            style:background=colour
-            style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}
-            style:border="none"
-            style:cursor="pointer"
+        <Button
+            width=CHOICE_BUTTON_WIDTH_PX
+            height=CHOICE_BUTTON_HEIGHT_PX
+            background=Signal::derive(cx, || colour.to_owned())
         >
             <div
                 width="100%"
@@ -198,7 +194,7 @@ pub fn action_button(cx: Scope, text: String, is_skip: bool) -> impl IntoView {
             >
                 {hotkey_text}
             </div>
-        </button>
+        </Button>
     }
 }
 

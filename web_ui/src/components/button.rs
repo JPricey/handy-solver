@@ -26,6 +26,8 @@ pub fn Button(
 
     view! { cx,
         <button
+            class="standard-button"
+            style:position="relative"
             style:border=border.unwrap_or("none".to_owned())
             style:border-color=border_colour
             style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}

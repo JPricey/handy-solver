@@ -21,6 +21,7 @@ const BRAWL_COLOUR: &str = "rgb(221, 119, 139)";
 const DISABLED_BRAWL_COLOUR: &str = "rgb(226, 165, 177)";
 
 const VS_FONT_SIZE: WindowUnit = 24.0;
+const SELECT_FONT_SIZE: WindowUnit = 24.0;
 
 #[component]
 fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoView {
@@ -75,7 +76,7 @@ fn MatchupSelector(cx: Scope, hero: RwSignal<Class>, baddie: RwSignal<Class>) ->
                 style:display="flex"
                 style:flex-direction="column"
                 style:justify-content="center"
-                style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
+                style:font-size={move || wrap_px(placer_getter.get().scale(SELECT_FONT_SIZE))}
             >
                 VS
             </div>
@@ -223,6 +224,12 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                         style:align-items="center"
                     >
                         // Matchup Div
+                        <div
+                            style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
+                        >
+                            Select a Matchup
+                        </div>
+
                         <MatchupSelector hero=hero_signal baddie=enemy_signal/>
 
                         <div
@@ -271,12 +278,22 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                     style:position="absolute"
                     style:right="0%"
                     style:bottom="0%"
+                    style:margin={move || wrap_px(placer_getter.get().scale(2.0))}
                 >
-                    <a
-                        href="https://boardgamegeek.com/boardgame/362692/handy-brawl"
-                        style:margin={move || wrap_px(placer_getter.get().scale(2.0))}
-                    >
-                    Handy Brawl Designed by Igor Zuber</a>
+                    <div>
+                        <a href="https://boardgamegeek.com/boardgame/362692/handy-brawl">Handy Brawl</a>
+                        game designed by
+                        <a href="https://boardgamegeek.com/boardgamedesigner/145462/igor-zuber" >Igor Zuber</a>
+                    </div>
+                    <div>
+                        Art by
+                        <a href="https://boardgamegeek.com/boardgameartist/116088/aleksander-jagodzinski">Aleksander Jagodziński</a>
+                        and
+                        <a href="https://boardgamegeek.com/boardgameartist/145463/weronika-kaluza">Weronika Kałuża</a>
+                    </div>
+                    <div>
+                        <a href="https://github.com/JPricey/handy-solver"> Implemented by Joe Price</a>
+                    </div>
                 </div>
             </div>
         </Show>
