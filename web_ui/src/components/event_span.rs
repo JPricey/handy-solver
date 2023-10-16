@@ -241,25 +241,25 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::UseActionAssist(assist_idx, assist_card_ptr, assist_row_idx) => {
-            let text = format!(
-                "{:?}@{}: Assist Row {}",
-                assist_card_ptr,
-                assist_idx + 1,
-                assist_row_idx + 1
-            );
+        Event::UseActionAssistCard(assist_idx, assist_card_ptr) => {
             view! { cx,
                 <span>
-                    {text}
+                    <CardIdPill card_ptr=assist_card_ptr/> {format!("({}) Assists", assist_idx + 1)}
+                </span>
+            }
+        }
+        Event::UseActionAssistRow(assist_idx, assist_card_ptr, assist_row_idx) => {
+            view! { cx,
+                <span>
+                    <CardIdPill card_ptr=assist_card_ptr/> {format!("({}) Assists Row #{}", assist_idx + 1, assist_row_idx + 1)}
                 </span>
             }
         }
 
         Event::ReactAssistUsed(card_idx, card_ptr, trigger, cost) => {
-            let text = format!("{:?}({}): {:?} React Assited({:?})", card_ptr, card_idx + 1, trigger, cost);
             view! { cx,
                 <span>
-                    {text}
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Assists for {:?} {:?}", card_idx + 1, trigger, cost)}
                 </span>
             }
         }

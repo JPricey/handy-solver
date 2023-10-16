@@ -269,10 +269,6 @@ pub enum Event {
     Inspire(usize, CardPtr),
 
     // Moves
-    // Quicken(usize, CardPtr, usize),
-    // Delay(usize, CardPtr, usize),
-    // MoveOne(usize, CardPtr, MoveType),
-    // DoneMove(MoveType),
     MoveTarget(usize, CardPtr, MoveType), // index, ptr, type, amount
     MoveBy(usize, CardPtr, MoveType, usize), // anchor_index, anchor_card, move_type, distance
     MoveResult(MoveType, usize),          // type, amount
@@ -303,10 +299,10 @@ pub enum Event {
     PayEnergy(PayEnergyArrType),
     Manouver(usize, CardPtr),
     Swarm(usize, CardPtr),
-    UseActionAssist(usize, CardPtr, usize), // card_id, card_ptr, row
+    UseActionAssistCard(usize, CardPtr), // card_idx, card_ptr
+    UseActionAssistRow(usize, CardPtr, usize), // card_idx, card_ptr, row
     SkipReactActionAssist,
 }
-
 
 #[cfg(test)]
 mod tests {

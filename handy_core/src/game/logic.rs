@@ -416,9 +416,11 @@ fn resolve_player_action<T: EngineGameState>(
                     continue;
                 }
 
-                let state_with_target = state
-                    .clone()
-                    .append_event(Event::AttackCard(target_idx, target_card, HitType::Hit));
+                let state_with_target = state.clone().append_event(Event::AttackCard(
+                    target_idx,
+                    target_card,
+                    HitType::Hit,
+                ));
 
                 results.extend(attack_card_get_all_outcomes(
                     &state_with_target,
@@ -444,9 +446,11 @@ fn resolve_player_action<T: EngineGameState>(
                 }
 
                 results.extend(attack_card_get_all_outcomes(
-                    &state
-                        .clone()
-                        .append_event(Event::AttackCard(target_idx, target_card_ptr, HitType::Arrow)),
+                    &state.clone().append_event(Event::AttackCard(
+                        target_idx,
+                        target_card_ptr,
+                        HitType::Arrow,
+                    )),
                     target_idx,
                     HitType::Arrow,
                 ));
@@ -476,7 +480,7 @@ fn resolve_player_action<T: EngineGameState>(
                 let base_state = state.clone().append_event(Event::AttackCard(
                     target_idx_1,
                     state.get_pile()[target_idx_1],
-                    HitType::Arrow
+                    HitType::Arrow,
                 ));
 
                 {
@@ -488,9 +492,12 @@ fn resolve_player_action<T: EngineGameState>(
                                 continue;
                             }
                             let target_idx_2 = arrow_targets[j];
-                            let base_state_2 = first_arrow_state.clone().append_event(
-                                Event::AttackCard(target_idx_2, state.get_pile()[target_idx_2], HitType::Arrow),
-                            );
+                            let base_state_2 =
+                                first_arrow_state.clone().append_event(Event::AttackCard(
+                                    target_idx_2,
+                                    state.get_pile()[target_idx_2],
+                                    HitType::Arrow,
+                                ));
 
                             for second_arrow_state in attack_card_get_all_outcomes(
                                 &base_state_2,
@@ -639,11 +646,14 @@ fn _get_assist_action_outcomes<T: EngineGameState>(
         }
 
         for (assist_row_idx, assist_option) in assist_face.assists.iter().enumerate() {
-            let mut new_state = state.clone().append_event(Event::UseActionAssist(
-                assist_idx,
-                assist_card,
-                assist_row_idx,
-            ));
+            let mut new_state = state
+                .clone()
+                .append_event(Event::UseActionAssistCard(assist_idx, assist_card))
+                .append_event(Event::UseActionAssistRow(
+                    assist_idx,
+                    assist_card,
+                    assist_row_idx,
+                ));
 
             if let Some(self_action) = assist_option.mandatory {
                 perform_mandatory_action(&mut new_state, self_action, assist_idx)
@@ -1097,9 +1107,11 @@ fn resolve_enemy_action<T: EngineGameState>(
                     continue;
                 }
 
-                let state_with_target = state
-                    .clone()
-                    .append_event(Event::AttackCard(target_idx, target_card, HitType::Hit));
+                let state_with_target = state.clone().append_event(Event::AttackCard(
+                    target_idx,
+                    target_card,
+                    HitType::Hit,
+                ));
                 let blockers_results = find_blockers_for_hit_outcomes(
                     &state_with_target,
                     active_idx,
@@ -3253,7 +3265,6 @@ mod tests {
         assert_actual_vs_expected_piles(&new_states, vec!["43B 1D 4 2D 5 3D"]);
     }
 
-
     #[test]
     fn test_manouver() {
         let pile = string_to_pile("11B 13A 10D 12D");
@@ -3274,7 +3285,7 @@ mod tests {
                 "11B 13A 10D 12D", // Skip
                 "11B 13B 10D 12D", // Rotate 13
                 "11B 13A 10C 12D", // Rotate 10, which damages it
-                // 12 cannot rotate, which would result in a heal
+                                   // 12 cannot rotate, which would result in a heal
             ],
         );
     }

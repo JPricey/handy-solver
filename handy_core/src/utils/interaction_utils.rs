@@ -22,7 +22,8 @@ pub fn find_final_piles_matching_prefix(root_pile: &Pile, prefix: &Vec<Event>) -
         if state.events.len() < prefix.len() {
             continue;
         }
-        let state_events_prefix: Vec<Event> = state.events[0..prefix.len()].iter().cloned().collect();
+        let state_events_prefix: Vec<Event> =
+            state.events[0..prefix.len()].iter().cloned().collect();
 
         if prefix == &state_events_prefix {
             results.push(state.pile.clone());
@@ -72,10 +73,8 @@ pub fn find_next_event_matching_prefix_and_with_final_state(
         if state.events.len() <= prefix.len() {
             continue;
         }
-        let state_events_prefix: Vec<Event> = state.events[0..prefix.len()]
-            .iter()
-            .cloned()
-            .collect();
+        let state_events_prefix: Vec<Event> =
+            state.events[0..prefix.len()].iter().cloned().collect();
         if prefix == &state_events_prefix {
             return Some(state.events[prefix.len()].clone());
         }
@@ -165,7 +164,11 @@ pub fn format_event_for_cli(event: &Event) -> String {
         Event::Swarm(card_idx, card_ptr) => {
             format!("{:?}@{}: Swarm", card_ptr, card_idx)
         }
-        Event::UseActionAssist(assist_idx, assist_card_ptr, assist_row_idx) => format!(
+        Event::UseActionAssistCard(assist_idx, assist_card_ptr) => format!(
+            "{:?}@{}: Assist",
+            assist_card_ptr, assist_idx
+        ),
+        Event::UseActionAssistRow(assist_idx, assist_card_ptr, assist_row_idx) => format!(
             "{:?}@{}: Assist Row {}",
             assist_card_ptr, assist_idx, assist_row_idx
         ),
