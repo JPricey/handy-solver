@@ -1,14 +1,15 @@
-pub mod training_utils;
 pub mod paths;
 pub mod run_a_star;
+pub mod training_utils;
 
-pub use training_utils::*;
 pub use paths::*;
+pub use training_utils::*;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
 use clap::{ArgGroup, Parser};
 use handy_core::game::*;
+use handy_core::solver::*;
 use handy_core::utils::*;
 use rand::thread_rng;
 use rand::RngCore;
@@ -57,6 +58,20 @@ pub fn get_starting_pile() -> Pile {
     get_starting_pile_from_args(args)
 }
 
+pub fn get_model_for_pile(pile: &Pile) -> Model {
+    let matchups = get_all_matchups_from_pile(pile);
+    let models: Vec<Model> = matchups
+        .into_iter()
+        .map(|matchup| try_read_model_for_matchup(matchup).unwrap())
+        .collect();
+
+    if models.len() == 1 {
+        models[0].clone()
+    } else {
+        merge_models_for_pile(pile, &models)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,7 +97,8 @@ mod tests {
 
     #[test]
     fn test_classes_with_seed() {
-        let args = StandardArgs::parse_from(["cmd", "--classes", "warrior", "ogre", "--seed", "abc"]);
+        let args =
+            StandardArgs::parse_from(["cmd", "--classes", "warrior", "ogre", "--seed", "abc"]);
         let pile = get_starting_pile_from_args(args);
         assert_eq!(pile, string_to_pile("3A 9A 4A 1A 5A 7A 2A 8A 6A"));
     }

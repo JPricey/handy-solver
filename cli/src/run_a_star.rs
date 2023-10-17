@@ -1,15 +1,14 @@
-use crate::paths::*;
+use crate::get_model_for_pile;
 use handy_core::game::*;
 use handy_core::solver::a_star::*;
-use handy_core::solver::*;
 
 pub fn run_a_star_solver(
     start_pile: Pile,
     max_depth: Option<DepthType>,
     max_iters: Option<usize>,
 ) -> Vec<Pile> {
-    let matchup = try_get_matchup_from_pile(&start_pile).unwrap();
-    let model = try_read_model_for_matchup(matchup).unwrap();
+    let model = get_model_for_pile(&start_pile);
+
     let mut a_star_solver = AStarSolver::new(&vec![start_pile], model);
     if let Some(def_max_iters) = max_iters {
         a_star_solver.set_max_iters(def_max_iters);

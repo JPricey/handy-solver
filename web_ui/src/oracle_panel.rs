@@ -22,10 +22,7 @@ fn get_full_path(suffix: &str) -> String {
 }
 
 fn model_url(matchup: Matchup) -> String {
-    let model_file = format!(
-        "static/models/{:?}.{:?}.yaml",
-        matchup.0, matchup.1
-    );
+    let model_file = format!("static/models/{:?}.{:?}.yaml", matchup.0, matchup.1);
 
     return get_full_path(&model_file);
 }
@@ -122,13 +119,24 @@ pub fn OraclePanel(
             let bridge_sink = bridge_sink.clone();
             spawn_local(async move {
                 let pile = current_frame.get_untracked().root_pile;
-                let matchup = try_get_matchup_from_pile(&pile).unwrap();
-                let model_url = model_url(matchup);
-                let model = fetch_model_from_full_url(&model_url).await.unwrap();
+                let matchups = get_all_matchups_from_pile(&pile);
+
+                let mut models: Vec<Model> = Vec::new();
+                for matchup in matchups {
+                    let model_url = model_url(matchup);
+                    let model = fetch_model_from_full_url(&model_url).await.unwrap();
+                    models.push(model);
+                }
+
+                let final_model = if models.len() == 1 {
+                    models[0].clone()
+                } else {
+                    merge_models_for_pile(&pile, &models)
+                };
 
                 if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
                     bridge_sink
-                        .send(ControlSignal::SetModel(model))
+                        .send(ControlSignal::SetModel(final_model))
                         .await
                         .unwrap();
                 }

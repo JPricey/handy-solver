@@ -91,6 +91,8 @@ fn default_0_arr() -> [f32; 9] {
     [0.0; 9]
 }
 
+type CardFaceFeaturesType = EnumMap<FaceKey, FaceFeatures>;
+
 #[derive(Vectorize, Serialize, Deserialize, PartialEq, Debug, Clone, Default)]
 pub struct FaceFeatures {
     #[serde(default = "default_0")]
@@ -133,7 +135,7 @@ pub struct Model {
         serialize_with = "serialize_card_side_values",
         deserialize_with = "deserialize_card_side_values"
     )]
-    card_face_features: Vec<Option<EnumMap<FaceKey, FaceFeatures>>>,
+    card_face_features: Vec<Option<CardFaceFeaturesType>>,
 }
 
 impl Model {
@@ -156,11 +158,19 @@ impl Model {
         res
     }
 
-    fn set(&mut self, i: usize, value: EnumMap<FaceKey, FaceFeatures>) {
+    pub fn set(&mut self, i: usize, value: EnumMap<FaceKey, FaceFeatures>) {
         while self.card_face_features.len() <= i {
             self.card_face_features.push(None);
         }
         self.card_face_features[i] = Some(value);
+    }
+
+    pub fn try_get_face_features(&self, i: usize) -> Option<CardFaceFeaturesType> {
+        if i >= self.card_face_features.len() {
+            None
+        } else {
+            self.card_face_features[i].clone()
+        }
     }
 
     pub fn trim_to_cards(&mut self, _: &Vec<CardId>) {
@@ -405,7 +415,7 @@ pub fn vec_to_model(vec: &Vec<f32>, cards: &[CardId]) -> Model {
     res.flat_value = f32::unvectorize(&mut iter);
 
     for card_id in sorted_cards {
-        let card = EnumMap::<FaceKey, FaceFeatures>::unvectorize(&mut iter);
+        let card = CardFaceFeaturesType::unvectorize(&mut iter);
         res.set(card_id as usize, card);
     }
     assert!(iter.next().is_none());
@@ -445,6 +455,10 @@ impl Unvectorize for FaceFeatures {
     }
 }
 
+pub fn is_hero_class(class: Class) -> bool {
+    HEROS.contains(&class)
+}
+
 pub fn get_classes_from_pile(pile: &Pile) -> Vec<Class> {
     let hashset: HashSet<Class> =
         HashSet::from_iter(pile.iter().map(|card| card.get_card_def().class));
@@ -474,6 +488,66 @@ pub fn try_get_matchup_from_classes(classes: &Vec<Class>) -> Option<Matchup> {
 pub fn try_get_matchup_from_pile(pile: &Pile) -> Option<Matchup> {
     let classes = get_classes_from_pile(pile);
     try_get_matchup_from_classes(&classes)
+}
+
+pub fn get_all_matchups_from_pile(pile: &Pile) -> Vec<Matchup> {
+    let classes = get_classes_from_pile(pile);
+    let mut heros = Vec::new();
+    let mut baddies = Vec::new();
+    for class in classes {
+        if is_hero_class(class) {
+            heros.push(class);
+        } else {
+            baddies.push(class);
+        }
+    }
+
+    let mut result = Vec::new();
+    for hero in &heros {
+        for baddie in &baddies {
+            result.push((hero.clone(), baddie.clone()));
+        }
+    }
+
+    return result;
+}
+
+pub fn merge_models_for_pile(pile: &Pile, models: &Vec<Model>) -> Model {
+    let mut result = Model::new();
+
+    let mut flat_value_sum: f32 = 0.0;
+    let mut flat_value_count: usize = 0;
+
+    for card in pile {
+        let card_id = card.get_card_id() as usize;
+
+        let mut vectorized: Vec<Vec<f32>> = Vec::new();
+        for model in models {
+            flat_value_sum += model.flat_value;
+            flat_value_count += 1;
+
+            if let Some(ff) = model.try_get_face_features(card_id) {
+                vectorized.push(ff.vectorize());
+            }
+        }
+
+        let mut avg_vec = Vec::new();
+        for i in 0..vectorized[0].len() {
+            let mut sum = 0.0;
+            for v in &vectorized {
+                sum += v[i];
+            }
+            sum = sum / vectorized.len() as f32;
+            avg_vec.push(sum);
+        }
+
+        let card_features = CardFaceFeaturesType::unvectorize(&mut avg_vec.into_iter());
+        result.set(card_id, card_features);
+    }
+
+    result.flat_value = flat_value_sum / flat_value_count as f32;
+
+    result
 }
 
 pub fn dot_product(a: &[f32], b: &[f32]) -> f32 {
