@@ -197,6 +197,7 @@ pub fn GameCard(
                 fallback=move |_| ()
             >
                 <button
+                    tabindex=-1
                     style:border-radius={move || wrap_px(placer_getter.get().scale(12.0))}
                     style:position="absolute"
                     style:border="none"

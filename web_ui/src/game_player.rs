@@ -240,7 +240,6 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
         let code = ev.code();
         if let Some(hotkey) = code_to_hotkeyable(&code) {
             let hotkey_outcome = hotkey_to_outcome(hotkey, &interaction_getter.get());
-            log!("{:?}", hotkey_outcome);
             if let Some(outcome) = hotkey_outcome {
                 match outcome {
                     ActionOption::MoveOption(move_option) => {
@@ -395,6 +394,7 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                                             on:click= move |_| { game_state.apply_option(&row_option.move_option) }
                                         >
                                             <button
+                                                tabindex=-1
                                                 style:position="absolute"
                                                 style:border="none"
                                                 style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}

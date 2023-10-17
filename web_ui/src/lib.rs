@@ -10,3 +10,4 @@ pub mod menu_screen;
 pub mod oracle_panel;
 pub mod components;
 pub mod screens;
+pub mod class_helpers;

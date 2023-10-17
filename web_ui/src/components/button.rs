@@ -27,6 +27,7 @@ pub fn Button(
     view! { cx,
         <button
             class="standard-button"
+            tabindex=-1
             style:position="relative"
             style:border=border.unwrap_or("none".to_owned())
             style:border-color=border_colour

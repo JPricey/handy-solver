@@ -173,6 +173,7 @@ where
             />
 
             <div
+                class="select-text"
                 node_ref=scroll_el
                 style:overflow="auto"
                 style:height={move || wrap_px(placer_getter.get().scale(height - BACK_SECTION_HEIGHT))}

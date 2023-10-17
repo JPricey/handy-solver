@@ -2,6 +2,7 @@ use crate::components::*;
 use crate::contexts::*;
 use crate::game_player::*;
 use crate::types::*;
+use crate::class_helpers::*;
 use handy_core::game::primitives::*;
 use handy_core::game::Class;
 use handy_core::solver::{BADDIES, HEROS};
@@ -23,6 +24,7 @@ const DISABLED_BRAWL_COLOUR: &str = "rgb(226, 165, 177)";
 const VS_FONT_SIZE: WindowUnit = 24.0;
 const SELECT_FONT_SIZE: WindowUnit = 24.0;
 
+
 #[component]
 fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
@@ -34,13 +36,16 @@ fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> 
         >
             {
                 options.into_iter()
-                    .map(|n| view! { cx,
+                    .map(|class| {
+                        let icon_path = get_class_full_health_icon_path(class);
+
+                        view! { cx,
                         <div
-                            style:margin={move || wrap_px(placer_getter.get().scale(4.0))}
+                            // style:margin={move || wrap_px(placer_getter.get().scale(4.0))}
                         >
                             <Button
                                 background=Signal::derive(cx, move || {
-                                    if selection.get() == n {
+                                    if selection.get() == class {
                                         BUTTON_SELECTED_COLOUR.to_owned()
                                     } else {
                                         BUTTON_NON_SELECTED_COLOUR.to_owned()
@@ -49,13 +54,47 @@ fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> 
                                 width=CHAR_SELECT_BUTTON_WIDTH_PX
                                 height=CHAR_SELECT_BUTTON_HEIGHT_PX
                                 on:click = move |_| {
-                                    selection.set(n);
+                                    selection.set(class);
                                 }
                             >
-                                {format!("{n:?}")}
+                                <div
+                                    style:display="flex"
+                                    style:flex-direction="row"
+                                    style:height="100%"
+                                >
+                                    <div
+                                        style:flex-grow=0
+                                        style:height="100%"
+                                        style:display="flex"
+                                        style:justify-content="center"
+                                        style:align-items="center"
+                                    >
+                                        <img
+                                            style:height="90%"
+                                            style:margin-left={move || wrap_px(placer_getter.get().scale(4.0))}
+                                            src={icon_path}
+                                        />
+                                    </div>
+                                    <div
+                                        style:flex-grow=1
+
+                                        style:display="flex"
+                                        style:flex-direction="column"
+                                        style:justify-content="center"
+                                        style:align-items="center"
+                                    >
+                                        <div
+                                        >
+                                            {class_to_character_name(class)}
+                                        </div>
+                                        <div>
+                                            The {class_to_full_class_name(class)}
+                                        </div>
+                                    </div>
+                                </div>
                             </Button>
                         </div>
-                    })
+                    }})
                     .collect_view(cx)
             }
         </div>
@@ -77,6 +116,7 @@ fn MatchupSelector(cx: Scope, hero: RwSignal<Class>, baddie: RwSignal<Class>) ->
                 style:flex-direction="column"
                 style:justify-content="center"
                 style:font-size={move || wrap_px(placer_getter.get().scale(SELECT_FONT_SIZE))}
+                style:padding={move || wrap_px(placer_getter.get().scale(8.0))}
             >
                 VS
             </div>
@@ -257,7 +297,11 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                         style:justify-content="center"
                         style:align-items="center"
                     >
-                        // Pile Selector Div
+                        <div
+                            style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
+                        >
+                            Or Use a Custom Start
+                        </div>
                         <PileSelector on_select=move |pile| {
                             pile_signal.set(pile);
                             is_playing.update(|s| s.is_playing = true)
