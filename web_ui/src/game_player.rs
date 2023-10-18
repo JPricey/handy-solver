@@ -7,9 +7,12 @@ use crate::oracle_panel::*;
 use crate::screens::*;
 use crate::types::*;
 use closure::closure;
+use futures::io::Window;
 use handy_core::game::*;
 use leptos::leptos_dom::helpers::window_event_listener;
 use leptos::*;
+
+const ACTION_ROW_MARGIN_PX: WindowUnit= 4.0
 
 fn get_combined_interaction_buttons(
     interaction_options: &InteractionOptions,
@@ -377,7 +380,7 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                         style:display="flex"
                         style:justify-content="center"
                         style:flex-grow=1.0
-                        style:margin-top={move || wrap_px(placer_getter.get().scale(30.0))}
+                        style:margin-top={move || wrap_px(placer_getter.get().scale(22.0))}
                     >
                         <For each=move || {
                             if is_animating.get() {
@@ -392,11 +395,15 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                             };
 
                             view! { cx,
-                                <ActionButton
-                                    text=option.text.to_owned()
-                                    is_skip=false
-                                    on:click=on_click
-                                />
+                                <div
+                                    style:margin={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                >
+                                    <ActionButton
+                                        text=option.text.to_owned()
+                                        is_skip=false
+                                        on:click=on_click
+                                    />
+                                </div>
                             }
                         }/>
                         <For each=move || {
@@ -412,11 +419,15 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                             };
 
                             view! { cx,
-                                <ActionButton
-                                    text=option.text.to_owned()
-                                    is_skip=true
-                                    on:click=on_click
-                                />
+                                <div
+                                    style:margin={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                >
+                                    <ActionButton
+                                        text=option.text.to_owned()
+                                        is_skip=true
+                                        on:click=on_click
+                                    />
+                                </div>
                             }
                         }/>
                     </div>
@@ -435,13 +446,18 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                         }
                         key=|e| e.card_ptr view=move |cx, damage_option| {
                             view! { cx,
-                                <StaticGameCard
-                                    card_id=damage_option.card_ptr.get_card_id()
-                                    face_key=damage_option.card_ptr.get_card_face()
-                                    is_clickable=true
-                                    scale=1.0
-                                    on:click= move |_| { game_state.apply_option(&damage_option.move_option) }
-                                />
+                                <div
+                                    style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                    style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                >
+                                    <StaticGameCard
+                                        card_id=damage_option.card_ptr.get_card_id()
+                                        face_key=damage_option.card_ptr.get_card_face()
+                                        is_clickable=true
+                                        scale=1.0
+                                        on:click= move |_| { game_state.apply_option(&damage_option.move_option) }
+                                    />
+                                </div>
                             }
                         }/>
                     </div>
