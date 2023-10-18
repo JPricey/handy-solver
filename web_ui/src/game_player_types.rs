@@ -7,8 +7,8 @@ use std::collections::{HashMap, HashSet};
 pub const FONT_BASE_SIZE: WindowUnit = 14.0;
 
 pub const CARD_WINDOW_BUFFER_PX: WindowUnit = 20.0;
-pub const ORACLE_ZONE_WIDTH_PX: WindowUnit = 240.0;
-pub const ORACLE_ZONE_HEIGHT_PX: WindowUnit = 180.0;
+pub const ORACLE_ZONE_WIDTH_PX: WindowUnit = 220.0;
+pub const ORACLE_ZONE_HEIGHT_PX: WindowUnit = 160.0;
 
 pub const CHOICE_BUTTON_WIDTH_PX: WindowUnit = 120.0;
 pub const CHOICE_BUTTON_HEIGHT_PX: WindowUnit = 80.0;

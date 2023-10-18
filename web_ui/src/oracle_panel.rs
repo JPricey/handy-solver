@@ -46,9 +46,8 @@ pub fn OraclePanel(
     width: WindowUnit,
     height: WindowUnit,
     current_frame: Signal<GameFrame>,
+    is_enabled: RwSignal<bool>,
 ) -> impl IntoView {
-    let (is_enabled, set_enabled) = create_signal(cx, false);
-
     let worker_path = get_full_path("worker.js");
     let (bridge_sink, mut bridge_stream) = SolverWorker::spawner().spawn(&worker_path).split();
     let bridge_sink = Rc::new(RefCell::new(bridge_sink));
@@ -277,13 +276,13 @@ pub fn OraclePanel(
             width=width
             height=height
             background=Signal::derive(cx, || "d7d7a2".to_owned())
-            on:click= move |_| set_enabled.set(!is_enabled.get())
+            on:click= move |_| is_enabled.set(!is_enabled.get())
             border="solid".to_owned()
             border_colour="#816b5b".to_owned()
         >
             <Show
                 when=move || is_enabled.get()
-                fallback=move |_| "Show Engine"
+                fallback=move |_| "Show Engine (E)"
             >
                 <div>
                     {path_text}

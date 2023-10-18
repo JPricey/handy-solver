@@ -38,6 +38,11 @@ pub enum Hotkey {
     B,
     C,
     D,
+    E,
+    F,
+    U,
+    X,
+    Slash,
     Ent,
     Up,
     Down,
@@ -61,12 +66,20 @@ fn code_to_hotkeyable(code: &str) -> Option<Hotkey> {
         "KeyB" => Some(Hotkey::B),
         "KeyC" => Some(Hotkey::C),
         "KeyD" => Some(Hotkey::D),
+        "KeyE" => Some(Hotkey::E),
+        "KeyF" => Some(Hotkey::F),
+        "KeyU" => Some(Hotkey::U),
+        "KeyX" => Some(Hotkey::X),
+        "Slash" => Some(Hotkey::Slash),
         "Enter" => Some(Hotkey::Ent),
         "ArrowUp" => Some(Hotkey::Up),
         "ArrowDown" => Some(Hotkey::Down),
         "ArrowLeft" => Some(Hotkey::Left),
         "ArrowRight" => Some(Hotkey::Right),
-        _ => None,
+        _ => {
+            // log!("{code}");
+            None
+        }
     }
 }
 
@@ -100,6 +113,10 @@ fn hotkey_to_face_key(hotkey: Hotkey) -> Option<FaceKey> {
 pub enum ActionOption {
     MoveOption(MoveOption),
     CardSelection(CardId),
+    ToggleSettings,
+    ToggleEngine,
+    Undo,
+    AnimationSkip,
 }
 
 fn hotkey_to_outcome(
@@ -154,6 +171,22 @@ fn hotkey_to_outcome(
         if let Some(selection) = interaction_options.interaction_buttons.first() {
             return Some(ActionOption::MoveOption(selection.move_option.clone()));
         }
+    }
+
+    if hotkey == Hotkey::X || hotkey == Hotkey::Slash {
+        return Some(ActionOption::ToggleSettings);
+    }
+
+    if hotkey == Hotkey::E {
+        return Some(ActionOption::ToggleEngine);
+    }
+
+    if hotkey == Hotkey::U || hotkey == Hotkey::Left {
+        return Some(ActionOption::Undo);
+    }
+
+    if hotkey == Hotkey::F || hotkey == Hotkey::Right {
+        return Some(ActionOption::AnimationSkip);
     }
 
     None
@@ -211,6 +244,9 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
     let interaction_getter = game_state.interaction_getter;
 
+    let (is_showing_settings_getter, is_showing_settings_setter) = create_signal(cx, false);
+    let is_oracle_enabled = create_rw_signal(cx, false);
+
     let render_cards_getter = move || {
         let mut result: Vec<RenderCard> = render_card_map_getter.get().values().copied().collect();
         result.sort_by(|a, b| {
@@ -222,7 +258,37 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
         result
     };
 
+    let maybe_animation_queue = game_state.maybe_animation_queue;
+    let is_animating = create_memo(cx, move |_| maybe_animation_queue.get().is_some());
+
+    let undo = move || {
+        let mut new_history = game_history_getter.get();
+        if new_history.all_frames.len() <= 1 {
+            return;
+        }
+
+        let mut truncate_index = 1;
+        for (i, frame) in new_history.all_frames.iter().enumerate().rev() {
+            if i == new_history.all_frames.len() - 1 {
+                continue;
+            }
+
+            if frame.available_moves.len() > 1 {
+                truncate_index = i + 1;
+                break;
+            }
+        }
+
+        new_history.all_frames.truncate(truncate_index);
+        game_state.set_history(new_history);
+        game_state.do_render_pile_update();
+    };
+
     let hint_string = move || {
+        if is_animating.get() {
+            return "".to_owned();
+        }
+
         let hints = interaction_getter.get().hints;
         return hints.into_iter().collect::<Vec<_>>().join(" or ");
     };
@@ -247,6 +313,18 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                     }
                     ActionOption::CardSelection(card_id) => {
                         game_state.select_card(card_id);
+                    }
+                    ActionOption::ToggleSettings => {
+                        is_showing_settings_setter.set(!is_showing_settings_getter.get())
+                    }
+                    ActionOption::ToggleEngine => {
+                        is_oracle_enabled.set(!is_oracle_enabled.get());
+                    }
+                    ActionOption::Undo => {
+                        undo();
+                    }
+                    ActionOption::AnimationSkip => {
+                        game_state.try_do_only_move();
                     }
                 }
             }
@@ -299,8 +377,16 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                         style:display="flex"
                         style:justify-content="center"
                         style:flex-grow=1.0
+                        style:margin-top={move || wrap_px(placer_getter.get().scale(30.0))}
                     >
-                        <For each=move || get_combined_interaction_buttons(&interaction_getter.get()) key=|e| e.move_option.clone() view=move |cx, option| {
+                        <For each=move || {
+                            if is_animating.get() {
+                                Vec::new()
+                            } else {
+                                get_combined_interaction_buttons(&interaction_getter.get())
+                            }
+                        }
+                            key=|e| e.move_option.clone() view=move |cx, option| {
                             let on_click = move |_| {
                                 game_state.apply_option(&option.move_option);
                             };
@@ -313,7 +399,14 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                                 />
                             }
                         }/>
-                        <For each=move || interaction_getter.get().skip_button key=|e| e.move_option.clone() view=move |cx, option| {
+                        <For each=move || {
+                                if is_animating.get() {
+                                    Vec::new()
+                                } else {
+                                    interaction_getter.get().skip_button
+                                }
+                            }
+                            key=|e| e.move_option.clone() view=move |cx, option| {
                             let on_click = move |_| {
                                 game_state.apply_option(&option.move_option);
                             };
@@ -333,7 +426,14 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                         style:justify-content="center"
                         style:flex-grow=1.0
                     >
-                        <For each=move || interaction_getter.get().damage_card_options key=|e| e.card_ptr view=move |cx, damage_option| {
+                        <For each=move || {
+                            if is_animating.get() {
+                                Vec::new()
+                            } else {
+                                interaction_getter.get().damage_card_options
+                            }
+                        }
+                        key=|e| e.card_ptr view=move |cx, damage_option| {
                             view! { cx,
                                 <StaticGameCard
                                     card_id=damage_option.card_ptr.get_card_id()
@@ -350,6 +450,10 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                 // Cards
                 <For each=render_cards_getter key=|e| e.card_id view=move |cx, render_card| {
                     let get_row_options= move || {
+                            if is_animating.get() {
+                                return Vec::new();
+                            }
+
                             interaction_getter.with(|interactions| {
                             interactions.row_options.iter().filter(|option| {
                                 option.card_id == render_card.card_id
@@ -359,7 +463,8 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
 
                     view! { cx,
                         <InPlayGameCard
-                            render_card={render_card}
+                            render_card=render_card
+                            is_animating={is_animating.into()}
                             on:click = move |_| {
                                 let maybe_click_result = interaction_getter.get().clickable_cards.get(&render_card.card_id).cloned();
                                 if let Some(click_result) = maybe_click_result {
@@ -424,10 +529,7 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
 
         <HistoryPanel
             game_history_getter=game_history_getter.into()
-            set_history=move |new_history| {
-                game_state.set_history(new_history.clone());
-                game_state.do_render_pile_update();
-            }
+            do_undo = move || undo()
             width=*HISTORY_ZONE_WIDTH_PX
             height=GOLDEN_HEIGHT
         />
@@ -435,10 +537,30 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
         // Special placements
         <div
             style:position="absolute"
-            style:left="0%"
-            style:bottom="0%"
+            style:left="0.8%"
+            style:bottom="0.8%"
+            style:display="flex"
+            style:align-items="end"
         >
-            <OraclePanel width=ORACLE_ZONE_WIDTH_PX height=ORACLE_ZONE_HEIGHT_PX current_frame=current_state.into()/>
+            <OraclePanel
+                width=ORACLE_ZONE_WIDTH_PX
+                height=ORACLE_ZONE_HEIGHT_PX
+                current_frame=current_state.into()
+                is_enabled=is_oracle_enabled
+            />
+
+            <div
+                style:width=move || wrap_px(placer_getter.get().scale(4.0))
+            />
+
+            <Button
+                width=ORACLE_ZONE_WIDTH_PX
+                height=40.0
+                background=Signal::derive(cx, || "#6c9ce0".to_owned())
+                on:click =move |_| is_showing_settings_setter.set(true)
+            >
+                Help & Shortcuts (?)
+            </Button>
         </div>
 
         <Show
@@ -496,6 +618,21 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                         Back to Menu
                     </Button>
                 </div>
+            </div>
+        </Show>
+
+        <Show
+            when=move || is_showing_settings_getter.get()
+            fallback=move |_| ()
+        >
+            <div
+                style:position="absolute"
+                style:width="100%"
+                style:height="100%"
+            >
+                <HelperScreen
+                    is_showing_settings_setter=is_showing_settings_setter
+                />
             </div>
         </Show>
     </div>

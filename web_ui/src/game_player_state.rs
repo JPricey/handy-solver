@@ -683,7 +683,7 @@ fn get_init_render_pile(cx: Scope, init_pile: &Pile) -> RenderCardMap {
 pub struct GamePlayerState {
     game_history: RwSignal<GameHistory>,
     interaction_setter: WriteSignal<InteractionOptions>,
-    maybe_animation_queue: RwSignal<Option<TimeoutHandle>>,
+    pub maybe_animation_queue: RwSignal<Option<TimeoutHandle>>,
 
     pub game_history_getter: Signal<GameHistory>,
     pub render_card_map_getter: Signal<RenderCardMap>,
@@ -785,6 +785,15 @@ impl GamePlayerState {
         self.maybe_schedule_next_move(animation_duration);
     }
 
+    pub fn try_do_only_move(self) {
+        let game_frame = self.get_current_frame();
+        if game_frame.available_moves.len() != 1 {
+            return;
+        }
+        let only_move = game_frame.available_moves[0].clone();
+        self.apply_option(&only_move);
+    }
+
     pub fn maybe_schedule_next_move(self, animation_duration: Duration) {
         let game_frame = self.get_current_frame();
         if game_frame.available_moves.len() != 1 {
@@ -794,6 +803,7 @@ impl GamePlayerState {
         let only_move = game_frame.available_moves[0].clone();
 
         let animation_result = set_timeout_with_handle(move || self.apply_option(&only_move), animation_duration);
+        self.clear_animation();
         self.maybe_animation_queue.set(animation_result.ok());
     }
 

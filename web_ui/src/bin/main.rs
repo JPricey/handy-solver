@@ -11,10 +11,11 @@ fn App(cx: Scope) -> impl IntoView {
     provide_is_playing(cx);
     register_key_manager(cx);
 
-    let stuff = create_rw_signal::<f64>(cx, 0.0);
-    let animated: Signal<f64> =
-        create_animated_signal(cx, move || stuff.get().into(), tween_default);
-    create_effect(cx, move |_| animated.track());
+    // There seems to be a bug in leptos_animation where when all animated signals are destroyed
+    // future signals will stall as well.
+    // We create this useless animation so that there's an animated signal around at all times
+    let animation_hack: Signal<f64> = create_animated_signal(cx, move || (0.0).into(), tween_default);
+    create_effect(cx, move |_| animation_hack.track());
 
     view! { cx,
         <PlacerContainer>

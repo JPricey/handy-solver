@@ -54,6 +54,7 @@ const INDEX_OFFSET_TOP: &str = "0.6%";
 pub fn InPlayGameCard(
     cx: Scope,
     render_card: RenderCard,
+    is_animating: Signal<bool>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
@@ -66,7 +67,7 @@ pub fn InPlayGameCard(
             <GameCard
                 card_id=render_card.card_id
                 quat=render_card.animated_quat
-                is_clickable=render_card.is_clickable.into()
+                is_clickable=Signal::derive(cx, move || !is_animating.get() && render_card.is_clickable.get())
                 scale=1.0
                 index=Some(render_card.animated_position_in_pile)
                 children=children
