@@ -7,12 +7,11 @@ use crate::oracle_panel::*;
 use crate::screens::*;
 use crate::types::*;
 use closure::closure;
-use futures::io::Window;
 use handy_core::game::*;
 use leptos::leptos_dom::helpers::window_event_listener;
 use leptos::*;
 
-const ACTION_ROW_MARGIN_PX: WindowUnit= 4.0
+const ACTION_ROW_MARGIN_PX: WindowUnit= 4.0;
 
 fn get_combined_interaction_buttons(
     interaction_options: &InteractionOptions,

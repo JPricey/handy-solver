@@ -97,7 +97,7 @@ pub struct WrappedAction {
     pub target: Target,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelfAction {
     Rotate,
     Flip,
@@ -110,7 +110,7 @@ pub enum Condition {
     ExhaustedAllies(usize),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(strum_macros::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ReactionTrigger {
     Block,
     Dodge,
@@ -234,7 +234,7 @@ impl Hash for CardDef {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(strum_macros::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum HitType {
     Hit,
     Arrow,
@@ -244,7 +244,7 @@ pub enum HitType {
     Fireball,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MoveType {
     Quicken,
     Delay,

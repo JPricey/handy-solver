@@ -1,9 +1,16 @@
 use crate::components::*;
 use crate::types::*;
+use closure::closure;
 use handy_core::game::*;
 use handy_core::utils::*;
 use leptos::*;
-use closure::closure;
+
+fn format_cost(cost: &Option<SelfAction>) -> String {
+    match cost {
+        None => "".to_owned(),
+        Some(action) => format!(" ({})", action),
+    }
+}
 
 #[component]
 pub fn FrameSpan(cx: Scope, frame: GameFrame) -> impl IntoView {
@@ -80,7 +87,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::AttackCard(card_idx, card_ptr, hit_type) => {
             view! { cx,
                 <span>
-                    Attack <CardIdPill card_ptr=card_ptr/> {format!("({}) ({:?})", card_idx + 1, hit_type)}
+                    Attack <CardIdPill card_ptr=card_ptr/> {format!("({}) ({})", card_idx + 1, hit_type)}
                 </span>
             }
         }
@@ -88,7 +95,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
             let new_card_ptr = CardPtr::new_from_id(card_ptr.get_card_id(), result_face);
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Hit by {:?}", card_idx+1, hit_type)} to <CardIdPill card_ptr=new_card_ptr/>
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Hit by {}", card_idx+1, hit_type)} to <CardIdPill card_ptr=new_card_ptr/>
                 </span>
             }
         }
@@ -117,7 +124,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::MoveTarget(card_idx, card_ptr, move_type) => {
             view! { cx,
                 <span>
-                    {format!("{:?} ", move_type)}<CardIdPill card_ptr=card_ptr/>{format!("({})", card_idx + 1)}
+                    {format!("{} ", move_type)}<CardIdPill card_ptr=card_ptr/>{format!("({})", card_idx + 1)}
                 </span>
             }
         }
@@ -128,14 +135,14 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
             };
             view! { cx,
                 <span>
-                    {format!("{:?} by {} {} ", move_type, amount, verb)} <CardIdPill card_ptr=card_ptr/> {format!("({})", card_idx + 1)}
+                    {format!("{} by {} {} ", move_type, amount, verb)} <CardIdPill card_ptr=card_ptr/> {format!("({})", card_idx + 1)}
                 </span>
             }
         }
         Event::MoveResult(move_type, amount) => {
             view! { cx,
                 <span>
-                    {format!("Execute {:?} {}", move_type, amount)}
+                    {format!("Execute {} {}", move_type, amount)}
                 </span>
             }
         }
@@ -163,7 +170,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::Mandatory(card_ptr, self_action) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> Forced {format!("{:?}", self_action)}
+                    <CardIdPill card_ptr=card_ptr/> Forced {format!("{}", self_action)}
                 </span>
             }
         }
@@ -205,14 +212,14 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::Block(card_idx, card_ptr, cost) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Blocks: {:?}", card_idx + 1, cost)}
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Blocks{}", card_idx + 1, format_cost(&cost))}
                 </span>
             }
         }
         Event::Dodge(card_idx, card_ptr, cost) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Dodges: {:?}", card_idx, cost)}
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Dodges{}", card_idx, format_cost(&cost))}
                 </span>
             }
         }
@@ -259,7 +266,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::ReactAssistUsed(card_idx, card_ptr, trigger, cost) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Assists for {:?} {:?}", card_idx + 1, trigger, cost)}
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Assists for {} {}", card_idx + 1, trigger, cost)}
                 </span>
             }
         }

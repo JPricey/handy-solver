@@ -1,7 +1,5 @@
 use crate::components::*;
 use crate::contexts::*;
-use crate::game_card::*;
-use crate::types::*;
 use leptos::*;
 
 use crate::types::WindowUnit;
