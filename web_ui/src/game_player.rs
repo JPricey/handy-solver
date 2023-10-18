@@ -11,7 +11,7 @@ use handy_core::game::*;
 use leptos::leptos_dom::helpers::window_event_listener;
 use leptos::*;
 
-const ACTION_ROW_MARGIN_PX: WindowUnit= 4.0;
+const ACTION_ROW_MARGIN_PX: WindowUnit = 4.0;
 
 fn get_combined_interaction_buttons(
     interaction_options: &InteractionOptions,
@@ -42,6 +42,8 @@ pub enum Hotkey {
     D,
     E,
     F,
+    H,
+    O,
     U,
     X,
     Slash,
@@ -70,7 +72,9 @@ fn code_to_hotkeyable(code: &str) -> Option<Hotkey> {
         "KeyD" => Some(Hotkey::D),
         "KeyE" => Some(Hotkey::E),
         "KeyF" => Some(Hotkey::F),
+        "KeyH" => Some(Hotkey::H),
         "KeyU" => Some(Hotkey::U),
+        "KeyO" => Some(Hotkey::O),
         "KeyX" => Some(Hotkey::X),
         "Slash" => Some(Hotkey::Slash),
         "Enter" => Some(Hotkey::Ent),
@@ -116,7 +120,9 @@ pub enum ActionOption {
     MoveOption(MoveOption),
     CardSelection(CardId),
     ToggleSettings,
+    ToggleSettingsBar,
     ToggleEngine,
+    ToggleOnlyMoves,
     Undo,
     AnimationSkip,
 }
@@ -179,8 +185,16 @@ fn hotkey_to_outcome(
         return Some(ActionOption::ToggleSettings);
     }
 
+    if hotkey == Hotkey::H {
+        return Some(ActionOption::ToggleSettingsBar);
+    }
+
     if hotkey == Hotkey::E {
         return Some(ActionOption::ToggleEngine);
+    }
+
+    if hotkey == Hotkey::O {
+        return Some(ActionOption::ToggleOnlyMoves);
     }
 
     if hotkey == Hotkey::U || hotkey == Hotkey::Left {
@@ -239,6 +253,7 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
     let game_state = GamePlayerState::new(cx, init_pile.clone());
     let game_history_getter = game_state.game_history_getter;
     let render_card_map_getter = game_state.render_card_map_getter;
+    let options = use_options(cx);
 
     let current_state = create_memo(cx, move |_| {
         game_history_getter.get().all_frames.last().unwrap().clone()
@@ -252,6 +267,16 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
     let render_cards_getter = move || {
         let mut result: Vec<RenderCard> = render_card_map_getter.get().values().copied().collect();
         result.sort_by(|a, b| {
+            let important_cmp = interaction_getter.with(|i| {
+                i.important_cards
+                    .contains(&a.card_id)
+                    .cmp(&i.important_cards.contains(&b.card_id))
+            });
+
+            if !important_cmp.is_eq() {
+                return important_cmp;
+            }
+
             b.animated_position_in_pile
                 .get()
                 .partial_cmp(&a.animated_position_in_pile.get())
@@ -318,6 +343,14 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                     }
                     ActionOption::ToggleSettings => {
                         is_showing_settings_setter.set(!is_showing_settings_getter.get())
+                    }
+                    ActionOption::ToggleSettingsBar => {
+                        options.update(|opts| {
+                            opts.is_showing_settings_bar = !opts.is_showing_settings_bar
+                        });
+                    }
+                    ActionOption::ToggleOnlyMoves => {
+                        options.update(|opts| opts.is_pick_only_moves = !opts.is_pick_only_moves);
                     }
                     ActionOption::ToggleEngine => {
                         is_oracle_enabled.set(!is_oracle_enabled.get());
@@ -470,10 +503,11 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                             }
 
                             interaction_getter.with(|interactions| {
-                            interactions.row_options.iter().filter(|option| {
-                                option.card_id == render_card.card_id
-                            }).cloned().collect::<Vec<RenderRowOption>>()
-                        })
+                                interactions.row_options.iter().filter(|option| {
+                                    option.card_id == render_card.card_id
+                                }).cloned().collect::<Vec<RenderRowOption>>()
+                            }
+                        )
                     };
 
                     view! { cx,
@@ -556,6 +590,8 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
             style:bottom="0.8%"
             style:display="flex"
             style:align-items="end"
+            style:visibility=move || if options.get().is_showing_settings_bar { "visible" } else { "hidden" }
+            options
         >
             <OraclePanel
                 width=ORACLE_ZONE_WIDTH_PX
@@ -571,7 +607,7 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
             <Button
                 width=ORACLE_ZONE_WIDTH_PX
                 height=40.0
-                background=Signal::derive(cx, || "#6c9ce0".to_owned())
+                background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
                 on:click =move |_| is_showing_settings_setter.set(true)
             >
                 Help & Shortcuts (?)

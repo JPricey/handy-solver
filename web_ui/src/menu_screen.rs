@@ -1,14 +1,15 @@
+use crate::class_helpers::*;
 use crate::components::*;
 use crate::contexts::*;
 use crate::game_player::*;
 use crate::types::*;
-use crate::class_helpers::*;
 use handy_core::game::primitives::*;
 use handy_core::game::Class;
 use handy_core::solver::{BADDIES, HEROS};
 use handy_core::utils::pile_utils::*;
 use leptos::*;
 use std::collections::HashSet;
+use url::Url;
 
 const CHAR_SELECT_BUTTON_WIDTH_PX: WindowUnit = 200.0;
 const CHAR_SELECT_BUTTON_HEIGHT_PX: WindowUnit = 40.0;
@@ -23,7 +24,6 @@ const DISABLED_BRAWL_COLOUR: &str = "rgb(226, 165, 177)";
 
 const VS_FONT_SIZE: WindowUnit = 24.0;
 const SELECT_FONT_SIZE: WindowUnit = 24.0;
-
 
 #[component]
 fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoView {
@@ -40,9 +40,7 @@ fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> 
                         let icon_path = get_class_full_health_icon_path(class);
 
                         view! { cx,
-                        <div
-                            // style:margin={move || wrap_px(placer_getter.get().scale(4.0))}
-                        >
+                        <div>
                             <Button
                                 background=Signal::derive(cx, move || {
                                     if selection.get() == class {
@@ -226,6 +224,32 @@ where
     }
 }
 
+fn get_query_param_pile() -> Option<Pile> {
+    let Ok(full_url) = document().url() else {
+        return None;
+    };
+
+    let Ok(parsed_url) = Url::parse(&full_url) else {
+        return None;
+    };
+
+    for (k, v) in parsed_url.query_pairs() {
+        log!("{:?}", (&k, &v));
+
+        if k == "pile" {
+            let parsed_pile = string_to_pile_result(&v);
+
+            return if let Ok(pile) = parsed_pile {
+                Some(pile)
+            } else {
+                None
+            }
+        }
+    }
+
+    return None;
+}
+
 #[component]
 pub fn MenuScreen(cx: Scope) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
@@ -237,6 +261,11 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
 
     let hero_signal = create_rw_signal(cx, Class::Warrior);
     let enemy_signal = create_rw_signal(cx, Class::Ogre);
+
+    if let Some(query_param_pile) = get_query_param_pile() {
+        pile_signal.set(query_param_pile);
+        is_playing.update(|is_playing| is_playing.is_playing = true);
+    }
 
     view! { cx,
         <Show

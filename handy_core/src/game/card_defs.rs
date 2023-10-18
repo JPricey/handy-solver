@@ -479,7 +479,7 @@ impl FaceDef {
 
     fn call_assist_perm(self) -> Self {
         self.reaction(Reaction::Assist(RequestAssistReaction {
-            outcome: Some(SelfAction::Rotate),
+            outcome: None,
         }))
     }
 

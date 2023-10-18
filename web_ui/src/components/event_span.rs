@@ -51,7 +51,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
             view! { cx,
                 <span>
                     <CardIdPill card_ptr=card_ptr />
-                    Uses Row #{row_num + 1}
+                    Use Row #{row_num + 1}
                 </span>
             }
         }
@@ -72,7 +72,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::BottomCard => {
             view! { cx,
                 <span>
-                    Done Turn
+                    End Turn
                 </span>
             }
         }
@@ -80,7 +80,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
             let action_text = action_simple_name(&wrapped_action);
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> Skips {action_text}
+                    <CardIdPill card_ptr=card_ptr/> Skip {action_text}
                 </span>
             }
         }
@@ -95,7 +95,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
             let new_card_ptr = CardPtr::new_from_id(card_ptr.get_card_id(), result_face);
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Hit by {}", card_idx+1, hit_type)} to <CardIdPill card_ptr=new_card_ptr/>
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Damaged by {}", card_idx+1, hit_type)} to <CardIdPill card_ptr=new_card_ptr/>
                 </span>
             }
         }
@@ -110,7 +110,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
             let new_card_ptr = CardPtr::new_from_id(card_ptr.get_card_id(), face_key);
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Voided to", card_idx + 1)} <CardIdPill card_ptr=new_card_ptr/>
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Void", card_idx + 1)} <CardIdPill card_ptr=new_card_ptr/>
                 </span>
             }
         }
@@ -233,18 +233,18 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::PayEnergy(cards) => {
             let cards = cards
                 .iter()
-                .map(|(card_idx, card_ptr)| view! {cx, <CardIdPill card_ptr=*card_ptr /> {format!("({})", card_idx+1)}})
+                .map(|(card_idx, card_ptr)| view! {cx, {" "}<CardIdPill card_ptr=*card_ptr /> {format!("({})", card_idx+1)}})
                 .collect_view(cx);
             view! {cx,
                 <span>
-                    Pay {cards}
+                    Pay{cards}
                 </span>
             }
         }
         Event::Swarm(card_idx, card_ptr) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Swarms", card_idx + 1)}
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Swarm", card_idx + 1)}
                 </span>
             }
         }
@@ -258,7 +258,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::UseActionAssistRow(assist_idx, assist_card_ptr, assist_row_idx) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=assist_card_ptr/> {format!("({}) Assists Row #{}", assist_idx + 1, assist_row_idx + 1)}
+                    <CardIdPill card_ptr=assist_card_ptr/> {format!("({}) Use Assist Row #{}", assist_idx + 1, assist_row_idx + 1)}
                 </span>
             }
         }
@@ -266,7 +266,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         Event::ReactAssistUsed(card_idx, card_ptr, trigger, cost) => {
             view! { cx,
                 <span>
-                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Assists for {} {}", card_idx + 1, trigger, cost)}
+                    <CardIdPill card_ptr=card_ptr/> {format!("({}) Assists Reaction {} ({})", card_idx + 1, trigger, cost)}
                 </span>
             }
         }

@@ -10,6 +10,7 @@ const H2_FONT_SIZE: WindowUnit = 18.0;
 #[component]
 pub fn HelperScreen(cx: Scope, is_showing_settings_setter: WriteSignal<bool>) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let is_playing = use_is_playing(cx);
 
     view! { cx,
         <div
@@ -33,12 +34,19 @@ pub fn HelperScreen(cx: Scope, is_showing_settings_setter: WriteSignal<bool>) ->
                 style:position="absolute"
                 style:opacity="100%"
                 style:background="white"
-                style:width="70%"
+                style:width="50%"
                 style:height="70%"
                 style:border-radius={move || wrap_px(placer_getter.get().scale(10.0))}
             >
                 <div
                     style:margin={move || wrap_px(placer_getter.get().scale(20.0))}
+                    style:display="flex"
+                    style:flex-direction="column"
+                    style:position="absolute"
+                    style:top="0"
+                    style:left="0"
+                    style:right="0"
+                    style:bottom="0"
                 >
                     <div
                         style:width="100%"
@@ -99,6 +107,45 @@ pub fn HelperScreen(cx: Scope, is_showing_settings_setter: WriteSignal<bool>) ->
                         <div>
                             {format!("Execute an only-move (→)")}
                         </div>
+                    </div>
+
+                    <div
+                        style:height={move || wrap_px(placer_getter.get().scale(10.0))}
+                    />
+
+                    <div>
+                        <div
+                            style:font-size={move || wrap_px(placer_getter.get().scale(H2_FONT_SIZE))}
+                        >
+                            Settings
+                        </div>
+                        <div>
+                            Toggle Settings Bar Visibility (H)
+                        </div>
+                        <div>
+                            Toggle Auto Only-Moves (O)
+                        </div>
+                    </div>
+
+                    <div
+                        style:flex-grow=1
+                    />
+
+                    <div
+                        style:width="100%"
+                        style:display="flex"
+                        style:justify-content="center"
+                    >
+                        <Button
+                            background=Signal::derive(cx, || BUTTON_NON_SELECTED_COLOUR.to_string())
+                            width=100.0
+                            height=30.0
+                            on:click=move |_| {
+                                is_playing.update(|s| s.is_playing = false)
+                            }
+                        >
+                            Back to Menu
+                        </Button>
                     </div>
                 </div>
             </div>

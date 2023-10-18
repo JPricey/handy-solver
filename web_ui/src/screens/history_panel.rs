@@ -10,8 +10,8 @@ use leptos_use::*;
 const BACK_SECTION_HEIGHT: WindowUnit = 40.0;
 
 #[component]
-pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView
-{
+pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView {
+
     view! { cx,
         <div
             style:width="100%"
@@ -19,7 +19,13 @@ pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView
             style:border-width="1px"
             style:overflow="hidden"
         >
-            <FrameSpan frame=frame />
+            <div
+                style:width="98%"
+                style:margin-left="1%"
+                style:margin-right="1%"
+            >
+                <FrameSpan frame=frame />
+            </div>
         </div>
     }
 }
@@ -94,7 +100,7 @@ where
                 style:align-content="center"
             >
                 <Button
-                    width=(width - 8.0)
+                    width=(width - 4.0)
                     height=24.0
                     background=Signal::derive(cx, || UNDO_BUTTON_COLOUR.to_owned())
                     disabled=Signal::derive(cx, move || {

@@ -1,3 +1,4 @@
+use crate::contexts::*;
 use crate::game_player_types::*;
 use crate::types::*;
 use core::time::Duration;
@@ -88,7 +89,8 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
             Event::PickRow(row_index, card_index, card_ptr) => {
                 let active_face = card_ptr.get_active_face();
                 let row_offset = selectable_row_offset(active_face);
-                let placement_pct: WindowUnit = placement_pct_for_row_option(row_offset + *row_index);
+                let placement_pct: WindowUnit =
+                    placement_pct_for_row_option(row_offset + *row_index);
                 new_interaction_options.row_options.push(RenderRowOption {
                     placement_pct,
                     row_index: *row_index,
@@ -98,7 +100,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 });
                 new_interaction_options
                     .hints
-                    .insert("Pick a row to activate".to_owned());
+                    .insert("Pick a Row to Activate".to_owned());
             }
             Event::SkipTurn(_) => {
                 assert!(new_interaction_options.skip_button.len() == 0);
@@ -108,7 +110,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 });
                 new_interaction_options
                     .hints
-                    .insert("Skip this activation".to_owned());
+                    .insert("Skip This Activation".to_owned());
             }
             Event::Ablaze(_, card1, _, card2) => {
                 new_interaction_options
@@ -143,7 +145,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 });
                 new_interaction_options
                     .hints
-                    .insert("Skip this action".to_owned());
+                    .insert("Skip This Action".to_owned());
             }
             Event::SkipArrow => {
                 assert!(new_interaction_options.skip_button.len() == 0);
@@ -153,7 +155,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 });
                 new_interaction_options
                     .hints
-                    .insert("Skip this action".to_owned());
+                    .insert("Skip This Action".to_owned());
             }
             Event::Inspire(_, card_ptr) => {
                 add_clickable_card_option(
@@ -221,7 +223,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 );
                 new_interaction_options
                     .hints
-                    .insert("Trigger hurt response".to_owned());
+                    .insert("Trigger Hurt Response".to_owned());
             }
             Event::Manouver(_, card_ptr) => {
                 add_clickable_card_option(
@@ -397,7 +399,8 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 });
                 new_interaction_options
                     .hints
-                    .insert("Pick a row to activate".to_owned());
+                    .insert("Pick a Row to Activate".to_owned());
+                new_interaction_options.important_cards.insert(card_ptr.get_card_id());
             }
             Event::ReactAssistUsed(_, card_ptr, _, _) => {
                 add_clickable_card_option(
@@ -683,8 +686,9 @@ fn get_init_render_pile(cx: Scope, init_pile: &Pile) -> RenderCardMap {
 pub struct GamePlayerState {
     game_history: RwSignal<GameHistory>,
     interaction_setter: WriteSignal<InteractionOptions>,
-    pub maybe_animation_queue: RwSignal<Option<TimeoutHandle>>,
+    options: RwSignal<Options>,
 
+    pub maybe_animation_queue: RwSignal<Option<TimeoutHandle>>,
     pub game_history_getter: Signal<GameHistory>,
     pub render_card_map_getter: Signal<RenderCardMap>,
     pub interaction_getter: ReadSignal<InteractionOptions>,
@@ -715,12 +719,12 @@ impl GamePlayerState {
             interaction_getter,
             interaction_setter,
             maybe_animation_queue,
+            options: use_options(cx),
         }
     }
 
     pub fn clear_animation(self) {
         if let Some(animation_handle) = self.maybe_animation_queue.get_untracked() {
-            log!("cleared animation");
             animation_handle.clear();
             self.maybe_animation_queue.set(None);
         }
@@ -795,6 +799,10 @@ impl GamePlayerState {
     }
 
     pub fn maybe_schedule_next_move(self, animation_duration: Duration) {
+        if !self.options.get_untracked().is_pick_only_moves {
+            return;
+        }
+
         let game_frame = self.get_current_frame();
         if game_frame.available_moves.len() != 1 {
             return;
@@ -802,7 +810,8 @@ impl GamePlayerState {
 
         let only_move = game_frame.available_moves[0].clone();
 
-        let animation_result = set_timeout_with_handle(move || self.apply_option(&only_move), animation_duration);
+        let animation_result =
+            set_timeout_with_handle(move || self.apply_option(&only_move), animation_duration);
         self.clear_animation();
         self.maybe_animation_queue.set(animation_result.ok());
     }

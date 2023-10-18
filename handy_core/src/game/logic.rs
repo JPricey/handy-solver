@@ -1028,18 +1028,19 @@ fn resolve_enemy_row<T: EngineGameState>(
         let mut next_active_states: Vec<T> = vec![];
         for current_state in &active_states {
             let new_states = resolve_enemy_action(current_state, allegiance, action, active_idx);
-            next_active_states.extend(new_states);
-        }
 
-        if next_active_states.len() > 0 {
-            did_any_actions = true;
-            active_states = next_active_states;
-        } else {
-            for current_state in &mut active_states {
-                current_state
-                    .mut_append_event(Event::SkipAction(state.get_pile()[active_idx], *action));
+            if new_states.len() > 0 {
+                did_any_actions = true;
+                next_active_states.extend(new_states);
+            } else {
+                next_active_states.push(
+                    current_state
+                        .clone()
+                        .append_event(Event::SkipAction(state.get_pile()[active_idx], *action)),
+                );
             }
         }
+        active_states = next_active_states;
     }
 
     if !did_any_actions && !force_mandatory {
@@ -2107,6 +2108,54 @@ mod tests {
                 "5A 4A 8A", // Skip
                 "5A 4B 8A", // Block
                 "5A 4C 8A", // Hit
+            ],
+        );
+    }
+
+    #[test]
+    fn test_bug10() {
+        {
+            // 6A pulls first, and player has a choice to dodge or not dodge
+            // Bug was that when the player dodged, 6As attack would fizzle, and
+            // the engine would count that as a failed row, thus not allowing it
+            // Fixed by accounting for skipped actions per-state, instead of checking if any
+            // actions fizzled
+            let state = T::new(string_to_pile("6A 11D 14A"));
+            let new_states = resolve_enemy_row(
+                &state,
+                Allegiance::Baddie,
+                &state.pile[0].get_active_face().rows[0],
+                0,
+                false,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "6B, 11D, 14B", // Dodge the pull
+                    "6B, 14B, 11D", // Dodge the attack
+                    "6B, 14C, 11D", // Get hit
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_partial_row_fizzle() {
+        // Just another case of bug10
+        let state = T::new(string_to_pile("33C 1D"));
+        let new_states = resolve_enemy_row(
+            &state,
+            Allegiance::Baddie,
+            &state.pile[0].get_active_face().rows[2],
+            0,
+            false,
+        );
+
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                "33D 1C", // 1 Gets hit 1 time
             ],
         );
     }

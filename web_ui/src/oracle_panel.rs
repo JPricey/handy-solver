@@ -297,7 +297,7 @@ pub fn OraclePanel(
         <Button
             width=width
             height=height
-            background=Signal::derive(cx, || "d7d7a2".to_owned())
+            background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
             on:click= move |_| is_enabled.set(!is_enabled.get())
             // border="solid".to_owned()
             // border_colour="#816b5b".to_owned()
@@ -311,7 +311,7 @@ pub fn OraclePanel(
                 </div>
                 <div>
                     <Show
-                        when=move || next_event.get().is_some()
+                        when=move || next_event.get().is_some() && game_winner.get().is_none()
                         fallback=|_| ()
                     >
                         {move || view!{cx,

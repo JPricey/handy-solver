@@ -119,6 +119,8 @@ pub struct InteractionOptions {
     pub selected_cards: HashSet<CardId>,
     pub selection_options: Vec<CompleteSelectionOption>,
 
+    pub important_cards: HashSet<CardId>,
+
     pub hints: HashSet<String>,
 }
 
@@ -136,6 +138,8 @@ impl InteractionOptions {
 
             selected_cards: HashSet::new(),
             selection_options: Vec::new(),
+
+            important_cards: HashSet::new(),
 
             hints: HashSet::new(),
         }
