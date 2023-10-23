@@ -8,9 +8,20 @@ const H1_FONT_SIZE: WindowUnit = 30.0;
 const H2_FONT_SIZE: WindowUnit = 18.0;
 
 #[component]
-pub fn HelperScreen(cx: Scope, is_showing_settings_setter: WriteSignal<bool>) -> impl IntoView {
+pub fn HelperScreen<F, G, H>(
+    cx: Scope,
+    is_showing_settings_setter: WriteSignal<bool>,
+    should_show_new_match: bool,
+    new_match_fn: F,
+    back_to_menu_fn: G,
+    replay_fn: H,
+) -> impl IntoView
+where
+    F: Fn() + 'static,
+    G: Fn() + 'static,
+    H: Fn() + 'static,
+{
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let is_playing = use_is_playing(cx);
 
     view! { cx,
         <div
@@ -134,14 +145,44 @@ pub fn HelperScreen(cx: Scope, is_showing_settings_setter: WriteSignal<bool>) ->
                     <div
                         style:width="100%"
                         style:display="flex"
-                        style:justify-content="center"
+                        style:justify-content="space-around"
                     >
+                        { if should_show_new_match { Some(view! { cx,
+                            <Button
+                                background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                                width=100.0
+                                height=30.0
+                                on:click=move |_| {
+                                    new_match_fn();
+                                    is_showing_settings_setter.set(false);
+                                }
+                            >
+                                New Match
+                            </Button>
+                            })} else {
+                                None
+                            }
+                        }
+
+                        <Button
+                            background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                            width=100.0
+                            height=30.0
+                            on:click=move |_| {
+                                replay_fn();
+                                is_showing_settings_setter.set(false);
+                            }
+                        >
+                            Replay
+                        </Button>
+
                         <Button
                             background=Signal::derive(cx, || BUTTON_NON_SELECTED_COLOUR.to_string())
                             width=100.0
                             height=30.0
                             on:click=move |_| {
-                                is_playing.update(|s| s.is_playing = false)
+                                back_to_menu_fn();
+                                is_showing_settings_setter.set(false);
                             }
                         >
                             Back to Menu

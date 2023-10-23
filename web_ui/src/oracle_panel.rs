@@ -171,7 +171,7 @@ pub fn OraclePanel(
                 OutputSignal::Working => {
                     set_worker_state.set(SolverState::Working);
                 }
-                OutputSignal::Sleeping | OutputSignal::Done => match worker_state.get() {
+                OutputSignal::Sleeping | OutputSignal::Done => match worker_state.get_untracked() {
                     SolverState::Pending => set_worker_state.set(SolverState::Idle),
                     SolverState::Idle => (),
                     _ => set_worker_state.set(SolverState::Pending),
@@ -282,11 +282,13 @@ pub fn OraclePanel(
         closure!(clone bridge_sink, || {
                     let bridge_sink = bridge_sink.clone();
                     spawn_local(async move {
+                        // log!("Sending End Local");
                         if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
                             bridge_sink
                                 .send(ControlSignal::End)
                                 .await
                                 .unwrap();
+                            // log!("Sent End Local");
                         }
                     });
                 }

@@ -65,6 +65,8 @@ pub fn find_next_event_matching_prefix_and_with_final_state(
     prefix: &Vec<Event>,
     final_pile: &Pile,
 ) -> Option<Event> {
+    let mut res: Option<(Event, usize)> = None;
+
     for state in states {
         if &state.pile != final_pile {
             continue;
@@ -75,11 +77,14 @@ pub fn find_next_event_matching_prefix_and_with_final_state(
         }
         let state_events_prefix: Vec<Event> =
             state.events[0..prefix.len()].iter().cloned().collect();
+
         if prefix == &state_events_prefix {
-            return Some(state.events[prefix.len()].clone());
+            if res.as_ref().map_or(true, |r| state.events.len() < r.1) {
+                res = Some((state.events[prefix.len()].clone(), state.events.len()));
+            }
         }
     }
-    return None;
+    return res.map(|res| res.0);
 }
 
 pub fn compact_pile_string(pile: &Pile, sep: &str) -> String {

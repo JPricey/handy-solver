@@ -8,7 +8,6 @@ use web_ui::menu_screen::*;
 fn App(cx: Scope) -> impl IntoView {
     AnimationContext::provide(cx);
     provide_single_hover_context(cx);
-    provide_is_playing(cx);
     provide_options(cx);
     register_key_manager(cx);
 

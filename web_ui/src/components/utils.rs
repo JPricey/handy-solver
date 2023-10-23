@@ -1,6 +1,7 @@
 use crate::types::*;
 
 pub const DEFAULT_FONT_SIZE: WindowUnit = 14.0;
+pub const BADGE_FONT_SIZE: WindowUnit = 12.0;
 
 pub const BUTTON_SELECTED_COLOUR: &str = "#7eb070";
 pub const BUTTON_NON_SELECTED_COLOUR: &str = "#e9f497";

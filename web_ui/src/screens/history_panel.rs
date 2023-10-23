@@ -62,7 +62,7 @@ where
     });
 
     let _ = use_event_listener(cx, scroll_el.clone(), scroll, move |_| {
-        let Some(el) = scroll_el.get() else {
+        let Some(el) = scroll_el.get_untracked() else {
             return;
         };
 

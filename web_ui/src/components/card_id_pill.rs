@@ -33,7 +33,6 @@ pub fn CardIdPill(cx: Scope, card_ptr: CardPtr) -> impl IntoView {
     view! { cx,
         <strong
             style:color={card_ptr_to_hex(card_ptr)}
-            style:color={card_ptr_to_hex(card_ptr)}
         >
             {card_text}
         </strong>

@@ -400,7 +400,9 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 new_interaction_options
                     .hints
                     .insert("Pick a Row to Activate".to_owned());
-                new_interaction_options.important_cards.insert(card_ptr.get_card_id());
+                new_interaction_options
+                    .important_cards
+                    .insert(card_ptr.get_card_id());
             }
             Event::ReactAssistUsed(_, card_ptr, _, _) => {
                 add_clickable_card_option(
@@ -723,6 +725,16 @@ impl GamePlayerState {
         }
     }
 
+    pub fn set_init_pile(self, pile: Pile) {
+        let initial_frame = get_frame_from_root_pile(pile.clone());
+        let init_state = GameHistory {
+            all_frames: vec![initial_frame.clone()],
+        };
+        self.clear_animation();
+        self.game_history.set(init_state);
+        self.do_render_pile_update();
+    }
+
     pub fn clear_animation(self) {
         if let Some(animation_handle) = self.maybe_animation_queue.get_untracked() {
             animation_handle.clear();
@@ -747,7 +759,7 @@ impl GamePlayerState {
     pub fn do_render_pile_update(self) -> Duration {
         let game_frame = self.get_current_frame();
         let new_interaction_options = calculate_interaction_options(&game_frame);
-        let mut render_card_map = self.render_card_map_getter.get();
+        let mut render_card_map = self.render_card_map_getter.get_untracked();
         let result = render_pile_update(
             &mut render_card_map,
             &new_interaction_options,

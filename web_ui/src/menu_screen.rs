@@ -2,6 +2,8 @@ use crate::class_helpers::*;
 use crate::components::*;
 use crate::contexts::*;
 use crate::game_player::*;
+use crate::init_pile_provider::InitPileProvider;
+use crate::init_pile_provider::*;
 use crate::types::*;
 use handy_core::game::primitives::*;
 use handy_core::game::Class;
@@ -243,7 +245,7 @@ fn get_query_param_pile() -> Option<Pile> {
                 Some(pile)
             } else {
                 None
-            }
+            };
         }
     }
 
@@ -253,24 +255,29 @@ fn get_query_param_pile() -> Option<Pile> {
 #[component]
 pub fn MenuScreen(cx: Scope) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-
-    let init_pile = get_start_from_classes(Class::Pyro, Class::Ogre, &mut rand::thread_rng());
-    let pile_signal = create_rw_signal(cx, init_pile);
-
-    let is_playing = use_is_playing(cx);
+    let is_playing = create_rw_signal(cx, false);
 
     let hero_signal = create_rw_signal(cx, Class::Warrior);
     let enemy_signal = create_rw_signal(cx, Class::Ogre);
 
+    let pile_provider_signal: RwSignal<Box<dyn InitPileProvider>> = create_rw_signal(
+        cx,
+        Box::new(MatchupPileProvider {
+            matchup: (hero_signal.get_untracked(), enemy_signal.get_untracked()),
+        }),
+    );
+
     if let Some(query_param_pile) = get_query_param_pile() {
-        pile_signal.set(query_param_pile);
-        is_playing.update(|is_playing| is_playing.is_playing = true);
+        pile_provider_signal.set(Box::new(ExactPileProvider {
+            pile: query_param_pile,
+        }));
+        is_playing.set(false);
     }
 
     view! { cx,
         <Show
-            when=move || is_playing.with(|s| !s.is_playing)
-            fallback=move |cx| view! {cx, <GamePlayer init_pile={pile_signal.get()} /> }
+            when=move || !is_playing.get()
+            fallback=move |cx| view! {cx, <GamePlayer init_pile_provider={pile_provider_signal.get()} is_playing=is_playing /> }
         >
             <div
                 style:width="100%"
@@ -310,9 +317,11 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                             width=BRAWL_BUTTON_WIDTH_PX
                             height=BRAWL_BUTTON_HEIGHT_PX
                             on:click=move |_| {
-                                let pile = get_start_from_classes(hero_signal.get(), enemy_signal.get(), &mut rand::thread_rng());
-                                pile_signal.set(pile);
-                                is_playing.update(|s| s.is_playing = true)
+                                pile_provider_signal.set(Box::new(MatchupPileProvider {
+                                    matchup: (hero_signal.get(), enemy_signal.get())
+                                }));
+
+                                is_playing.set(true)
                             }
                         >
                             BRAWL
@@ -332,8 +341,10 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                             Or Use a Custom Start
                         </div>
                         <PileSelector on_select=move |pile| {
-                            pile_signal.set(pile);
-                            is_playing.update(|s| s.is_playing = true)
+                            pile_provider_signal.set(Box::new(ExactPileProvider {
+                                pile,
+                            }));
+                            is_playing.set(true)
                         }/>
                     </div>
                 </div>

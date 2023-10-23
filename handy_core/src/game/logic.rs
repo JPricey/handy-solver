@@ -1244,9 +1244,16 @@ fn resolve_enemy_action<T: EngineGameState>(
                     continue;
                 }
 
-                // Enemies must have health in order to pull
                 if target_card_allegiance != allegiance
-                    && target_card.get_active_face().health == Health::Empty
+                    && (
+                        // Enemies must have health in order to pull
+                        target_card.get_active_face().health == Health::Empty
+                        // Enemies can't be heavy in order to pull
+                             || target_card
+                                 .get_active_face()
+                                 .features
+                                 .intersects(Features::Weight)
+                    )
                 {
                     continue;
                 }
@@ -1281,6 +1288,18 @@ fn resolve_enemy_action<T: EngineGameState>(
                 let target_card_allegiance = target_card.get_active_face().allegiance;
 
                 if !is_allegiance_match(allegiance, target_card_allegiance, wrapped_action.target) {
+                    continue;
+                }
+
+                if target_card_allegiance != allegiance
+                    && (
+                        // Enemies can't be heavy in order to push
+                        target_card
+                            .get_active_face()
+                            .features
+                            .intersects(Features::Weight)
+                    )
+                {
                     continue;
                 }
 
@@ -2135,6 +2154,28 @@ mod tests {
                     "6B, 11D, 14B", // Dodge the pull
                     "6B, 14B, 11D", // Dodge the attack
                     "6B, 14C, 11D", // Get hit
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_bug11() {
+        {
+            // Werewolf was able to pull & push heavy monsters
+            let state = T::new(string_to_pile("32C 9A 30A 8A 7A"));
+            let new_states = resolve_enemy_row(
+                &state,
+                Allegiance::Werewolf,
+                &state.pile[0].get_active_face().rows[0],
+                0,
+                false,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "32D 8C 9D 30A 7A", // Dodge the pull
                 ],
             );
         }

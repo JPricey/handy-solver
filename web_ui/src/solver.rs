@@ -137,7 +137,6 @@ pub async fn SolverWorker(mut scope: ReactorScope<ControlSignal, OutputSignal>) 
         futures::select_biased! {
             signal = scope.next() => {
                 if let Some(signal) = signal {
-                    // log!("worker got signal: {:?}", signal);
                     match signal {
                         ControlSignal::SetModel(model) => {
                             solver_worker_state.set_model(model);
@@ -151,6 +150,7 @@ pub async fn SolverWorker(mut scope: ReactorScope<ControlSignal, OutputSignal>) 
                             solver_worker_state.clear_root_piles();
                         }
                         ControlSignal::End => {
+                            log!("worker got signal: {:?}", signal);
                             break;
                         }
                     }

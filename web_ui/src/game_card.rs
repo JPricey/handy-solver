@@ -153,35 +153,6 @@ pub fn GameCard(
                 style:height="100%"
                 src={src}
             />
-            <div
-                style:position="absolute"
-                style:left=INDEX_OFFSET_LEFT
-                style:top=INDEX_OFFSET_TOP
-                style:font-size={move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE * scale))}
-            >
-                {
-                    if let Some(i) = index {
-                        Some(move || format!("({})", (i.get() + 1.0).round()))
-                    } else {
-                        None
-                    }
-                }
-            </div>
-            <div
-                style:position="absolute"
-                style:right=INDEX_OFFSET_LEFT
-                style:bottom=INDEX_OFFSET_TOP
-                style:font-size={move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE * scale))}
-                style:transform="rotate(180deg)"
-            >
-                {
-                    if let Some(i) = index {
-                        Some(move || format!("({})", (i.get() + 1.0).round()))
-                    } else {
-                        None
-                    }
-                }
-            </div>
             { children.map(|children| view! { cx,
                 <div
                     style:position="absolute"
@@ -210,6 +181,45 @@ pub fn GameCard(
                     style:visibility={move || if is_clickable.get() {"visible"} else {"hidden"} }
                 />
             </Show>
+            <div
+                style:position="absolute"
+                style:left=INDEX_OFFSET_LEFT
+                style:top=INDEX_OFFSET_TOP
+                style:font-size={move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE * scale))}
+            >
+                {
+                    if let Some(i) = index {
+                        Some(view! { cx,
+                            <CardIndexBadge
+                                number=Signal::derive(cx, move || (i.get() + 1.0).round() as usize)
+                                is_foreground=is_clickable
+                            />
+                        })
+                    } else {
+                        None
+                    }
+                }
+            </div>
+            <div
+                style:position="absolute"
+                style:right=INDEX_OFFSET_LEFT
+                style:bottom=INDEX_OFFSET_TOP
+                style:font-size={move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE * scale))}
+                style:transform="rotate(180deg)"
+            >
+                {
+                    if let Some(i) = index {
+                        Some(view! { cx,
+                            <CardIndexBadge
+                                number=Signal::derive(cx, move || (i.get() + 1.0).round() as usize)
+                                is_foreground=is_clickable
+                            />
+                        })
+                    } else {
+                        None
+                    }
+                }
+            </div>
         </div>
     }
 }

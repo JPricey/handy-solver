@@ -3,6 +3,7 @@ use crate::contexts::*;
 use crate::game_card::*;
 use crate::game_player_state::*;
 use crate::game_player_types::*;
+use crate::init_pile_provider::*;
 use crate::oracle_panel::*;
 use crate::screens::*;
 use crate::types::*;
@@ -248,12 +249,13 @@ pub fn action_button(cx: Scope, text: String, is_skip: bool) -> impl IntoView {
 }
 
 #[component]
-pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
-    let is_playing = use_is_playing(cx);
-    let game_state = GamePlayerState::new(cx, init_pile.clone());
+pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_playing: RwSignal<bool>) -> impl IntoView {
+    let game_state = GamePlayerState::new(cx, init_pile_provider.get_init_pile());
     let game_history_getter = game_state.game_history_getter;
     let render_card_map_getter = game_state.render_card_map_getter;
     let options = use_options(cx);
+
+    let (pile_provider_getter, _) = create_signal(cx, init_pile_provider.clone());
 
     let current_state = create_memo(cx, move |_| {
         game_history_getter.get().all_frames.last().unwrap().clone()
@@ -560,11 +562,11 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                                             />
                                             <div
                                                 style:position="absolute"
-                                                style:top="50%"
-                                                style:left="7%"
+                                                style:top="49%"
+                                                style:left="5.2%"
                                                 style:transform="translateY(-50%)"
                                             >
-                                                {row_option.row_index + 1}
+                                                <RowIndexBadge number=Signal::derive(cx, move || row_option.row_index + 1) scale=1.0/>
                                             </div>
                                         </div>
                                     }
@@ -640,6 +642,29 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
 
 
                 <div>
+                    <Show
+                        when=move || pile_provider_getter.get().is_pile_random()
+                        fallback=|_| ()
+                    >
+                        <Button
+                            background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                            width=100.0
+                            height=30.0
+                            on:click=move |_| {
+                                let init_pile = pile_provider_getter.get().get_init_pile();
+                                game_state.set_init_pile(init_pile);
+                                let init_animation = game_state.do_render_pile_update();
+                                game_state.maybe_schedule_next_move(init_animation);
+                            }
+                        >
+                            New Match
+                        </Button>
+
+                        <div
+                            style:height={move || wrap_px(placer_getter.get().scale(2.0))}
+                        />
+                    </Show>
+
                     <Button
                         background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
                         width=100.0
@@ -648,7 +673,8 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                             let mut new_history = game_history_getter.get();
                             new_history.all_frames.truncate(1);
                             game_state.set_history(new_history.clone());
-                            game_state.do_render_pile_update();
+                            let init_animation = game_state.do_render_pile_update();
+                            game_state.maybe_schedule_next_move(init_animation);
                         }
                     >
                         Replay
@@ -663,7 +689,7 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
                         width=100.0
                         height=30.0
                         on:click=move |_| {
-                            is_playing.update(|s| s.is_playing = false)
+                            is_playing.set(false)
                         }
                     >
                         Back to Menu
@@ -683,6 +709,23 @@ pub fn GamePlayer(cx: Scope, init_pile: Pile) -> impl IntoView {
             >
                 <HelperScreen
                     is_showing_settings_setter=is_showing_settings_setter
+                    should_show_new_match={init_pile_provider.is_pile_random()}
+                    new_match_fn=closure!(clone init_pile_provider, || {
+                        let init_pile = init_pile_provider.get_init_pile();
+                        game_state.set_init_pile(init_pile);
+                        let init_animation = game_state.do_render_pile_update();
+                        game_state.maybe_schedule_next_move(init_animation);
+                    })
+                    back_to_menu_fn=move || {
+                        is_playing.set(false)
+                    }
+                    replay_fn=move || {
+                        let mut new_history = game_history_getter.get();
+                        new_history.all_frames.truncate(1);
+                        game_state.set_history(new_history.clone());
+                        let init_animation = game_state.do_render_pile_update();
+                        game_state.maybe_schedule_next_move(init_animation);
+                    }
                 />
             </div>
         </Show>
