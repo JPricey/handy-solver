@@ -21,8 +21,8 @@ const OPTIONS_WIDTH_PCT: WindowUnit = 100.0 - LOGO_WIDTH_PCT;
 
 const BRAWL_BUTTON_WIDTH_PX: WindowUnit = 300.0;
 const BRAWL_BUTTON_HEIGHT_PX: WindowUnit = 40.0;
-const BRAWL_COLOUR: &str = "rgb(221, 119, 139)";
-const DISABLED_BRAWL_COLOUR: &str = "rgb(226, 165, 177)";
+const BRAWL_COLOUR: &str = "#e2a5b1";
+// const DISABLED_BRAWL_COLOUR: &str = "rgb(226, 165, 177)";
 
 const VS_FONT_SIZE: WindowUnit = 24.0;
 const SELECT_FONT_SIZE: WindowUnit = 24.0;
@@ -42,7 +42,9 @@ fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> 
                         let icon_path = get_class_full_health_icon_path(class);
 
                         view! { cx,
-                        <div>
+                        <div
+                            style:margin-top={move || wrap_px(placer_getter.get().scale(4.0))}
+                        >
                             <Button
                                 background=Signal::derive(cx, move || {
                                     if selection.get() == class {
@@ -143,13 +145,13 @@ where
         }
     });
 
-    let button_background = Signal::derive(cx, move || {
-        if valid_pile.get().is_none() {
-            DISABLED_BRAWL_COLOUR.to_string()
-        } else {
-            BRAWL_COLOUR.to_string()
-        }
-    });
+    // let button_background = Signal::derive(cx, move || {
+    //     if valid_pile.get().is_none() {
+    //         DISABLED_BRAWL_COLOUR.to_string()
+    //     } else {
+    //         BRAWL_COLOUR.to_string()
+    //     }
+    // });
 
     view! { cx,
         <div
@@ -200,7 +202,8 @@ where
             />
 
             <Button
-                background=button_background
+                // background=button_background
+                background=Signal::derive(cx, || BRAWL_COLOUR.to_string())
                 width=BRAWL_BUTTON_WIDTH_PX
                 height=BRAWL_BUTTON_HEIGHT_PX
                 on:click={move |_| {

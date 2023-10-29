@@ -88,7 +88,7 @@ where
     view! { cx,
         <div
             // History Panel
-            style:background="pink"
+            style:background="#cae2c1"
             style:width={move || wrap_px(placer_getter.get().scale(width))}
             style:height={move || wrap_px(placer_getter.get().scale(height))}
         >
@@ -98,6 +98,7 @@ where
                 style:flex-direction="row"
                 style:justify-content="center"
                 style:align-content="center"
+                style:margin-top={move || wrap_px(placer_getter.get().scale(3.0))}
             >
                 <Button
                     width=(width - 4.0)
