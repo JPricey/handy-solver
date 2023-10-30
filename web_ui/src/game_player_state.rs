@@ -180,7 +180,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     });
                 new_interaction_options
                     .hints
-                    .insert("Target Pull".to_owned());
+                    .insert("Pull".to_owned());
             }
             Event::Push(_, card_ptr) => {
                 // Allow both targets and interaction button options
@@ -196,7 +196,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     });
                 new_interaction_options
                     .hints
-                    .insert("Target Push".to_owned());
+                    .insert("Push".to_owned());
             }
             Event::Heal(_, card_ptr) => {
                 add_clickable_card_option(
