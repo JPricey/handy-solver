@@ -20,7 +20,7 @@ pub struct SolverState {
 
 // Dont enqueue new states if maxdepth + DEFAULT_F_SCORE_END_CUTOFF > new fscore
 // Stop if the next state in the queue has fscore > maxdepth + DEFAULT_F_SCORE_END_CUTOFF
-const DEFAULT_F_SCORE_END_CUTOFF_FROM_MAX: f32 = 10.0;
+const DEFAULT_F_SCORE_END_CUTOFF_FROM_MAX: f32 = 20.0;
 
 pub struct AStarSolver {
     pub tiny_pile_converter: TinyPileConverter,

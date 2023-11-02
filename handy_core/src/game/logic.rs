@@ -1172,6 +1172,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                     let mut pull_results = vec![];
                     move_card_to_end(
                         &mut state.clone().append_event(Event::Pull(target_idx, target)),
+                        active_idx,
                         target_idx,
                         &mut pull_results,
                         EndPileMoveType::Pull,
@@ -1224,6 +1225,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                     let mut pull_results = vec![];
                     move_card_to_end(
                         &mut state.clone().append_event(Event::Push(target_idx, target)),
+                        active_idx,
                         target_idx,
                         &mut pull_results,
                         EndPileMoveType::Push,
@@ -1597,6 +1599,7 @@ fn hurt_card_get_all_outcomes<T: EngineGameState>(
 
 fn move_card_to_end<T: EngineGameState>(
     state: &mut T,
+    active_idx: usize,
     mut target_idx: usize,
     mut results_agg: &mut Vec<T>,
     move_type: EndPileMoveType,
@@ -1609,7 +1612,7 @@ fn move_card_to_end<T: EngineGameState>(
     let mut did_move = false;
     loop {
         let swap_with_idx = (target_idx as i32 + direction) as usize;
-        if swap_with_idx <= 0 || swap_with_idx >= state.get_pile().len() {
+        if swap_with_idx <= active_idx || swap_with_idx >= state.get_pile().len() {
             if did_move {
                 state.mut_append_event(Event::EndPileMoveResult(move_type))
             }
@@ -1638,7 +1641,13 @@ fn move_card_to_end<T: EngineGameState>(
 
             if hit_options.len() > 0 {
                 for mut hit_option in hit_options {
-                    move_card_to_end(&mut hit_option, target_idx, &mut results_agg, move_type)
+                    move_card_to_end(
+                        &mut hit_option,
+                        active_idx,
+                        target_idx,
+                        &mut results_agg,
+                        move_type,
+                    )
                 }
                 return;
             }
@@ -2490,7 +2499,6 @@ mod tests {
 
     #[test]
     fn test_enemy_push() {
-        // Not showing pull action
         let tester = |start: &str, range: Range, target: Target, expected: &str| {
             let pile = string_to_pile(start);
             let expected_pile = string_to_pile(expected);
@@ -2822,7 +2830,6 @@ mod tests {
     #[test]
     fn test_standard_ally_pull() {
         {
-            // Regular case: hero is pulled when healthy
             let new_states = resolve_enemy_action(
                 &T::new(string_to_pile("26A 12A 13B 27B")),
                 Allegiance::Baddie,
@@ -2944,12 +2951,7 @@ mod tests {
                 0,
             );
 
-            assert_actual_vs_expected_piles(
-                &new_states,
-                vec![
-                    "8D 12B 10A",
-                ],
-            );
+            assert_actual_vs_expected_piles(&new_states, vec!["8D 12B 10A"]);
         }
     }
 
@@ -3043,6 +3045,23 @@ mod tests {
     }
 
     #[test]
+    fn test_inspired_pull() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("1A 26A 12A 13B 27B")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Ally,
+                },
+                1,
+            );
+
+            assert_actual_vs_expected_piles(&new_states, vec!["1A 26A 27B 12A 13B"]);
+        }
+    }
+
+    #[test]
     fn test_standard_ally_push() {
         {
             let new_states = resolve_enemy_action(
@@ -3055,12 +3074,7 @@ mod tests {
                 0,
             );
 
-            assert_actual_vs_expected_piles(
-                &new_states,
-                vec![
-                    "26B 11A 14A 27B",
-                ],
-            );
+            assert_actual_vs_expected_piles(&new_states, vec!["26B 11A 14A 27B"]);
         }
     }
 
@@ -3077,12 +3091,7 @@ mod tests {
                 0,
             );
 
-            assert_actual_vs_expected_piles(
-                &new_states,
-                vec![
-                    "26B 11A 14A 27D",
-                ],
-            );
+            assert_actual_vs_expected_piles(&new_states, vec!["26B 10A 13A 27D"]);
         }
     }
 
