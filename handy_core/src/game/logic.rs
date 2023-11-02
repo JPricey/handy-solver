@@ -689,14 +689,6 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
     {
         return vec![];
     }
-    // } else {
-    //     let state_with_target = state.clone().append_event(Event::MoveTarget(
-    //         target_idx,
-    //         state.get_pile()[target_idx],
-    //         move_type,
-    //     ));
-    //     return _move_card_recursive(&state_with_target, target_idx, moves_remaining, move_type);
-    // }
 
     let target_state = state.clone().append_event(Event::MoveTarget(
         target_idx,
@@ -734,95 +726,7 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
             T::combine(result_prefix, moved_state)
         })
         .collect()
-
-    // _inner_move_card_by_up_to_amount(
-    //     &T::new(state.get_pile().clone()),
-    //     target_idx,
-    //     distance_remaining,
-    //     distance_so_far,
-    //     direction,
-    // )
-    // .into_iter()
-    // .map(|(moved_state, distance)| {
-    //     let result_prefix = state.clone().append_event(event_constructor(
-    //         target_idx,
-    //         state.get_pile()[target_idx],
-    //         distance,
-    //     ));
-    //     T::combine(result_prefix, moved_state)
-    // })
-    // .collect()
 }
-
-// fn _move_card_recursive<T: EngineGameState>(
-//     state: &T,
-//     target_idx: usize,
-//     moves_remaining: i32,
-//     move_type: MoveType,
-// ) -> Vec<T> {
-//     assert!(moves_remaining > 0);
-//     let pile = state.get_pile();
-//     let direction = match move_type {
-//         MoveType::Delay => 1,
-//         MoveType::Quicken => -1,
-//     };
-//     let swap_with_idx = (target_idx as i32 + direction) as usize;
-//     let moved_card = pile[target_idx];
-//     let moved_over_card = pile[swap_with_idx];
-//
-//     let mut new_state = state.clone();
-//     new_state.get_pile_mut().swap(target_idx, swap_with_idx);
-//     new_state.mut_append_event(Event::MoveOne(
-//         swap_with_idx,
-//         pile[swap_with_idx],
-//         move_type,
-//     ));
-//
-//     let mut results = vec![];
-//     if moved_card.get_active_face().allegiance != Allegiance::Hero
-//         && moved_over_card
-//             .get_active_face()
-//             .features
-//             .intersects(Features::Trap)
-//     {
-//         // Using traps is non-optional
-//         let hit_options =
-//             attack_card_get_all_outcomes_and_allow_no_hit(&new_state, swap_with_idx, HitType::Trap);
-//
-//         for mut hit_option in hit_options {
-//             if moves_remaining > 1
-//                 && !hit_option.get_pile()[swap_with_idx]
-//                     .get_active_face()
-//                     .features
-//                     .intersects(Features::Weight)
-//             {
-//                 results.extend(_move_card_recursive(
-//                     &hit_option,
-//                     swap_with_idx,
-//                     moves_remaining - 1,
-//                     move_type,
-//                 ));
-//             }
-//
-//             hit_option.mut_append_event(Event::DoneMove(move_type));
-//             results.push(hit_option);
-//         }
-//     } else {
-//         if moves_remaining > 1 {
-//             results.extend(_move_card_recursive(
-//                 &new_state,
-//                 swap_with_idx,
-//                 moves_remaining - 1,
-//                 move_type,
-//             ));
-//         }
-//
-//         new_state.mut_append_event(Event::DoneMove(move_type));
-//         results.push(new_state);
-//     }
-//
-//     results
-// }
 
 fn _move_card_inner<T: EngineGameState>(
     state: &T,
@@ -1263,11 +1167,18 @@ fn resolve_enemy_action<T: EngineGameState>(
                 results.extend(dodge_outcomes);
 
                 {
-                    let mut new_state = state.clone();
-                    let target = new_state.get_pile()[target_idx];
-                    pull_item(new_state.get_pile_mut(), active_idx + 1, target_idx);
+                    let target = state.get_pile()[target_idx];
 
-                    results.push(new_state.append_event(Event::Pull(target_idx, target)));
+                    let mut pull_results = vec![];
+                    move_card_to_end(
+                        &mut state.clone().append_event(Event::Pull(target_idx, target)),
+                        target_idx,
+                        &mut pull_results,
+                        EndPileMoveType::Pull,
+                    );
+
+                    results.extend(pull_results);
+
                     break;
                 }
             }
@@ -1308,11 +1219,17 @@ fn resolve_enemy_action<T: EngineGameState>(
                 results.extend(dodge_outcomes);
 
                 {
-                    let mut new_state = state.clone();
-                    let target = new_state.get_pile()[target_idx];
-                    push_item(new_state.get_pile_mut(), target_idx, pile.len() - 1);
+                    let target = state.get_pile()[target_idx];
 
-                    results.push(new_state.append_event(Event::Push(target_idx, target)));
+                    let mut pull_results = vec![];
+                    move_card_to_end(
+                        &mut state.clone().append_event(Event::Push(target_idx, target)),
+                        target_idx,
+                        &mut pull_results,
+                        EndPileMoveType::Push,
+                    );
+
+                    results.extend(pull_results);
                     break;
                 }
             }
@@ -1678,6 +1595,57 @@ fn hurt_card_get_all_outcomes<T: EngineGameState>(
     results
 }
 
+fn move_card_to_end<T: EngineGameState>(
+    state: &mut T,
+    mut target_idx: usize,
+    mut results_agg: &mut Vec<T>,
+    move_type: EndPileMoveType,
+) {
+    let direction = match move_type {
+        EndPileMoveType::Push => 1,
+        EndPileMoveType::Pull => -1,
+    };
+
+    let mut did_move = false;
+    loop {
+        let swap_with_idx = (target_idx as i32 + direction) as usize;
+        if swap_with_idx <= 0 || swap_with_idx >= state.get_pile().len() {
+            if did_move {
+                state.mut_append_event(Event::EndPileMoveResult(move_type))
+            }
+            results_agg.push(state.clone());
+            return;
+        }
+        did_move = true;
+
+        let moved_card = state.get_pile()[target_idx];
+        let moved_over_card = state.get_pile()[swap_with_idx];
+        state.get_pile_mut().swap(target_idx, swap_with_idx);
+
+        target_idx = swap_with_idx;
+
+        if moved_card.get_active_face().allegiance != Allegiance::Hero
+            && moved_over_card
+                .get_active_face()
+                .features
+                .intersects(Features::Trap)
+        {
+            let new_state_with_move = state
+                .clone()
+                .append_event(Event::EndPileMoveResult(move_type));
+            let hit_options =
+                attack_card_get_all_outcomes(&new_state_with_move, swap_with_idx, HitType::Trap);
+
+            if hit_options.len() > 0 {
+                for mut hit_option in hit_options {
+                    move_card_to_end(&mut hit_option, target_idx, &mut results_agg, move_type)
+                }
+                return;
+            }
+        }
+    }
+}
+
 fn bottom_top_card<T: EngineGameState>(state: &mut T) {
     state.get_pile_mut().rotate_left(1);
     state.mut_append_event(Event::BottomCard);
@@ -1827,32 +1795,6 @@ fn flip_key(key: FaceKey) -> FaceKey {
         FaceKey::B => FaceKey::D,
         FaceKey::D => FaceKey::B,
     }
-}
-
-fn pull_item<T>(vec: &mut [T], to_idx: usize, from_idx: usize)
-where
-    T: Copy,
-{
-    assert!(to_idx < from_idx);
-
-    let item_to_move = vec[from_idx];
-    for i in (to_idx..from_idx).rev() {
-        vec[i + 1] = vec[i];
-    }
-    vec[to_idx] = item_to_move;
-}
-
-fn push_item<T>(vec: &mut [T], from_idx: usize, to_idx: usize)
-where
-    T: Copy,
-{
-    assert!(to_idx > from_idx);
-
-    let item_to_move = vec[from_idx];
-    for i in from_idx..to_idx {
-        vec[i] = vec[i + 1];
-    }
-    vec[to_idx] = item_to_move;
 }
 
 fn exhaust_card(card: &CardPtr) -> Vec<FaceKey> {
@@ -2116,10 +2058,6 @@ mod tests {
             0,
             &NO_ENERGY_USED,
         );
-
-        for s in &new_states {
-            println!("{s:?}")
-        }
 
         assert_actual_vs_expected_piles(
             &new_states,
@@ -2696,10 +2634,6 @@ mod tests {
                 &NO_ENERGY_USED,
             );
 
-            for s in &new_states {
-                println!("{s:?}");
-            }
-
             let futures = states_to_pile_set(&new_states);
             let expected_futures = HashSet::from([
                 string_to_pile("1 7 2 6 8 5 4 9 3"),
@@ -2886,6 +2820,140 @@ mod tests {
     }
 
     #[test]
+    fn test_standard_ally_pull() {
+        {
+            // Regular case: hero is pulled when healthy
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("26A 12A 13B 27B")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "26A 27B 12A 13B", // 27 pulled over no traps
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_ally_pull_over_trap() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("26A 12A 13A 27B")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "26A 27A 12A 13A", // 27 pulled and takes damage over 13
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_ally_pull_over_multi_traps() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("26A 10A 12B 13A 27B")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "26A 27C 10A 12B 13A", // 27 pulled and takes 3 damage
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_ally_pull_exhausted_over_trap() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("26A 12A 13A 27C")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "26A 27C 12A 13A", // 27 pulled but cant take damage
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_pull_with_options_over_trap() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("36C 10A 35B")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "36C 35C 10A", // Hurt 35 to C
+                    "36C 35D 10A", // Hurt 35 to D
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_pull_hero_over_trap() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("8D 10A 12B")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Pull(Range::Inf),
+                    target: Target::Enemy,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "8D 12B 10A",
+                ],
+            );
+        }
+    }
+
+    #[test]
     fn test_pull_dodge() {
         let starting_pile = string_to_pile("6 8 12");
 
@@ -2969,6 +3037,50 @@ mod tests {
                 vec![
                     "6A 37A 41A", // Get pulled
                     "6A 41B 37B", // Dodge Assist
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_standard_ally_push() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("26B 27B 11A 14A")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Push(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "26B 11A 14A 27B",
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_ally_push_over_trap() {
+        {
+            let new_states = resolve_enemy_action(
+                &T::new(string_to_pile("26B 27B 10A 13A")),
+                Allegiance::Baddie,
+                &WrappedAction {
+                    action: Action::Push(Range::Inf),
+                    target: Target::Ally,
+                },
+                0,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "26B 11A 14A 27D",
                 ],
             );
         }
@@ -3130,52 +3242,6 @@ mod tests {
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([string_to_pile("33D 3D 2D 1A")]);
         assert_eq!(futures, expected_futures);
-    }
-
-    #[test]
-    fn test_pull_item() {
-        let base_items = vec![1, 2, 3, 4, 5];
-
-        {
-            let mut case = base_items.clone();
-            pull_item(&mut case, 0, 1);
-            assert_eq!(case, vec![2, 1, 3, 4, 5]);
-        }
-
-        {
-            let mut case = base_items.clone();
-            pull_item(&mut case, 0, 2);
-            assert_eq!(case, vec![3, 1, 2, 4, 5]);
-        }
-
-        {
-            let mut case = base_items.clone();
-            pull_item(&mut case, 1, 4);
-            assert_eq!(case, vec![1, 5, 2, 3, 4]);
-        }
-    }
-
-    #[test]
-    fn test_push_item() {
-        let base_items = vec![1, 2, 3, 4, 5];
-
-        {
-            let mut case = base_items.clone();
-            push_item(&mut case, 0, 1);
-            assert_eq!(case, vec![2, 1, 3, 4, 5]);
-        }
-
-        {
-            let mut case = base_items.clone();
-            push_item(&mut case, 0, 2);
-            assert_eq!(case, vec![2, 3, 1, 4, 5]);
-        }
-
-        {
-            let mut case = base_items.clone();
-            push_item(&mut case, 1, 4);
-            assert_eq!(case, vec![1, 3, 4, 5, 2]);
-        }
     }
 
     #[test]

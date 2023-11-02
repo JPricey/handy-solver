@@ -198,6 +198,18 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Push".to_owned());
             }
+            Event::EndPileMoveResult(move_type) => {
+                let move_type_str = format!("{:?}", move_type);
+                new_interaction_options
+                    .interaction_buttons
+                    .push(InteractionButton {
+                        move_option: available_move.clone(),
+                        text: move_type_str.clone(),
+                    });
+                new_interaction_options
+                    .hints
+                    .insert(move_type_str.clone());
+            }
             Event::Heal(_, card_ptr) => {
                 add_clickable_card_option(
                     card_ptr.get_card_id(),

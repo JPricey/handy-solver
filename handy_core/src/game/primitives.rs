@@ -250,6 +250,12 @@ pub enum MoveType {
     Delay,
 }
 
+#[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum EndPileMoveType {
+    Pull,
+    Push,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Event {
     // Control flow
@@ -275,6 +281,7 @@ pub enum Event {
 
     Pull(usize, CardPtr),
     Push(usize, CardPtr),
+    EndPileMoveResult(EndPileMoveType),
 
     Teleport(usize, CardPtr, usize, CardPtr),
 

@@ -233,6 +233,17 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
+        Event::EndPileMoveResult(move_type) => {
+            view! { cx,
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::Text(format!("Execute {:?}", move_type)),
+                        ]
+                    />
+                </span>
+            }
+        }
         Event::Teleport(card_idx1, card_ptr1, card_idx2, card_ptr2) => {
             view! { cx,
                 <span>

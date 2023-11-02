@@ -123,6 +123,8 @@ pub fn format_event_for_cli(event: &Event) -> String {
         Event::Inspire(card_idx, card_ptr) => format!("Inspire {:?}@{}", card_ptr, card_idx),
         Event::Pull(card_idx, card_ptr) => format!("Pull {:?}@{}", card_ptr, card_idx),
         Event::Push(card_idx, card_ptr) => format!("Push {:?}@{}", card_ptr, card_idx),
+        Event::EndPileMoveResult(move_type) => format!("Perform {:?}", move_type),
+
         Event::MoveTarget(card_idx, card_ptr, move_type) => format!("{:?} {:?}@{}", move_type, card_ptr, card_idx),
         Event::MoveBy(_, _, move_type, amount) => format!("{:?} by {}", move_type, amount),
         Event::MoveResult(_, _) => format!("Perform move"),
