@@ -1,5 +1,6 @@
 use crate::components::*;
 use crate::contexts::*;
+use crate::constants::*;
 use crate::key_manager::*;
 use crate::types::*;
 use glam::{DQuat, DVec3, EulerRot};
@@ -166,15 +167,10 @@ pub fn GameCard(
                 fallback=move |_| ()
             >
                 <button
-                    tabindex=-1
-                    style:border-radius={move || wrap_px(placer_getter.get().scale(12.0))}
+                    class="clickable-option-overlay"
+                    style:border-radius={move || wrap_px(placer_getter.get().scale(11.0))}
+                    style:border-width={move || wrap_px(placer_getter.get().scale(SELECTABLE_BUTTON_WIDTH_PX))}
                     style:position="absolute"
-                    style:border="none"
-                    style:background-color="white"
-                    style:cursor="pointer"
-                    style:opacity="0.4"
-                    style:width="100%"
-                    style:height="100%"
                     style:visibility={move || if is_clickable.get() {"visible"} else {"hidden"} }
                 />
             </Show>

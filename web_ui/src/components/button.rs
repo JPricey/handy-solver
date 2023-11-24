@@ -40,7 +40,6 @@ pub fn Button(
     view! { cx,
         <button
             class="standard-button"
-            tabindex=-1
             style:position="relative"
             style:border="solid"
             style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}

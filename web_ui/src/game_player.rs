@@ -7,6 +7,7 @@ use crate::init_pile_provider::*;
 use crate::oracle_panel::*;
 use crate::screens::*;
 use crate::types::*;
+use crate::constants::*;
 use closure::closure;
 use handy_core::game::*;
 use leptos::leptos_dom::helpers::window_event_listener;
@@ -552,15 +553,10 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                                             on:click= move |_| { game_state.apply_option(&row_option.move_option) }
                                         >
                                             <button
-                                                tabindex=-1
+                                                class="clickable-option-overlay"
                                                 style:position="absolute"
-                                                style:border="none"
                                                 style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}
-                                                style:background-color="white"
-                                                style:cursor="pointer"
-                                                style:opacity="0.4"
-                                                style:width="100%"
-                                                style:height="100%"
+                                                style:border-width={move || wrap_px(placer_getter.get().scale(SELECTABLE_BUTTON_WIDTH_PX))}
                                             />
                                             <div
                                                 style:position="absolute"
