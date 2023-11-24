@@ -65,44 +65,60 @@ pub fn OraclePanel(
         }
     });
 
+    let trigger_clear_root_piles = closure!(clone bridge_sink, || {
+        let bridge_sink = bridge_sink.clone();
+        spawn_local(async move {
+            if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
+                bridge_sink
+                    .send(ControlSignal::ClearRootPiles)
+                    .await
+                    .unwrap();
+            }
+        });
+    });
+
     // Clear piles when disabled
     create_effect(
         cx,
-        closure!(clone bridge_sink, |_| {
-                if is_enabled.get() {
-                    return;
-                }
-
-                let bridge_sink = bridge_sink.clone();
-                spawn_local(async move {
-                    if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
-                        bridge_sink
-                            .send(ControlSignal::ClearRootPiles)
-                            .await
-                            .unwrap();
-                    }
-                });
+        closure!(clone trigger_clear_root_piles, |_| {
+            if is_enabled.get() {
+                return;
             }
-        ),
+
+            trigger_clear_root_piles();
+        }),
     );
 
     // Set piles on start, or when frame changes
     create_effect(
         cx,
-        closure!(clone bridge_sink, |_| {
+        closure!(clone bridge_sink, clone trigger_clear_root_piles, |_| {
             if !is_worker_started.get() || !is_enabled.get() {
                 return;
             }
             let current_frame = current_frame.get();
-            if current_frame.event_history.len() == 0 && is_game_winner(&current_frame.current_pile).is_some() {
+
+            // If the game is already over, don't compute anything
+            if current_frame.event_history.len() == 0 && is_game_winner(&current_frame.root_pile).is_some() {
+                trigger_clear_root_piles();
                 return;
             }
 
-            let next_root_states = find_final_piles_matching_prefix(
+            let next_root_piles = find_final_piles_matching_prefix(
                 &current_frame.root_pile,
                 &current_frame.event_history,
             );
-            let strings: Vec<_> = next_root_states
+
+            // If a next pile is winning, don't bother the solver
+            for candidate_root_pile in &next_root_piles {
+                if is_game_winner(candidate_root_pile) == Some(Allegiance::Hero) {
+                    set_raw_ai_path.set(vec![candidate_root_pile.clone()]);
+                    trigger_clear_root_piles();
+                    return;
+                }
+            }
+
+            let strings: Vec<_> = next_root_piles
                 .iter()
                 .map(|pile| format!("{pile:?}"))
                 .collect();
@@ -253,24 +269,27 @@ pub fn OraclePanel(
             return match game_winner {
                 Allegiance::Hero => format!(":)"),
                 _ => format!(":("),
-            }
+            };
         };
 
-        match worker_state.get() {
-            SolverState::Init => {
-                format!("Waking up...")
+        if let Some(path) = best_path.get() {
+            let win_in_text = format!("Win in {}.", path.len());
+
+            match worker_state.get() {
+                SolverState::Working | SolverState::Pending => {
+                    format!("{win_in_text} Looking for better...")
+                }
+                _ => win_in_text,
             }
-            SolverState::Working | SolverState::Pending => {
-                if let Some(path) = best_path.get() {
-                    format!("Win in {}. Looking for better...", path.len())
-                } else {
+        } else {
+            match worker_state.get() {
+                SolverState::Init => {
+                    format!("Waking up...")
+                }
+                SolverState::Working | SolverState::Pending => {
                     format!("Searching...")
                 }
-            }
-            SolverState::Idle => {
-                if let Some(path) = best_path.get() {
-                    format!("Win in {}.", path.len())
-                } else {
+                SolverState::Idle => {
                     format!("No win found")
                 }
             }
@@ -301,8 +320,6 @@ pub fn OraclePanel(
             height=height
             background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
             on:click= move |_| is_enabled.set(!is_enabled.get())
-            // border="solid".to_owned()
-            // border_colour="#816b5b".to_owned()
         >
             <Show
                 when=move || is_enabled.get()

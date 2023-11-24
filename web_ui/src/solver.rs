@@ -32,10 +32,11 @@ pub enum OutputSignal {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SolverState {
-    Init,
-    Idle,
-    Pending,
-    Working,
+    Init, // Waking up
+    Idle, // Done looking
+    Pending, // About to turn off in the next tick. Hack to prevent races in communication between
+             // worker thread and main thread.
+    Working, // Looking for solutions
 }
 
 struct SolverWorkerState {
@@ -59,7 +60,10 @@ impl SolverWorkerState {
     }
 
     fn clear_solving_state(&mut self) {
-        self.state = SolverState::Init;
+        self.state = match self.state {
+            SolverState::Init => SolverState::Init,
+            _ => SolverState::Idle,
+        };
         self.a_star_solver = None;
     }
 
