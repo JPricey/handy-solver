@@ -88,7 +88,7 @@ where
     view! { cx,
         <div
             // History Panel
-            style:background="#cae2c1"
+            class="history-panel-full-back"
             style:width={move || wrap_px(placer_getter.get().scale(width))}
             style:height={move || wrap_px(placer_getter.get().scale(height))}
         >

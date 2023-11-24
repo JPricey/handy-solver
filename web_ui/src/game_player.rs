@@ -387,7 +387,7 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                 // Play Zone
                 style:width={move || wrap_px(placer_getter.get().scale(*CARD_ZONE_WIDTH_PX))}
                 style:height={move || wrap_px(placer_getter.get().scale(GOLDEN_HEIGHT))}
-                style:background="rgb(248, 238, 226)"
+                style:background="#f8eee2"
                 style:display="flex"
                 style:flex-direction="column"
             >
