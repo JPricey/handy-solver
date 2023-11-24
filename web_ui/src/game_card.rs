@@ -93,15 +93,12 @@ pub fn GameCard(
 
     let is_highlighted = create_memo(cx, move |_| {
         let key_manager = key_manager_getter.get();
-        is_hovered.get()
-            && (key_manager.is_pressed(Key::Control)
-                || key_manager.is_pressed(Key::Shift)
-                || key_manager.is_pressed(Key::CapsLock))
+        is_hovered.get() && (key_manager.is_control() || key_manager.is_shift())
     });
 
     let is_highlighted_modified = create_memo(cx, move |_| {
         let key_manager = key_manager_getter.get();
-        is_hovered.get() && key_manager.is_pressed(Key::Shift)
+        is_hovered.get() && key_manager.is_shift()
     });
 
     let z_index = move || {
@@ -121,7 +118,7 @@ pub fn GameCard(
             CardSide::Back
         };
 
-        if is_highlighted.get() && key_manager_getter.get().is_pressed(Key::Shift) {
+        if is_highlighted.get() && key_manager_getter.get().is_shift() {
             card_side = flip_card_side(card_side);
         }
         get_card_url(card_id, card_side)

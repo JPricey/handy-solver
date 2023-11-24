@@ -4,19 +4,11 @@ use std::collections::HashSet;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Key {
-    Control,
-    Shift,
+    ControlLeft,
+    ShiftLeft,
+    ControlRight,
+    ShiftRight,
     CapsLock,
-    N0,
-    N1,
-    N2,
-    N3,
-    N4,
-    N5,
-    N6,
-    N7,
-    N8,
-    N9,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,27 +30,27 @@ impl KeyManagerState {
     pub fn is_pressed(&self, key: Key) -> bool {
         self.keys_is_pressed.contains(&key)
     }
+
+    pub fn is_control(&self) -> bool {
+        self.keys_is_pressed.contains(&Key::ControlLeft)
+            || self.keys_is_pressed.contains(&Key::ControlRight)
+            || self.keys_is_pressed.contains(&Key::CapsLock)
+    }
+
+    pub fn is_shift(&self) -> bool {
+        self.keys_is_pressed.contains(&Key::ShiftLeft)
+            || self.keys_is_pressed.contains(&Key::ShiftRight)
+    }
 }
 
 fn try_map_code_to_key(code: &str) -> Option<Key> {
     match code {
         "CapsLock" => Some(Key::CapsLock),
-        "ShiftLeft" => Some(Key::Shift),
-        "ControlLeft" => Some(Key::Control),
-        "Digit0" => Some(Key::N0),
-        "Digit1" => Some(Key::N1),
-        "Digit2" => Some(Key::N2),
-        "Digit3" => Some(Key::N3),
-        "Digit4" => Some(Key::N4),
-        "Digit5" => Some(Key::N5),
-        "Digit6" => Some(Key::N6),
-        "Digit7" => Some(Key::N7),
-        "Digit8" => Some(Key::N8),
-        "Digit9" => Some(Key::N9),
-        _ => {
-            // log!("Unknown Code {code:?}");
-            None
-        }
+        "ShiftLeft" => Some(Key::ShiftLeft),
+        "ControlLeft" => Some(Key::ControlLeft),
+        "ShiftRight" => Some(Key::ShiftRight),
+        "ControlRight" => Some(Key::ControlRight),
+        _ => None,
     }
 }
 
