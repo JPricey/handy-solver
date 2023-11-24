@@ -19,10 +19,9 @@ const CHAR_SELECT_BUTTON_HEIGHT_PX: WindowUnit = 40.0;
 const LOGO_WIDTH_PCT: WindowUnit = 60.0;
 const OPTIONS_WIDTH_PCT: WindowUnit = 100.0 - LOGO_WIDTH_PCT;
 
-const BRAWL_BUTTON_WIDTH_PX: WindowUnit = 300.0;
+const BRAWL_BUTTON_WIDTH_PX: WindowUnit = 320.0;
 const BRAWL_BUTTON_HEIGHT_PX: WindowUnit = 40.0;
 const BRAWL_COLOUR: &str = "#e2a5b1";
-// const DISABLED_BRAWL_COLOUR: &str = "rgb(226, 165, 177)";
 
 const VS_FONT_SIZE: WindowUnit = 24.0;
 const SELECT_FONT_SIZE: WindowUnit = 24.0;
@@ -144,14 +143,6 @@ where
             None
         }
     });
-
-    // let button_background = Signal::derive(cx, move || {
-    //     if valid_pile.get().is_none() {
-    //         DISABLED_BRAWL_COLOUR.to_string()
-    //     } else {
-    //         BRAWL_COLOUR.to_string()
-    //     }
-    // });
 
     view! { cx,
         <div
