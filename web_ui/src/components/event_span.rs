@@ -151,8 +151,9 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 <span>
                     <TokenSpan
                         elements=vec![
-                            SpanItem::CardPtrAndIndex(new_card_ptr, card_idx),
-                            SpanItem::Text("Void".to_owned()),
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                            SpanItem::Text("Void to".to_owned()),
+                            SpanItem::CardPtr(new_card_ptr),
                         ]
                     />
                 </span>
