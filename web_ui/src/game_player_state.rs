@@ -178,9 +178,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                         move_option: available_move.clone(),
                         text: "Pull".to_owned(),
                     });
-                new_interaction_options
-                    .hints
-                    .insert("Pull".to_owned());
+                new_interaction_options.hints.insert("Pull".to_owned());
             }
             Event::Push(_, card_ptr) => {
                 // Allow both targets and interaction button options
@@ -194,9 +192,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                         move_option: available_move.clone(),
                         text: "Push".to_owned(),
                     });
-                new_interaction_options
-                    .hints
-                    .insert("Push".to_owned());
+                new_interaction_options.hints.insert("Push".to_owned());
             }
             Event::EndPileMoveResult(move_type) => {
                 let move_type_str = format!("{:?}", move_type);
@@ -206,9 +202,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                         move_option: available_move.clone(),
                         text: move_type_str.clone(),
                     });
-                new_interaction_options
-                    .hints
-                    .insert(move_type_str.clone());
+                new_interaction_options.hints.insert(move_type_str.clone());
             }
             Event::Heal(_, card_ptr) => {
                 add_clickable_card_option(
@@ -595,8 +589,9 @@ pub fn is_state_longer_event_prefix(
     return true;
 }
 
-pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> Vec<MoveOption> {
+pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bool) {
     let states = resolve_top_card(&GameStateWithPileTrackedEventLog::new(pile.clone()));
+    let mut is_definite_win = true;
 
     let mut results: Vec<MoveOption> = vec![];
     for state in states {
@@ -609,16 +604,21 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> Vec<MoveOption> {
             if !results.contains(&move_option) {
                 results.push(move_option);
             }
+            if is_game_winner(&state.pile) != Some(Allegiance::Hero) {
+                is_definite_win = false;
+            }
         }
     }
 
-    return results;
+    is_definite_win = is_definite_win && results.len() > 0;
+
+    return (results, is_definite_win);
 }
 
 pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
     let winner = is_game_winner(&pile);
-    let available_moves = if winner.is_some() {
-        Vec::new()
+    let (available_moves, is_definite_win) = if winner.is_some() {
+        (Vec::new(), false)
     } else {
         find_next_moves(&pile, &Vec::new())
     };
@@ -629,6 +629,7 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
         event_history: Vec::new(),
         available_moves,
         winner,
+        is_definite_win,
     }
 }
 
@@ -636,7 +637,7 @@ pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> Gam
     let mut new_history = last_frame.event_history.clone();
     new_history.push(option.event.clone());
 
-    let available_moves = find_next_moves(&last_frame.root_pile, &new_history);
+    let (available_moves, is_definite_win) = find_next_moves(&last_frame.root_pile, &new_history);
 
     GameFrame {
         root_pile: last_frame.root_pile.clone(),
@@ -644,6 +645,7 @@ pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> Gam
         current_pile: option.next_pile.clone(),
         available_moves,
         winner: None,
+        is_definite_win,
     }
 }
 
@@ -828,14 +830,14 @@ impl GamePlayerState {
         }
 
         let game_frame = self.get_current_frame();
-        if game_frame.available_moves.len() != 1 {
+        if !(game_frame.available_moves.len() == 1 || game_frame.is_definite_win) {
             return;
         }
 
-        let only_move = game_frame.available_moves[0].clone();
+        let forced_move = game_frame.available_moves[0].clone();
 
         let animation_result =
-            set_timeout_with_handle(move || self.apply_option(&only_move), animation_duration);
+            set_timeout_with_handle(move || self.apply_option(&forced_move), animation_duration);
         self.clear_animation();
         self.maybe_animation_queue.set(animation_result.ok());
     }

@@ -124,6 +124,7 @@ pub struct GameFrame {
     pub event_history: Vec<Event>,
     pub available_moves: Vec<MoveOption>,
     pub winner: Option<Allegiance>,
+    pub is_definite_win: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
