@@ -265,7 +265,7 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
         pile_provider_signal.set(Box::new(ExactPileProvider {
             pile: query_param_pile,
         }));
-        is_playing.set(false);
+        is_playing.set(true);
     }
 
     view! { cx,

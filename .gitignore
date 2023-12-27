@@ -2,3 +2,4 @@ target/
 dist/
 tmp/
 web_ui/static/models/
+.vim/
