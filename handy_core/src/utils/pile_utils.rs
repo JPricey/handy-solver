@@ -5,6 +5,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::RngCore;
 use regex::Regex;
+use strum::IntoEnumIterator;
 
 pub fn get_start_from_classes(
     hero_class: Class,
@@ -32,6 +33,15 @@ pub fn get_random_face<R: Rng>(rng: &mut R) -> FaceKey {
         _ => panic!(),
     }
 }
+
+pub fn get_random_exhausted_face<R: Rng>(mut rng: &mut R, card_def: &CardDef) -> FaceKey {
+    let faces: Vec<FaceKey> = FaceKey::iter()
+        .filter(|f| card_def.faces[*f].health == Health::Empty)
+        .collect();
+
+    return *faces.choose(&mut rng).unwrap();
+}
+
 pub fn string_to_card_id_result(input: &str) -> Result<CardId, String> {
     let card_id: CardId = input.parse().map_err(|err| format!("{err:?}"))?;
 

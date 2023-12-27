@@ -3,6 +3,7 @@ members = [
     "handy_core",
     "cli",
     "web_ui",
+    "clib",
 ]
 
 [profile.release]
