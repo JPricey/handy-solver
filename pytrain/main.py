@@ -39,10 +39,7 @@ def get_won_pile():
     return result
 
 
-np.random.seed(123)
-
 DATA_DIR = Path("../data/training_data")
-print(DATA_DIR)
 
 
 def matchup_training_data_path(hero, monster):
@@ -86,21 +83,25 @@ def build_model():
     model = Sequential()
     model.add(
         Dense(
-            128,
+            64,
             input_shape=(CARD_SIZE * PILE_SIZE,),
             kernel_initializer="RandomNormal",
             activation="relu",
         )
     )
-    model.add(Dense(128, kernel_initializer="RandomNormal", activation="relu"))
-    model.add(Dense(128, kernel_initializer="RandomNormal", activation="relu"))
+    model.add(Dense(64, kernel_initializer="RandomNormal", activation="relu"))
+    model.add(Dense(16, kernel_initializer="RandomNormal", activation="relu"))
     model.add(Dense(1, kernel_initializer="RandomNormal", activation="relu"))
 
     # print(model.summary())
     # for layer in model.layers:
     #     print(layer.get_output_at(0).get_shape().as_list())
 
-    model.compile(loss="mean_squared_error", optimizer=keras.optimizers.AdamW(), metrics=["accuracy"])
+    model.compile(
+        loss="mean_squared_error",
+        optimizer=keras.optimizers.AdamW(),
+        metrics=["accuracy"],
+    )
 
     return model
 
@@ -130,15 +131,11 @@ def get_child_score(model, child_piles):
 
 def get_single_random_example(model):
     json_example = get_example()
-
     parent_pile_bits = pile_to_bits(json_example["parent_pile"])
     child_min_score = get_child_score(model, json_example["child_piles"])
-
     if child_min_score == None:
         return get_single_random_example(model)
-
     # print('cms', child_min_score)
-
     return (parent_pile_bits, child_min_score + 1)
 
 
@@ -184,11 +181,29 @@ def evaluate_model(model):
     print("evaluation", score)
 
 
-EVALUATION_RATE = 10
-RANDOM_BATCH_SIZE = 30
-WON_BATCH_SIZE = 2
+EVALUATION_RATE = 100
+RANDOM_BATCH_SIZE = 1
+WON_BATCH_SIZE = 1
 TOTAL_BATCH_SIZE = RANDOM_BATCH_SIZE + WON_BATCH_SIZE
-EPOCH_COUNT = 20
+
+EPOCH_COUNT = 1
+
+def avg(inputs):
+    return sum(inputs) / len(inputs)
+
+
+def evaluate_win_vs_not_win(model):
+    inputs = []
+    for _ in range(10):
+        inputs.append(get_single_won_example())
+    outputs = [x[0] for x in model.predict(inputs)]
+    print("WINNING OUTPUTS:", avg(outputs), outputs)
+
+    inputs = []
+    for _ in range(10):
+        inputs.append(get_single_not_won_example())
+    outputs = [x[0] for x in model.predict(inputs)]
+    print("NON-WINNING OUTPUTS:", avg(outputs), outputs)
 
 
 def main(hero, monster):
@@ -198,7 +213,8 @@ def main(hero, monster):
     model = build_model()
 
     while True:
-        for _ in range(EVALUATION_RATE):
+        for round_index in range(EVALUATION_RATE):
+            print('round:', round_index)
             inputs = []
             outputs = []
             for b in range(RANDOM_BATCH_SIZE):
@@ -208,10 +224,11 @@ def main(hero, monster):
                 outputs.append(o)
             for b in range(WON_BATCH_SIZE):
                 inputs.append(get_single_won_example())
-                outputs.append(0)
-            pprint(outputs)
+                outputs.append(0.0)
+            # pprint(outputs)
             model.fit(inputs, outputs, epochs=EPOCH_COUNT, verbose=0)
-        evaluate_model(model)
+        evaluate_win_vs_not_win(model)
+        # evaluate_model(model)
 
 
 main("Cursed", "Demon")
