@@ -25,3 +25,6 @@ vectorize_derive = { path = "../vectorize_derive" }
 text_io = { workspace = true }
 priq = {workspace=true}
 lazy_static = {workspace=true}
+tch = { version="0.14.0", features=["download-libtorch"] }
+anyhow = "1.0.78"
+ndarray = "0.13"

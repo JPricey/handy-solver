@@ -1,19 +1,27 @@
+import os
+
+os.environ["KERAS_BACKEND"] = "torch"
+
 import keras
-import tensorflow as tf
 from pathlib import Path
 import jsonlines
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Convolution2D, MaxPooling2D
+from dataclasses import dataclass
+from keras.layers import Dense, Dropout, Activation, Flatten, Input
+from keras.layers import Convolution2D, MaxPooling2D, Conv1D
 import numpy as np
 from pprint import pprint
 import json
 import ctypes
+import pdb
+import torch
+import random
 
 rust_lib = ctypes.CDLL("../target/release/libhandy_c_lib.so")
 rust_lib.next_pile_states.restype = ctypes.c_char_p
 rust_lib.get_example.restype = ctypes.c_char_p
 rust_lib.get_won_pile.restype = ctypes.c_char_p
+rust_lib.get_deep_example.restype = ctypes.c_char_p
 
 
 def next_pile_states(pile_string):
@@ -34,6 +42,13 @@ def get_example():
 
 def get_won_pile():
     ptr = rust_lib.get_won_pile()
+    result = ctypes.c_char_p(ptr).value.decode("utf-8")
+    result = json.loads(result)
+    return result
+
+
+def get_deep_example():
+    ptr = rust_lib.get_deep_example()
     result = ctypes.c_char_p(ptr).value.decode("utf-8")
     result = json.loads(result)
     return result
@@ -65,6 +80,7 @@ CARD_MAP = {}
 
 CARD_SIZE = 13
 PILE_SIZE = 9
+CARD_ENCODING_SIZE = CARD_SIZE * PILE_SIZE
 
 LOSE_GAME_REWARD = 100
 
@@ -81,19 +97,21 @@ def _init_card_map():
 
 def build_model():
     model = Sequential()
+    model.add(Input(shape=(PILE_SIZE, CARD_SIZE)))
+    model.add(Conv1D(16, 1, 1, kernel_initializer="RandomNormal"))
+    model.add(Flatten())
     model.add(
         Dense(
-            64,
-            input_shape=(CARD_SIZE * PILE_SIZE,),
+            32,
             kernel_initializer="RandomNormal",
             activation="relu",
         )
     )
-    model.add(Dense(64, kernel_initializer="RandomNormal", activation="relu"))
-    model.add(Dense(16, kernel_initializer="RandomNormal", activation="relu"))
+    model.add(Dense(32, kernel_initializer="RandomNormal", activation="relu"))
+    # model.add(Dense(32, kernel_initializer="RandomNormal", activation="relu"))
     model.add(Dense(1, kernel_initializer="RandomNormal", activation="relu"))
 
-    # print(model.summary())
+    model.summary()
     # for layer in model.layers:
     #     print(layer.get_output_at(0).get_shape().as_list())
 
@@ -107,7 +125,7 @@ def build_model():
 
 
 def pile_to_bits(pile):
-    pile_input = [0.0] * CARD_SIZE * PILE_SIZE
+    pile_input = torch.zeros(CARD_ENCODING_SIZE)
     for i, c in enumerate(pile):
         pile_input[CARD_SIZE * i + CARD_MAP[c[0]]] = 1.0
         pile_input[CARD_SIZE * i + PILE_SIZE + FACE_MAP[c[1]]] = 1.0
@@ -161,15 +179,15 @@ def _init_known_data(hero, monster):
 
 
 def evaluate_model(model):
-    inputs = []
-    outputs = []
+    inputs = torch.zeros(len(KNOWN_DATA), CARD_ENCODING_SIZE)
+    outputs = torch.zeros(len(KNOWN_DATA), 1)
 
-    for obj in KNOWN_DATA:
+    for i, obj in enumerate(KNOWN_DATA):
         pile = obj["pile"]
         dist = obj["eval"]["Win"]
 
-        inputs.append(pile_to_bits(pile))
-        outputs.append(float(dist))
+        inputs[i] = pile_to_bits(pile)
+        outputs[i] = float(dist)
 
     model_predict = model.predict(inputs)
     score = 0
@@ -181,27 +199,130 @@ def evaluate_model(model):
     print("evaluation", score)
 
 
-EVALUATION_RATE = 100
+EVALUATION_RATE = 10
 RANDOM_BATCH_SIZE = 1
 WON_BATCH_SIZE = 1
 TOTAL_BATCH_SIZE = RANDOM_BATCH_SIZE + WON_BATCH_SIZE
 
 EPOCH_COUNT = 1
 
+
+@dataclass
+class Example:
+    depth: int
+    winner: str
+    weight: bool
+    score: float
+    children: list
+    bits: list
+
+
+def _pile_to_string(pile):
+    return "".join("".join(str(e) for e in card) for card in pile)
+
+
+def get_examples_from_tree(model):
+    deep_example_tup = get_deep_example()
+    deep_examples = deep_example_tup["examples"]
+    max_depth = deep_example_tup["max_depth"]
+    print(
+        "depth:",
+        max_depth,
+        ". num states:",
+        len(deep_examples),
+        ". root pile:",
+        _pile_to_string(deep_example_tup["root_pile"]),
+    )
+    examples = dict()
+
+    for example in deep_examples:
+        pile, data = example
+        pile_string = _pile_to_string(pile)
+        examples[pile_string] = Example(
+            data["depth"],
+            data["winner"],
+            None,
+            None,
+            [_pile_to_string(c) for c in data["children"]],
+            pile_to_bits(pile),
+        )
+
+    inputs = []
+    weights = []
+    outputs = []
+
+    def _get_pile_score_and_weight(pile_string):
+        # pdb.set_trace()
+        example = examples[pile_string]
+        if example.score is not None:
+            return (example.score, example.weight)
+
+        if example.winner == "b":
+            return None
+
+        if example.winner == "h":
+            example.score = 0.0
+            example.weight = 1.0
+            return (example.score, example.weight)
+
+        if example.depth == max_depth:
+            example.weight = 0.0
+            inp = torch.empty(1, CARD_ENCODING_SIZE)
+            inp[0] = example.bits
+            example.score = model.predict(inp, verbose=0)[0][0]
+            # print('predict out', example.score)
+            return (example.score, example.weight)
+
+        res = None
+        for child_pile_str in example.children:
+            c_res = _get_pile_score_and_weight(child_pile_str)
+            if c_res is not None:
+                if res is None or c_res[0] < res[0]:
+                    res = c_res
+                elif c_res[0] == res[0] and c_res[1] > res[1]:
+                    res = c_res
+
+        if res is None:
+            example.winner = "b"
+            return None
+
+        example.score = res[0] + 1
+        example.weight = res[1] + 1
+        return (example.score, example.weight)
+
+    for pile_string, example in examples.items():
+        sw = _get_pile_score_and_weight(pile_string)
+        if sw is None:
+            continue
+
+        score, weight = sw
+
+        if weight <= 0.0:
+            continue
+
+        inputs.append(example.bits)
+        weights.append(weight)
+        outputs.append(score)
+        # print(pile_string, weight, score, example.depth)
+
+    return inputs, weights, outputs
+
+
 def avg(inputs):
     return sum(inputs) / len(inputs)
 
 
 def evaluate_win_vs_not_win(model):
-    inputs = []
-    for _ in range(10):
-        inputs.append(get_single_won_example())
+    EACH_SIZE = 10
+
+    inputs = torch.zeros(EACH_SIZE, CARD_ENCODING_SIZE)
+    for i in range(EACH_SIZE):
+        inputs[i] = get_single_won_example()
     outputs = [x[0] for x in model.predict(inputs)]
     print("WINNING OUTPUTS:", avg(outputs), outputs)
 
-    inputs = []
-    for _ in range(10):
-        inputs.append(get_single_not_won_example())
+    for i in range(EACH_SIZE):
+        inputs[i] = get_single_not_won_example()
     outputs = [x[0] for x in model.predict(inputs)]
     print("NON-WINNING OUTPUTS:", avg(outputs), outputs)
 
@@ -212,23 +333,40 @@ def main(hero, monster):
 
     model = build_model()
 
+    # pdb.set_trace()
+
     while True:
         for round_index in range(EVALUATION_RATE):
-            print('round:', round_index)
-            inputs = []
-            outputs = []
-            for b in range(RANDOM_BATCH_SIZE):
-                # print(b)
-                i, o = get_single_random_example(model)
-                inputs.append(i)
-                outputs.append(o)
-            for b in range(WON_BATCH_SIZE):
+            print("round:", round_index)
+            inputs, weights, outputs = get_examples_from_tree(model)
+            len_inputs = len(inputs)
+            print("num examples:", len_inputs)
+            if len_inputs == 0:
+                continue
+
+            num_won_states = len_inputs // 10
+            print("adding won examples:", num_won_states)
+            for _ in range(num_won_states):
                 inputs.append(get_single_won_example())
+                weights.append(1.0)
                 outputs.append(0.0)
-            # pprint(outputs)
-            model.fit(inputs, outputs, epochs=EPOCH_COUNT, verbose=0)
+
+            full_len_inputs = len(inputs)
+            indexes = [x for x in range(full_len_inputs)]
+            random.shuffle(indexes)
+
+            for idx in indexes:
+                inp = torch.empty(1, CARD_ENCODING_SIZE)
+                inp[0] = inputs[idx]
+
+                out = torch.empty(1, 1)
+                out[0][0] = outputs[idx]
+
+                # print('fitting', inp, out)
+                model.fit(inp, out, verbose=0)
+
         evaluate_win_vs_not_win(model)
-        # evaluate_model(model)
+        evaluate_model(model)
 
 
 main("Cursed", "Demon")
