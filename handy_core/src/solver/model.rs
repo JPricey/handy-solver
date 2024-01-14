@@ -6,6 +6,7 @@ use enum_map::EnumMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashSet};
 use vectorize_derive::*;
+use crate::solver::model_t::ModelT;
 
 pub const HEROS: [Class; 5] = [
     Class::Warrior,
@@ -403,6 +404,12 @@ impl Vectorize for Model {
         let mut res = Vec::new();
         self.vectorize_append(&mut res);
         res
+    }
+}
+
+impl ModelT for Model {
+    fn score_pile(&self, pile: &Pile) -> f32 {
+        self.score_pile(pile)
     }
 }
 

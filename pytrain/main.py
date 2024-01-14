@@ -60,6 +60,9 @@ DATA_DIR = Path("../data/training_data")
 def matchup_training_data_path(hero, monster):
     return DATA_DIR.joinpath(f"{hero}.{monster}.jsonl")
 
+def matchup_training_data_verification_path(hero, monster):
+    return DATA_DIR.joinpath(f"{hero}.{monster}.jsonl.old")
+
 
 # each card is a bitmap of 9 elements, and then a bitmap of 4 elements = 13 bits
 # each example is 9 cards, and then the desired output
@@ -173,9 +176,20 @@ KNOWN_DATA = []
 
 
 def _init_known_data(hero, monster):
-    with jsonlines.open(matchup_training_data_path(hero, monster)) as reader:
+    with jsonlines.open(matchup_training_data_verification_path(hero, monster)) as reader:
         for obj in reader:
             KNOWN_DATA.append(obj)
+
+def load_dataset_from_path(path):
+    examples = []
+
+    with jsonlines.open(path) as reader:
+        for obj in reader:
+            examples.push(obj)
+
+    inputs = torch.zeros(len(examples), CARD_ENCODING_SIZE)
+    outputs = torch.zeros(len(examples), 1)
+
 
 
 def evaluate_model(model):
@@ -327,7 +341,7 @@ def evaluate_win_vs_not_win(model):
     print("NON-WINNING OUTPUTS:", avg(outputs), outputs)
 
 
-def main(hero, monster):
+def training_main(hero, monster):
     _init_card_map()
     _init_known_data(hero, monster)
 
@@ -367,6 +381,8 @@ def main(hero, monster):
 
         evaluate_win_vs_not_win(model)
         evaluate_model(model)
+
+def known_dataset_main(hero, monster):
 
 
 main("Cursed", "Demon")

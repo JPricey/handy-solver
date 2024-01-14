@@ -1,9 +1,11 @@
 pub mod paths;
 pub mod run_a_star;
 pub mod training_utils;
+pub mod pile_randomizers;
 
 pub use paths::*;
 pub use training_utils::*;
+pub use pile_randomizers::*;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
