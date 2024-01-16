@@ -18,7 +18,9 @@ const PER_LEVEL_KEEP_STATES: usize = 500000;
 const NUM_LEVELS_TO_EXPAND_AFTER_WINNER: usize = 2;
 
 fn print_examples_per_depth_histo(ex: &HashMap<Pile, usize>) {
-    let max_depth = ex.values().max().unwrap();
+    let Some(max_depth) = ex.values().max() else {
+        return;
+    };
     let mut count_per_depth: Vec<usize> = vec![0; max_depth + 1];
 
     for depth in ex.values() {
@@ -110,8 +112,17 @@ pub fn generate_examples<M: ModelT>(start_pile: Pile, model: &M) -> HashMap<Pile
             winners_per_level.push(winners);
         }
 
-        level += 1;
         current_level = next_level_queue.drain(0..).map(|(_, p)| p).collect();
+        if current_level.len() == 0 {
+            println!("No more paths");
+            break;
+        }
+
+        if level > 50 {
+            break;
+        }
+
+        level += 1;
     }
 
     let mut known_winners: HashMap<Pile, usize> = HashMap::new();
@@ -144,7 +155,8 @@ pub fn generate_examples<M: ModelT>(start_pile: Pile, model: &M) -> HashMap<Pile
     // for (pile, score) in known_winners.iter() {
     //     println!("{:?} : {}", pile, score);
     // }
-    print_examples_per_depth_histo(&known_winners);
+
+    // print_examples_per_depth_histo(&known_winners);
 
     known_winners
 }
@@ -157,7 +169,10 @@ fn main() {
     let training_examples_path = training_path_for_matchup((hero, monster));
 
     loop {
-        let pile = get_start_from_classes(hero, monster, &mut rng);
+        // let pile = get_start_from_classes(hero, monster, &mut rng);
+        let pile = get_random_pile_matching_stats(hero, monster, 30, 30, &mut rng);
+        // let pile = string_to_pile(" [32A, 27A, 25D, 24A, 26D, 29B, 28D, 30A, 31D] ");
+
         let examples = generate_examples(pile, &model);
 
         loop {

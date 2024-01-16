@@ -715,7 +715,7 @@ fn load_validation_set(hero: Class, monster: Class) -> (Tensor, Tensor, usize) {
 fn known_examples_train() {
     let hero = HERO;
     let monster = MONSTER;
-    let batch_size = 16;
+    let batch_size = 8;
 
     println!("started");
     let mut vs = nn::VarStore::new(Device::cuda_if_available());
