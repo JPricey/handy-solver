@@ -46,7 +46,6 @@ pub enum AStarDoneReason {
 pub enum DoneIterResult {
     DepthCutoff,
     ClearedFromState,
-    EnemyWin,
     Computed,
 }
 
@@ -163,8 +162,9 @@ impl AStarSolver {
                         );
                         return AStarIterResult::NewBest(new_tiny_pile);
                     }
+                } else {
+                    continue;
                 }
-                return AStarIterResult::Continue(DoneIterResult::EnemyWin);
             }
 
             if let Some(current_child_entry) = self.seen_states.get_mut(&new_tiny_pile) {
