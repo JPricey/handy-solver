@@ -1,10 +1,10 @@
 use crate::game::*;
-use crate::solver::model::*;
 use crate::solver::tiny_pile::*;
 use crate::utils::*;
 use priq::PriorityQueue;
 use std::collections::BTreeMap;
 // use std::collections::HashMap;
+use crate::solver::model_t::ModelT;
 use std::fmt::Debug;
 
 // BTree is slower, but memory is more compact, and resize events are gradual
@@ -26,7 +26,7 @@ pub struct AStarSolver {
     pub tiny_pile_converter: TinyPileConverter,
     pub seen_states: SeenMap,
     pub queue: PriorityQueue<f32, TinyPile>,
-    pub model: Model,
+    pub model: Box<dyn ModelT>,
     pub total_iters: usize,
     pub max_depth: DepthType,
     pub max_fscore: f32,
@@ -46,7 +46,6 @@ pub enum AStarDoneReason {
 pub enum DoneIterResult {
     DepthCutoff,
     ClearedFromState,
-    EnemyWin,
     Computed,
 }
 
@@ -58,7 +57,7 @@ pub enum AStarIterResult {
 }
 
 impl AStarSolver {
-    pub fn new(seed_piles: &[Pile], model: Model) -> Self {
+    pub fn new(seed_piles: &[Pile], model: Box<dyn ModelT>) -> Self {
         let start_pile = &seed_piles[0];
         let tiny_pile_converter = TinyPileConverter::new_from_pile(start_pile);
         let mut seen_states = SeenMap::new();
@@ -163,8 +162,9 @@ impl AStarSolver {
                         );
                         return AStarIterResult::NewBest(new_tiny_pile);
                     }
+                } else {
+                    continue;
                 }
-                return AStarIterResult::Continue(DoneIterResult::EnemyWin);
             }
 
             if let Some(current_child_entry) = self.seen_states.get_mut(&new_tiny_pile) {

@@ -8,6 +8,7 @@ use std::cmp;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
+use std::hash::Hash;
 use std::io::prelude::*;
 use std::{thread, time};
 
@@ -43,14 +44,13 @@ pub fn generate_examples<M: ModelT>(start_pile: Pile, model: &M) -> HashMap<Pile
 
     loop {
         println!("Starting level {}: {}", level, current_level.len());
-
         let mut winners: Vec<(Pile, Pile)> = Vec::new(); // (parent pile, child pile)
         let mut next_level_queue: PriorityQueue<Reverse<f32>, Pile> = PriorityQueue::new();
         let mut is_queue_full = false;
         let mut in_queue: HashMap<Pile, Vec<Pile>> = HashMap::new(); // (child pile, parents)
 
         for pile in current_level {
-            let cur_state = GameStateNoEventLog::new(pile.clone());
+            let cur_state = GameStateWithEventLog::new(pile.clone());
             let child_states = resolve_top_card(&cur_state);
 
             for child_state in child_states {
@@ -63,7 +63,7 @@ pub fn generate_examples<M: ModelT>(start_pile: Pile, model: &M) -> HashMap<Pile
                     } else {
                         // Don't bother looking at anything else for this pile.
                         // TODO: it's still possible to enqueue stuff before this. Oh well.
-                        break;
+                        continue;
                     }
                 }
 
@@ -95,7 +95,7 @@ pub fn generate_examples<M: ModelT>(start_pile: Pile, model: &M) -> HashMap<Pile
         let mut should_continue = true;
 
         if num_winners > 0 || extra_levels_count > 0 {
-            println!("Winners: {} @ level {}", num_winners, level);
+            println!("Winners: {} @ level {}", num_winners, level + 1);
             if extra_levels_count >= NUM_LEVELS_TO_EXPAND_AFTER_WINNER {
                 should_continue = false;
             } else {
@@ -171,7 +171,10 @@ fn main() {
     loop {
         // let pile = get_start_from_classes(hero, monster, &mut rng);
         let pile = get_random_pile_matching_stats(hero, monster, 30, 30, &mut rng);
-        // let pile = string_to_pile(" [32A, 27A, 25D, 24A, 26D, 29B, 28D, 30A, 31D] ");
+        // let pile = string_to_pile(" [24A][30C][29C][28A][32B][31B][25A][26A][27A] ");
+        // let pile = string_to_pile("[24D][32C][30C][26D][27C][28C][29D][31A][25B]");
+        // let pile = string_to_pile("30B 32D 27C 28C 29C 25B 24D 26D 31B ");
+        // let pile = string_to_pile("[30D][25B][26A][29B][24B][28B][32B][27B][31B]");
 
         let examples = generate_examples(pile, &model);
 

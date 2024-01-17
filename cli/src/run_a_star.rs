@@ -9,7 +9,7 @@ pub fn run_a_star_solver(
 ) -> Vec<Pile> {
     let model = get_model_for_pile(&start_pile);
 
-    let mut a_star_solver = AStarSolver::new(&vec![start_pile], model);
+    let mut a_star_solver = AStarSolver::new(&vec![start_pile], Box::new(model));
     if let Some(def_max_iters) = max_iters {
         a_star_solver.set_max_iters(def_max_iters);
     }

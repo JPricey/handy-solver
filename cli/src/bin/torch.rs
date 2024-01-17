@@ -22,13 +22,10 @@ use tch::{
     Device, Kind, Tensor,
 };
 
-const PILE_SIZE: i64 = 9;
-const CARD_SIZE: i64 = 13;
-const INPUT_SIZE: i64 = PILE_SIZE * CARD_SIZE;
 
-const HERO: Class = Class::Cursed;
-const MONSTER: Class = Class::Spider;
-const PATH: &str = "cursed-spider.safetensors";
+pub const HERO: Class = Class::Cursed;
+pub const MONSTER: Class = Class::Spider;
+pub const PATH: &str = "cursed-spider.safetensors";
 
 fn basic_heuristic(pile: &Pile) -> f32 {
     if Some(Allegiance::Hero) == is_game_winner(pile) {
@@ -130,56 +127,7 @@ fn net(vs: &nn::Path) -> impl Module {
         .add(nn::linear(vs / "layer4", l3_output, 1, Default::default()))
 }
 
-fn to_byte_slice<'a>(floats: &'a [f32]) -> &'a [u8] {
-    unsafe { std::slice::from_raw_parts(floats.as_ptr() as *const _, floats.len() * 4) }
-}
 
-fn empty_onehot() -> Tensor {
-    let vec_source: Vec<f32> = vec![0.0; INPUT_SIZE as usize];
-    let as_bytes = to_byte_slice(&vec_source);
-    return Tensor::from_data_size(&as_bytes, &[CARD_SIZE, PILE_SIZE], Kind::Float);
-}
-
-fn face_to_idx(face_key: FaceKey) -> usize {
-    match face_key {
-        FaceKey::A => 0,
-        FaceKey::B => 1,
-        FaceKey::C => 2,
-        FaceKey::D => 3,
-    }
-}
-
-fn pile_onehot(card_map: &CardMap, pile: &Pile) -> Tensor {
-    let mut vec_source: Vec<f32> = vec![0.0; INPUT_SIZE as usize];
-    for i in 0..9 {
-        let card_idx = card_map[&pile[i].card_id];
-        let face_idx = PILE_SIZE as usize + face_to_idx(pile[i].get_card_face());
-        let card_1d = card_idx * PILE_SIZE as usize + i;
-        let face_1d = face_idx * PILE_SIZE as usize + i;
-        // dbg!(card_idx, face_idx, i, card_1d, face_1d);
-        vec_source[card_1d] = 1.0;
-        vec_source[face_1d] = 1.0;
-    }
-
-    let as_bytes = to_byte_slice(&vec_source);
-    return Tensor::from_data_size(&as_bytes, &[CARD_SIZE, PILE_SIZE], Kind::Float);
-}
-
-type CardMap = HashMap<CardId, usize>;
-
-fn make_card_map(hero: Class, monster: Class) -> CardMap {
-    let mut cards = CARDS.get_cards_for_class(hero);
-    cards.append(&mut CARDS.get_cards_for_class(monster));
-
-    let mut card_ids: Vec<CardId> = cards.iter().map(|c| c.id).collect();
-    card_ids.sort();
-
-    let mut card_map = CardMap::new();
-    for (idx, card_id) in card_ids.iter().enumerate() {
-        card_map.insert(*card_id, idx);
-    }
-    card_map
-}
 
 fn generate_fully_random_basic_heuristic_example<R: Rng>(
     card_map: &CardMap,
@@ -331,42 +279,6 @@ pub struct SearchNode {
     parents: Vec<Pile>,
     estimated_score: f32,
     known_score: KnownScore,
-}
-
-pub struct NNModel {
-    // hero: Class,
-    // monster: Class,
-    card_map: CardMap,
-    net: Box<dyn Module>,
-}
-
-impl NNModel {
-    fn new(hero: Class, monster: Class, net: Box<dyn Module>) -> Self {
-        let card_map = make_card_map(hero, monster);
-        Self {
-            // hero,
-            // monster,
-            card_map,
-            net,
-        }
-    }
-
-    fn score_pile(&self, pile: &Pile) -> f32 {
-        let x = pile_onehot(&self.card_map, &pile);
-        let res = self.net.forward(&x.unsqueeze(0));
-        return res.double_value(&[0]) as f32;
-    }
-
-    fn score_piles(&self, piles: &[Pile]) -> Tensor {
-        let vec_x: Vec<Tensor> = piles
-            .iter()
-            .map(|p| pile_onehot(&self.card_map, p))
-            .collect();
-        let xs = Tensor::stack(&vec_x, 0);
-
-        let res = self.net.forward(&xs);
-        return res;
-    }
 }
 
 struct SearchState {
@@ -683,7 +595,7 @@ fn load_examples_from_path(
 ) -> (Tensor, Tensor, usize) {
     let card_map = make_card_map(hero, monster);
     let all_examples = json_lines(examples_path)
-        .unwrap()
+        .expect(&format!("Could not find examples file: {}", examples_path))
         .collect::<Result<Vec<DepthModeTrainingExample>, _>>()
         .unwrap();
 
@@ -702,15 +614,27 @@ fn load_examples_from_path(
     return (Tensor::stack(&vec_xs, 0), Tensor::stack(&vec_ys, 0), count);
 }
 
-fn load_known_examples(hero: Class, monster: Class) -> (Tensor, Tensor, usize) {
-    let examples_path = training_path_for_matchup((hero, monster));
-    return load_examples_from_path(hero, monster, &examples_path);
+fn load_set_with_suffix(
+    hero: Class,
+    monster: Class,
+    suffix: Option<&str>,
+) -> (Tensor, Tensor, usize) {
+    let suffix = match suffix {
+        Some(s) => format!(".{s}"),
+        None => "".to_string(),
+    };
+    let base_path = training_path_for_matchup((hero, monster));
+    let full_path = format!("{}{}", base_path, suffix);
+    return load_examples_from_path(hero, monster, &full_path);
 }
 
-fn load_validation_set(hero: Class, monster: Class) -> (Tensor, Tensor, usize) {
-    let examples_path = format!("{}.old", training_path_for_matchup((hero, monster)));
-    return load_examples_from_path(hero, monster, &examples_path);
+fn load_known_examples(hero: Class, monster: Class) -> (Tensor, Tensor, usize) {
+    return load_set_with_suffix(hero, monster, None);
 }
+
+// fn load_validation_set(hero: Class, monster: Class) -> (Tensor, Tensor, usize) {
+//     return load_set_with_suffix(hero, monster, ".old");
+// }
 
 fn known_examples_train() {
     let hero = HERO;
@@ -725,23 +649,29 @@ fn known_examples_train() {
     let model = NNModel::new(hero, monster, Box::new(net));
     println!("loaded model");
 
-    let (train_xs, train_ys, train_size) = load_known_examples(hero, monster);
-    // let (train_xs, train_ys, train_size) = load_validation_set(hero, monster);
+    // let test_dataset = load_set_with_suffix(hero, monster, "");
+    // compare_to_dataset(&model, &test_dataset);
+    // return;
+
+    let train_dataset = load_set_with_suffix(hero, monster, None);
+    let (train_xs, train_ys, train_size) = &train_dataset;
     println!("loaded training set: {}", train_size);
 
-    let validation_dataset = load_validation_set(hero, monster);
+    let validation_dataset = load_set_with_suffix(hero, monster, Some("validation"));
     println!("loaded validation set: {}", validation_dataset.2);
+
+    compare_to_dataset(&model, &validation_dataset);
 
     loop {
         let before = Instant::now();
-        let mut iter = Iter2::new(&train_xs, &train_ys, 16);
+        let mut iter = Iter2::new(&train_xs, &train_ys, 8);
         iter.shuffle();
 
         for (i, (xs, ys)) in iter.enumerate() {
             if i % 1024 == 0 {
                 print!(
                     "\r{i}: {:.2}%      ",
-                    (i * batch_size * 100) as f32 / (train_size) as f32
+                    (i * batch_size * 100) as f32 / (*train_size) as f32
                 );
                 io::stdout().flush().unwrap();
             }
@@ -754,6 +684,7 @@ fn known_examples_train() {
 
         vs.save(PATH).unwrap();
         compare_to_dataset(&model, &validation_dataset);
+        compare_to_dataset(&model, &train_dataset);
         println!("Elapsed time: {:.2?}", before.elapsed());
     }
 }
