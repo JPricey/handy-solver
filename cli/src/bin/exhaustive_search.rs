@@ -45,9 +45,9 @@ struct WinChecker {}
 impl VictoryConditionChecker for WinChecker {
     fn condition_result(&self, pile: &Pile) -> VictoryConditionResult {
         match is_game_winner(pile) {
-            Some(Allegiance::Hero) => VictoryConditionResult::Win,
-            Some(_) => VictoryConditionResult::Loss,
-            None => VictoryConditionResult::Continue,
+            WinType::Win => VictoryConditionResult::Win,
+            WinType::Lose => VictoryConditionResult::Loss,
+            WinType::Unresolved => VictoryConditionResult::Continue,
         }
     }
 }
@@ -75,9 +75,9 @@ impl VictoryConditionChecker for SurviveUntilTopChecker {
 
         match is_game_winner(pile) {
             // Hero probably shouldn't be allowed to win these?
-            Some(Allegiance::Hero) => VictoryConditionResult::Continue,
-            Some(_) => VictoryConditionResult::Loss,
-            None => VictoryConditionResult::Continue,
+            WinType::Win => VictoryConditionResult::Continue,
+            WinType::Lose => VictoryConditionResult::Loss,
+            WinType::Unresolved => VictoryConditionResult::Continue,
         }
     }
 }
@@ -98,10 +98,9 @@ impl VictoryConditionChecker for ExhaustCardChecker {
         }
 
         match is_game_winner(pile) {
-            // Hero probably shouldn't be allowed to win these?
-            Some(Allegiance::Hero) => VictoryConditionResult::Continue,
-            Some(_) => VictoryConditionResult::Loss,
-            None => VictoryConditionResult::Continue,
+            WinType::Win => VictoryConditionResult::Continue,
+            WinType::Lose => VictoryConditionResult::Loss,
+            WinType::Unresolved => VictoryConditionResult::Continue,
         }
     }
 }

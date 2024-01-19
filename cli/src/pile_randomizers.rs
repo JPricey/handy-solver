@@ -24,7 +24,7 @@ pub fn get_fully_random_pile<R: Rng>(hero: Class, monster: Class, rng: &mut R) -
 pub fn get_random_pile_with_no_winner<R: Rng>(hero: Class, monster: Class, rng: &mut R) -> Pile {
     let mut pile = get_start_from_classes(hero, monster, rng);
     randomize_sides(&mut pile, rng);
-    while is_game_winner(&pile).is_some() {
+    while is_game_winner(&pile).is_over() {
         randomize_sides(&mut pile, rng);
     }
     return pile;
@@ -54,7 +54,7 @@ pub fn randomize_hero_sides<R: Rng>(pile: &mut Pile, rng: &mut R) {
         }
     }
 
-    if is_game_winner(pile).is_some() {
+    if is_game_winner(pile).is_over() {
         randomize_hero_sides(pile, rng);
     }
 }

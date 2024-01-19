@@ -8,7 +8,7 @@ use itertools::Itertools;
 use std::cmp;
 use strum::IntoEnumIterator;
 
-const NO_ENERGY_USED: EnergyIds = vec![];
+const NO_TARGETS: TargetIds = vec![];
 
 fn did_states_change<T: EngineGameState>(state_agg: &Vec<T>, state: &T) -> bool {
     !(state_agg.len() == 1 && state_agg[0].get_pile() == state.get_pile())
@@ -60,15 +60,51 @@ fn resolve_card_at_index<T: EngineGameState>(state: &T, active_idx: usize) -> Ve
 fn resolve_player_row<T: EngineGameState>(state: &T, row: &Row, active_idx: usize) -> Vec<T> {
     let pile = state.get_pile();
     let mut active_states = match row.condition {
+        Some(Condition::Dodge(amount)) => {
+            let mut dodge_options: Vec<TargetId> = vec![];
+            for i in active_idx + 1..pile.len() {
+                if let Some(reaction) = pile[i].get_active_face().reaction {
+                    if let Reaction::Standard(standard_reaction) = reaction {
+                        if standard_reaction.trigger == ReactionTrigger::Dodge {
+                            dodge_options.push(i as TargetId)
+                        }
+                    }
+                }
+            }
+
+            let mut state_agg = vec![];
+            for energy_combo in dodge_options.into_iter().combinations(amount as usize) {
+                let mut energy_used_state = state.clone();
+                let mut used_energy_event_data: PayEnergyArrType = ArrayVec::new();
+                for used_energy_idx in &energy_combo {
+                    let new_key = rotate_key(energy_used_state.get_pile()[*used_energy_idx].key);
+                    energy_used_state.get_pile_mut()[*used_energy_idx].key = new_key;
+                    let used_energy_card = state.get_pile()[*used_energy_idx];
+                    used_energy_event_data.push((*used_energy_idx, used_energy_card));
+                }
+                // TODO: dodge?
+                energy_used_state.mut_append_event(Event::PayEnergy(used_energy_event_data));
+
+                let new_states = resolve_player_row_post_conditions_no_mandatory(
+                    &energy_used_state,
+                    row,
+                    active_idx,
+                    &energy_combo,
+                );
+
+                state_agg.extend(new_states);
+            }
+            state_agg
+        }
         Some(Condition::Energy(amount)) => {
-            let mut energy_options: Vec<EnergyId> = vec![];
+            let mut energy_options: Vec<TargetId> = vec![];
             for i in active_idx + 1..pile.len() {
                 if pile[i]
                     .get_active_face()
                     .features
                     .intersects(Features::Energy)
                 {
-                    energy_options.push(i as EnergyId)
+                    energy_options.push(i as TargetId)
                 }
             }
 
@@ -95,11 +131,11 @@ fn resolve_player_row<T: EngineGameState>(state: &T, row: &Row, active_idx: usiz
             }
             state_agg
         }
-        None => {
-            resolve_player_row_post_conditions_no_mandatory(state, row, active_idx, &NO_ENERGY_USED)
-        }
-        _ => {
+        Some(Condition::ExhaustedAllies(_) | Condition::Rage(_)) => {
             panic!("Unhandled condition {:?}", row.condition)
+        }
+        None => {
+            resolve_player_row_post_conditions_no_mandatory(state, row, active_idx, &NO_TARGETS)
         }
     };
 
@@ -116,7 +152,7 @@ fn resolve_player_row_post_conditions_no_mandatory<T: EngineGameState>(
     state: &T,
     row: &Row,
     active_idx: usize,
-    energy_options: &EnergyIds,
+    energy_options: &TargetIds,
 ) -> Vec<T> {
     let mut active_states = vec![state.clone()];
 
@@ -137,7 +173,7 @@ fn resolve_player_action<T: EngineGameState>(
     pre_event_state: &T,
     wrapped_action: &WrappedAction,
     active_idx: usize,
-    energy_ids: &EnergyIds,
+    target_ids: &TargetIds,
 ) -> Vec<T> {
     let mut results: Vec<T> = vec![];
 
@@ -250,10 +286,10 @@ fn resolve_player_action<T: EngineGameState>(
                 return results;
             }
 
-            for i in 0..energy_ids.len() {
-                let energy_start_idx = (energy_ids[i]) as usize;
-                for j in i + 1..energy_ids.len() {
-                    let energy_end_idx = energy_ids[j] as usize;
+            for i in 0..target_ids.len() {
+                let energy_start_idx = (target_ids[i]) as usize;
+                for j in i + 1..target_ids.len() {
+                    let energy_end_idx = target_ids[j] as usize;
 
                     let state_with_ablaze_event = state.clone().append_event(Event::Ablaze(
                         energy_start_idx,
@@ -280,7 +316,7 @@ fn resolve_player_action<T: EngineGameState>(
                 return results;
             }
 
-            for energy_idx in energy_ids {
+            for energy_idx in target_ids {
                 let behind_idx = energy_idx + 1;
 
                 let mut fireball_results = vec![state
@@ -509,7 +545,8 @@ fn resolve_player_action<T: EngineGameState>(
                         }
 
                         // Only use 1 arrow
-                        results.push(first_arrow_state.append_event(Event::SkipArrow));
+                        results
+                            .push(first_arrow_state.append_event(Event::SkipHit(HitType::Arrow)));
                     }
                 }
             }
@@ -617,6 +654,109 @@ fn resolve_player_action<T: EngineGameState>(
                 }
             }
         }
+        Action::Backstab => {
+            if is_action_prevented(pile, Features::Venom, active_idx) {
+                return results;
+            }
+
+            for i in 0..target_ids.len() {
+                let target_idx = target_ids[i] - 1;
+                if target_idx <= active_idx {
+                    continue;
+                }
+
+                let pre_hit_state = state.clone().append_event(Event::AttackCard(
+                    target_idx,
+                    pile[target_idx],
+                    HitType::Backstab,
+                ));
+                let post_hit_states =
+                    hurt_card_get_all_outcomes(&pre_hit_state, target_idx, HitType::Backstab);
+
+                results.extend(post_hit_states);
+            }
+        }
+        Action::BackstabTwice => {
+            if is_action_prevented(pile, Features::Venom, active_idx) {
+                return results;
+            }
+
+            for i in 0..target_ids.len() {
+                let target_idx_1 = target_ids[i] - 1;
+                if target_idx_1 <= active_idx {
+                    continue;
+                }
+
+                let pre_hit_state_1 = state.clone().append_event(Event::AttackCard(
+                    target_idx_1,
+                    pile[target_idx_1],
+                    HitType::Backstab,
+                ));
+                let post_hit_states_1 =
+                    hurt_card_get_all_outcomes(&pre_hit_state_1, target_idx_1, HitType::Backstab);
+
+                for first_backstab_state in post_hit_states_1 {
+                    for j in 0..target_ids.len() {
+                        if i == j {
+                            continue;
+                        }
+
+                        let target_idx_2 = target_ids[j] - 1;
+                        if target_idx_2 <= active_idx {
+                            continue;
+                        }
+
+                        let pre_hit_state_2 =
+                            first_backstab_state.clone().append_event(Event::AttackCard(
+                                target_idx_2,
+                                first_backstab_state.get_pile()[target_idx_2],
+                                HitType::Backstab,
+                            ));
+                        let post_hit_states_2 = hurt_card_get_all_outcomes(
+                            &pre_hit_state_2,
+                            target_idx_2,
+                            HitType::Backstab,
+                        );
+
+                        results.extend(post_hit_states_2);
+                    }
+
+                    results.push(first_backstab_state.append_event(Event::SkipHit(HitType::Arrow)));
+                }
+            }
+        }
+        Action::Poison => {
+            if is_action_prevented(pile, Features::Venom, active_idx) {
+                return results;
+            }
+
+            for target_idx in active_idx + 1..pile.len() {
+                let target_card_ptr = pile[target_idx];
+                if !is_allegiance_match(
+                    Allegiance::Hero,
+                    target_card_ptr.get_active_face().allegiance,
+                    wrapped_action.target,
+                ) {
+                    continue;
+                }
+
+                let target_face = target_card_ptr.get_active_face();
+                let target_health = target_face.health;
+                if target_health != Health::Half {
+                    continue;
+                }
+
+                let pre_hit_state = state.clone().append_event(Event::AttackCard(
+                    target_idx,
+                    pile[target_idx],
+                    HitType::Poison,
+                ));
+
+                let post_hit_states =
+                    hurt_card_get_all_outcomes(&pre_hit_state, target_idx, HitType::Poison);
+                results.extend(post_hit_states);
+            }
+        }
     }
 
     return results;
@@ -663,7 +803,7 @@ fn _get_assist_action_outcomes<T: EngineGameState>(
                 &new_state,
                 assist_option,
                 active_idx,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             for outcome in outcomes {
@@ -787,10 +927,36 @@ fn _move_card_inner<T: EngineGameState>(
         }
     }
 
+    let mut skipped_roll = false;
+    if moved_card.get_active_face().reaction == Some(Reaction::Roll) {
+        let mut new_state_with_move = new_state
+            .clone()
+            .append_event(Event::MoveResult(move_type, distance_since_last_event + 1))
+            .append_event(Event::AttackCard(target_idx, new_state.get_pile()[target_idx], HitType::Roll));
+
+        perform_mandatory_action(&mut new_state_with_move, SelfAction::Rotate, swap_with_idx);
+
+        let hit_options =
+            attack_card_get_all_outcomes(&new_state_with_move, target_idx, HitType::Roll);
+
+        if hit_options.len() > 0 {
+            skipped_roll = true;
+        }
+        for hit_option in hit_options {
+            let final_state = hit_option
+                .clone()
+                .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
+            results_agg.push((distance_so_far + 1, final_state));
+        }
+    }
+
     {
-        let final_state = new_state
+        let mut final_state = new_state
             .clone()
             .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
+        if skipped_roll {
+            final_state.mut_append_event(Event::SkipHit(HitType::Roll));
+        }
         results_agg.push((distance_so_far + 1, final_state));
     }
 
@@ -900,6 +1066,9 @@ fn resolve_enemy_row<T: EngineGameState>(
     let pile = state.get_pile();
     if let Some(condition) = row.condition {
         match condition {
+            Condition::Dodge(_) => {
+                panic!("Didn't expect to use dodge for enemy row")
+            }
             Condition::Energy(_) => {
                 panic!("Didn't expect to use energy for enemy row")
             }
@@ -984,6 +1153,9 @@ fn resolve_enemy_action<T: EngineGameState>(
         | Action::Ablaze
         | Action::Teleport
         | Action::CallAssist
+        | Action::Backstab
+        | Action::BackstabTwice
+        | Action::Poison
         | Action::CallAssistTwice => {
             panic!(
                 "Action not implemented for enemy: {:?}",
@@ -1317,6 +1489,9 @@ fn try_prevent_action_with_reaction<T: EngineGameState>(
     let target_face = target_card.get_active_face();
     if let Some(reaction) = target_face.reaction {
         match reaction {
+            Reaction::Roll => {
+                // Do nothing
+            }
             Reaction::Standard(standard_reaction) => {
                 if standard_reaction.trigger == trigger {
                     return vec![get_standard_reaction_results(
@@ -1465,6 +1640,9 @@ fn attack_card_get_all_outcomes<T: EngineGameState>(
 
     if let Some(reaction) = target_face.reaction {
         match reaction {
+            Reaction::Roll => {
+                // Do nothing
+            }
             Reaction::Standard(standard_reaction) => {
                 results.push(get_standard_reaction_results(
                     state,
@@ -1661,7 +1839,7 @@ fn bottom_top_card<T: EngineGameState>(state: &mut T) {
 }
 
 // Utils
-pub fn is_game_winner(pile: &Pile) -> Option<Allegiance> {
+pub fn is_game_winner(pile: &Pile) -> WinType {
     let mut player_wins = true;
     let mut enemy_wins = true;
 
@@ -1672,13 +1850,13 @@ pub fn is_game_winner(pile: &Pile) -> Option<Allegiance> {
                 Allegiance::Hero => {
                     enemy_wins = false;
                     if !player_wins {
-                        return None;
+                        return WinType::Unresolved;
                     }
                 }
                 Allegiance::Baddie => {
                     player_wins = false;
                     if !enemy_wins {
-                        return None;
+                        return WinType::Unresolved;
                     }
                 }
                 Allegiance::Werewolf => (),
@@ -1687,11 +1865,11 @@ pub fn is_game_winner(pile: &Pile) -> Option<Allegiance> {
     }
 
     if player_wins {
-        Some(Allegiance::Hero)
+        WinType::Win
     } else if enemy_wins {
-        Some(Allegiance::Baddie)
+        WinType::Lose
     } else {
-        None
+        WinType::Unresolved
     }
 }
 
@@ -1896,7 +2074,7 @@ mod tests {
                 target: Target::Any,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(
@@ -1989,7 +2167,7 @@ mod tests {
                 target: Target::Any,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(
@@ -2042,7 +2220,7 @@ mod tests {
                 target: Target::Any,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(
@@ -2065,7 +2243,7 @@ mod tests {
                 target: Target::Any,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(
@@ -2152,12 +2330,12 @@ mod tests {
     fn test_game_over() {
         {
             let pile = string_to_pile("6D 3C 2C 5D 8C 1C 4D 7C 9C");
-            assert_eq!(is_game_winner(&pile), Some(Allegiance::Baddie));
+            assert_eq!(is_game_winner(&pile), WinType::Lose);
         }
 
         {
             let pile = string_to_pile("6C 3C 2C 5D 8C 1C 4D 7C 9C");
-            assert_eq!(is_game_winner(&pile), Some(Allegiance::Hero));
+            assert_eq!(is_game_winner(&pile), WinType::Win);
         }
     }
 
@@ -2351,7 +2529,7 @@ mod tests {
                 target: Target::Enemy,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         // When player inspires 24, 27 should swarm
@@ -2581,7 +2759,7 @@ mod tests {
                     target: Target::Ally,
                 },
                 0,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             assert_actual_vs_expected_piles(
@@ -2598,7 +2776,7 @@ mod tests {
                     target: Target::Any,
                 },
                 0,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             let futures = states_to_pile_set(&new_states);
@@ -2639,7 +2817,7 @@ mod tests {
                     target: Target::Any,
                 },
                 2,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             let futures = states_to_pile_set(&new_states);
@@ -2666,7 +2844,7 @@ mod tests {
                     target: Target::Ally,
                 },
                 2,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             let futures = states_to_pile_set(&new_states);
@@ -2690,7 +2868,7 @@ mod tests {
                     target: Target::Enemy,
                 },
                 2,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             let futures = states_to_pile_set(&new_states);
@@ -2713,7 +2891,7 @@ mod tests {
                     target: Target::Any,
                 },
                 2,
-                &NO_ENERGY_USED,
+                &NO_TARGETS,
             );
 
             let futures = states_to_pile_set(&new_states);
@@ -2745,7 +2923,7 @@ mod tests {
                 target: Target::Enemy,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         let futures = states_to_pile_set(&new_states);
@@ -2769,7 +2947,7 @@ mod tests {
                 target: Target::Ally,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         let futures = states_to_pile_set(&new_states);
@@ -2791,7 +2969,7 @@ mod tests {
                 target: Target::Enemy,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         let futures = states_to_pile_set(&new_states);
@@ -2815,7 +2993,7 @@ mod tests {
                 target: Target::Enemy,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         let futures = states_to_pile_set(&new_states);
@@ -3128,7 +3306,7 @@ mod tests {
                 target: Target::Enemy,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         let futures = states_to_pile_set(&new_states);
@@ -3363,7 +3541,7 @@ mod tests {
                 target: Target::Ally,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(
@@ -3388,7 +3566,7 @@ mod tests {
                 target: Target::Enemy,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(&new_states, vec!["21 23 6 19 20 9", "21 23 9 19 20 6"]);
@@ -3405,7 +3583,7 @@ mod tests {
                 target: Target::Any,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(
@@ -3441,7 +3619,7 @@ mod tests {
                 target: Target::Ally,
             },
             0,
-            &NO_ENERGY_USED,
+            &NO_TARGETS,
         );
 
         assert_actual_vs_expected_piles(

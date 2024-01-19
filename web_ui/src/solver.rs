@@ -42,7 +42,7 @@ pub enum SolverState {
 struct SolverWorkerState {
     model: Option<Model>,
     root_piles: Vec<Pile>,
-    a_star_solver: Option<AStarSolver>,
+    a_star_solver: Option<AStarSolver<Model>>,
     state: SolverState,
 }
 

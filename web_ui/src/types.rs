@@ -123,7 +123,7 @@ pub struct GameFrame {
     pub current_pile: Pile,
     pub event_history: Vec<Event>,
     pub available_moves: Vec<MoveOption>,
-    pub winner: Option<Allegiance>,
+    pub resolution: WinType,
     pub is_definite_win: bool,
 }
 

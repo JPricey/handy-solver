@@ -1,5 +1,5 @@
 use crate::game::*;
-use crate::solver::model::*;
+use crate::solver::model_t::ModelT;
 use crate::solver::tiny_pile::*;
 use crate::utils::*;
 use priq::PriorityQueue;
@@ -22,15 +22,17 @@ pub struct SolverState {
 // Stop if the next state in the queue has fscore > maxdepth + DEFAULT_F_SCORE_END_CUTOFF
 const DEFAULT_F_SCORE_END_CUTOFF_FROM_MAX: f32 = 20.0;
 
-pub struct AStarSolver {
+pub struct AStarSolver<M> {
     pub tiny_pile_converter: TinyPileConverter,
     pub seen_states: SeenMap,
     pub queue: PriorityQueue<f32, TinyPile>,
-    pub model: Model,
+    pub model: M,
     pub total_iters: usize,
     pub max_depth: DepthType,
     pub max_fscore: f32,
     pub fscore_depth_delta: f32,
+    pub g_bias: f32,
+    pub h_bias: f32,
     pub max_iters: usize,
     pub best_win: Option<TinyPile>,
 }
@@ -56,8 +58,8 @@ pub enum AStarIterResult {
     NewBest(TinyPile),
 }
 
-impl AStarSolver {
-    pub fn new(seed_piles: &[Pile], model: Model) -> Self {
+impl<M: ModelT> AStarSolver<M> {
+    pub fn new(seed_piles: &[Pile], model: M) -> Self {
         let start_pile = &seed_piles[0];
         let tiny_pile_converter = TinyPileConverter::new_from_pile(start_pile);
         let mut seen_states = SeenMap::new();
@@ -83,12 +85,19 @@ impl AStarSolver {
             queue,
             model,
             total_iters: 0,
+            g_bias: 1.0,
+            h_bias: 1.0,
             max_depth: default_max_depth,
             max_fscore: default_max_depth as f32 + fscore_depth_delta,
             fscore_depth_delta,
             max_iters: usize::MAX,
             best_win: None,
         }
+    }
+
+    pub fn set_g_bias(&mut self, g_bias: f32) {
+        self.g_bias = g_bias;
+        self.h_bias = 2.0 - g_bias;
     }
 
     pub fn set_max_iters(&mut self, max_iters: usize) {
@@ -144,27 +153,25 @@ impl AStarSolver {
         for state in new_states {
             let new_pile = state.get_pile().clone();
             let new_tiny_pile = self.tiny_pile_converter.pile_to_tiny_pile(&new_pile);
-            let maybe_winner = is_game_winner(&new_pile);
+            let resolution = is_game_winner(&new_pile);
 
-            if let Some(winner) = maybe_winner {
-                if winner == Allegiance::Hero {
-                    if child_depth < self.max_depth {
-                        self.best_win = Some(new_tiny_pile);
-                        self.set_max_depth(child_depth);
-                        self.clear_depth();
+            if resolution == WinType::Win {
+                if child_depth < self.max_depth {
+                    self.best_win = Some(new_tiny_pile);
+                    self.set_max_depth(child_depth);
+                    self.clear_depth();
 
-                        self.seen_states.insert(
-                            new_tiny_pile,
-                            SolverState {
-                                parent: Some(tiny_pile),
-                                depth: child_depth as DepthType,
-                            },
-                        );
-                        return AStarIterResult::NewBest(new_tiny_pile);
-                    }
-                } else {
-                    continue;
+                    self.seen_states.insert(
+                        new_tiny_pile,
+                        SolverState {
+                            parent: Some(tiny_pile),
+                            depth: child_depth as DepthType,
+                        },
+                    );
+                    return AStarIterResult::NewBest(new_tiny_pile);
                 }
+            } else if resolution == WinType::Lose {
+                continue;
             }
 
             if let Some(current_child_entry) = self.seen_states.get_mut(&new_tiny_pile) {
@@ -172,13 +179,13 @@ impl AStarSolver {
                     current_child_entry.depth = child_depth as DepthType;
                     current_child_entry.parent = Some(tiny_pile);
 
-                    let new_score = child_depth as f32 + self.model.score_pile(&new_pile);
+                    let new_score = self.g_bias * child_depth as f32 + self.h_bias * self.model.score_pile(&new_pile);
                     if new_score <= self.max_fscore {
                         self.queue.put(new_score, new_tiny_pile);
                     }
                 }
             } else {
-                let new_score = child_depth as f32 + self.model.score_pile(&new_pile);
+                let new_score = self.g_bias * child_depth as f32 + self.h_bias * self.model.score_pile(&new_pile);
                 if new_score <= self.max_fscore {
                     self.queue.put(new_score, new_tiny_pile);
                 }
@@ -255,8 +262,13 @@ impl AStarSolver {
     }
 
     pub fn print_solution_from_tiny(&self, tiny_pile: &TinyPile) {
-        let pile = self.tiny_pile_converter.tiny_pile_to_pile(tiny_pile);
+        let pile = self.tiny_pile_to_pile(tiny_pile);
         self.print_solution_from_pile(&pile);
+    }
+
+
+    pub fn tiny_pile_to_pile(&self, tiny_pile: &TinyPile) -> Pile {
+        self.tiny_pile_converter.tiny_pile_to_pile(tiny_pile)
     }
 
     pub fn unroll_state(&self, final_tiny_pile: TinyPile) -> Vec<Pile> {

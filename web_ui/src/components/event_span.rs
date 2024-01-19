@@ -72,12 +72,12 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::SkipArrow => {
+        Event::SkipHit(hit_type) => {
             view! { cx,
                 <span>
                     <TokenSpan
                         elements=vec![
-                            SpanItem::Text("Skip Arrow".to_owned()),
+                            SpanItem::Text(format!("Skip {}", hit_type)),
                         ]
                     />
                 </span>

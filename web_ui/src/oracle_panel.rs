@@ -61,7 +61,7 @@ pub fn OraclePanel(
         if current_frame.event_history.len() == 0 {
             is_game_winner(&current_frame.current_pile)
         } else {
-            None
+            WinType::Unresolved
         }
     });
 
@@ -99,7 +99,7 @@ pub fn OraclePanel(
             let current_frame = current_frame.get();
 
             // If the game is already over, don't compute anything
-            if current_frame.event_history.len() == 0 && is_game_winner(&current_frame.root_pile).is_some() {
+            if current_frame.event_history.len() == 0 && is_game_winner(&current_frame.root_pile).is_over() {
                 trigger_clear_root_piles();
                 return;
             }
@@ -111,7 +111,7 @@ pub fn OraclePanel(
 
             // If a next pile is winning, don't bother the solver
             for candidate_root_pile in &next_root_piles {
-                if is_game_winner(candidate_root_pile) == Some(Allegiance::Hero) {
+                if is_game_winner(candidate_root_pile) == WinType::Win {
                     set_raw_ai_path.set(vec![candidate_root_pile.clone()]);
                     trigger_clear_root_piles();
                     return;
@@ -265,12 +265,12 @@ pub fn OraclePanel(
     });
 
     let path_text = move || {
-        if let Some(game_winner) = game_winner.get() {
-            return match game_winner {
-                Allegiance::Hero => format!(":)"),
-                _ => format!(":("),
-            };
-        };
+        let resolution = game_winner.get();
+        if resolution == WinType::Win {
+            return ":)".to_owned();
+        } else if resolution == WinType::Lose {
+            return ":(".to_owned();
+        }
 
         if let Some(path) = best_path.get() {
             let win_in_text = format!("Win in {}.", path.len());
@@ -330,7 +330,7 @@ pub fn OraclePanel(
                 </div>
                 <div>
                     <Show
-                        when=move || next_event.get().is_some() && game_winner.get().is_none()
+                        when=move || next_event.get().is_some() && !game_winner.get().is_over()
                         fallback=|_| ()
                     >
                         {move || view!{cx,

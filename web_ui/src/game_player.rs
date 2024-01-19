@@ -325,10 +325,10 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
 
     let end_game_text = move || {
         let cs = current_state.get();
-        match cs.winner {
-            Some(Allegiance::Hero) => "You Win!!",
-            Some(Allegiance::Baddie) => "You Lost :(",
-            _ => "Something went wrong",
+        match cs.resolution {
+            WinType::Win => "You Win!!",
+            WinType::Lose => "You Lost :(",
+            WinType::Unresolved => "Something went wrong",
         }
     };
 
@@ -615,7 +615,7 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
         </div>
 
         <Show
-            when=move || current_state.get().winner.is_some()
+            when=move || current_state.get().resolution.is_over()
             fallback=move |_| ()
         >
             <div

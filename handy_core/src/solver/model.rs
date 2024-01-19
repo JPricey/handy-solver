@@ -8,12 +8,13 @@ use std::collections::{BTreeMap, HashSet};
 use vectorize_derive::*;
 use crate::solver::model_t::ModelT;
 
-pub const HEROS: [Class; 5] = [
+pub const HEROS: [Class; 6] = [
     Class::Warrior,
     Class::Huntress,
     Class::Pyro,
     Class::Cursed,
     Class::Beastmaster,
+    Class::Assassin,
 ];
 
 pub const BADDIES: [Class; 5] = [

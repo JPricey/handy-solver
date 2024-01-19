@@ -30,16 +30,14 @@ impl IdaSolver {
 
     fn _solve_recursive(&mut self, pile: &Pile, depth: DepthType) -> NodeResult {
         self.total_iters += 1;
-        if let Some(winner) = is_game_winner(pile) {
-            return match winner {
-                Allegiance::Hero => {
-                    self.max_depth = depth;
-                    println!("found solution at depth {}", depth);
-                    self.f_score_cutoff = self.max_depth as f32 + F_CUTOFF;
-                    NodeResult::Win(vec![pile.clone()])
-                }
-                _ => NodeResult::Loss,
-            };
+        let resolution = is_game_winner(pile);
+        if resolution == WinType::Win {
+            self.max_depth = depth;
+            println!("found solution at depth {}", depth);
+            self.f_score_cutoff = self.max_depth as f32 + F_CUTOFF;
+            return NodeResult::Win(vec![pile.clone()]);
+        } else if resolution == WinType::Lose {
+            return NodeResult::Loss;
         }
 
         let child_depth = depth + 1;
@@ -68,7 +66,7 @@ impl IdaSolver {
 
             let child_result = self._solve_recursive(&child_pile, child_depth);
             match child_result {
-                NodeResult::Loss => (),   // Do nothing
+                NodeResult::Loss => (), // Do nothing
                 NodeResult::Win(mut win_path) => {
                     win_path.push(pile.clone());
                     if self.max_depth == child_depth {
@@ -92,4 +90,3 @@ impl IdaSolver {
         dbg!(result);
     }
 }
-

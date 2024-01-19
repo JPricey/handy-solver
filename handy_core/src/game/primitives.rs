@@ -8,8 +8,8 @@ use strum_macros;
 
 pub type CardId = u8;
 pub type ConditionCountType = u8;
-pub type EnergyId = usize;
-pub type EnergyIds = Vec<EnergyId>;
+pub type TargetId = usize;
+pub type TargetIds = Vec<TargetId>;
 
 // pub type VecPile = Vec<CardPtr>;
 // pub type BoxSlicePile = Box<[CardPtr]>;
@@ -89,6 +89,9 @@ pub enum Action {
     Manouver,
     Revive,
     Claws(Range),
+    Backstab,
+    BackstabTwice,
+    Poison,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -107,6 +110,7 @@ pub enum SelfAction {
 pub enum Condition {
     Energy(ConditionCountType),
     Rage(ConditionCountType),
+    Dodge(ConditionCountType),
     ExhaustedAllies(usize),
 }
 
@@ -139,22 +143,26 @@ pub enum Reaction {
     Standard(StandardReaction),
     Assist(RequestAssistReaction),
     WhenHit(WhenHitType),
+    Roll,
 }
 
 bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
     pub struct Features: u8 {
-        const NoFeature = 0b00000000;
-        const Weight    = 0b00000001;
-        const Trap      = 0b00000010;
-        const Web       = 0b00000100;
-        const Venom     = 0b00001000;
-        const Energy    = 0b00010000;
+        const NoFeature     = 0b00000000;
+        const Weight        = 0b00000001;
+        const Trap          = 0b00000010;
+        const Web           = 0b00000100;
+        const Venom         = 0b00001000;
+        const Energy        = 0b00010000;
+        const Wall          = 0b00100000;
+        const Invulnerable  = 0b01000000;
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Row {
+    pub is_mandatory: bool,
     pub condition: Option<Condition>,
     pub actions: Vec<WrappedAction>,
     pub mandatory: Option<SelfAction>,
@@ -204,11 +212,13 @@ pub enum Class {
     Pyro,
     Cursed,
     Beastmaster,
+    Assassin,
     Ogre,
     Vampire,
     Spider,
     Demon,
     Flora,
+    Wall,
 }
 
 #[derive(Debug)]
@@ -242,6 +252,9 @@ pub enum HitType {
     Claw,
     Ablaze,
     Fireball,
+    Backstab,
+    Poison,
+    Roll,
 }
 
 #[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -261,7 +274,7 @@ pub enum Event {
     // Control flow
     PickRow(usize, usize, CardPtr), // row_idx, card_idx, card_ptr
     SkipTurn(CardPtr),
-    SkipArrow,
+    SkipHit(HitType),
     BottomCard,
 
     SkipAction(CardPtr, WrappedAction),
@@ -309,6 +322,19 @@ pub enum Event {
     UseActionAssistCard(usize, CardPtr), // card_idx, card_ptr
     UseActionAssistRow(usize, CardPtr, usize), // card_idx, card_ptr, row
     SkipReactActionAssist,
+}
+
+#[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum WinType {
+    Win,
+    Lose,
+    Unresolved,
+}
+
+impl WinType {
+    pub fn is_over(&self) -> bool {
+        *self != WinType::Unresolved
+    }
 }
 
 #[cfg(test)]

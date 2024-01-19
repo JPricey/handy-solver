@@ -108,7 +108,7 @@ pub fn format_event_for_cli(event: &Event) -> String {
             card_ptr,
             format_wrapped_action(wrapped_action)
         ),
-        Event::SkipArrow => format!("Skip Arrow"),
+        Event::SkipHit(hit_type) => format!("Skip {:?}", hit_type),
         Event::AttackCard(card_idx, card_ptr, hit_type) => {
             format!("{:?}@{}: Targetted ({:?})", card_ptr, card_idx, hit_type)
         }
@@ -219,6 +219,9 @@ pub fn action_simple_name(wrapped_action: &WrappedAction) -> String {
         Action::Manouver => "Manouver".to_owned(),
         Action::Revive => "Revive".to_owned(),
         Action::Claws(_) => "Claw".to_owned(),
+        Action::Backstab => "Backstab".to_owned(),
+        Action::BackstabTwice => "Backstabx2".to_owned(),
+        Action::Poison => "Poison".to_owned(),
     }
 }
 

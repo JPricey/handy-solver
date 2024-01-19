@@ -91,8 +91,9 @@ fn card_activation_result_via_all_outcomes(pile: &Pile) -> Pile {
 
 pub fn start_cli_game(mut active_pile: Pile, is_interactive_mode: bool) {
     loop {
-        if let Some(winner) = is_game_winner(&active_pile) {
-            println!("Game is over. {:?} wins!", winner);
+        let resolution = is_game_winner(&active_pile);
+        if resolution.is_over() {
+            println!("You {:?}", resolution);
             break;
         }
 

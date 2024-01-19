@@ -147,15 +147,15 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Skip This Action".to_owned());
             }
-            Event::SkipArrow => {
+            Event::SkipHit(hit_type) => {
                 assert!(new_interaction_options.skip_button.len() == 0);
                 new_interaction_options.skip_button.push(SkipButton {
                     move_option: available_move.clone(),
-                    text: format!("Skip Second Arrow"),
+                    text: format!("Skip {:?}", hit_type),
                 });
                 new_interaction_options
                     .hints
-                    .insert("Skip This Action".to_owned());
+                    .insert(format!("Skip {:?}", hit_type));
             }
             Event::Inspire(_, card_ptr) => {
                 add_clickable_card_option(
@@ -604,7 +604,7 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bo
             if !results.contains(&move_option) {
                 results.push(move_option);
             }
-            if is_game_winner(&state.pile) != Some(Allegiance::Hero) {
+            if is_game_winner(&state.pile) != WinType::Win {
                 is_definite_win = false;
             }
         }
@@ -616,11 +616,11 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bo
 }
 
 pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
-    let winner = is_game_winner(&pile);
-    let (available_moves, is_definite_win) = if winner.is_some() {
-        (Vec::new(), false)
-    } else {
+    let resolution = is_game_winner(&pile);
+    let (available_moves, is_definite_win) = if resolution == WinType::Unresolved {
         find_next_moves(&pile, &Vec::new())
+    } else {
+        (Vec::new(), false)
     };
 
     GameFrame {
@@ -628,7 +628,7 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
         current_pile: pile.clone(),
         event_history: Vec::new(),
         available_moves,
-        winner,
+        resolution,
         is_definite_win,
     }
 }
@@ -644,7 +644,7 @@ pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> Gam
         event_history: new_history,
         current_pile: option.next_pile.clone(),
         available_moves,
-        winner: None,
+        resolution: WinType::Unresolved,
         is_definite_win,
     }
 }

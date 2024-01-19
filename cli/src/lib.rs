@@ -1,11 +1,15 @@
+pub mod parsers;
 pub mod paths;
+pub mod pile_randomizers;
 pub mod run_a_star;
 pub mod training_utils;
-pub mod pile_randomizers;
+pub mod generate_helpers;
 
+pub use parsers::*;
 pub use paths::*;
-pub use training_utils::*;
 pub use pile_randomizers::*;
+pub use training_utils::*;
+pub use generate_helpers::*;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -31,21 +35,23 @@ pub fn get_datetime_stamp() -> String {
                 .required(true)
                 .args(&["pile", "classes"]),
         ))]
-struct StandardArgs {
+pub struct StandardArgs {
     #[clap(short, long, value_parser=string_to_pile_result)]
-    pile: Option<Pile>,
+    pub pile: Option<Pile>,
     #[clap(short, long, num_args = 2)]
-    classes: Option<Vec<Class>>,
+    pub classes: Option<Vec<Class>>,
     #[clap(short, long)]
-    seed: Option<String>,
+    pub seed: Option<String>,
+    #[clap(short, long)]
+    pub g_bias: Option<f32>,
 }
 
-fn get_starting_pile_from_args(args: StandardArgs) -> Pile {
-    if let Some(pile) = args.pile {
+pub fn get_starting_pile_from_args(args: &StandardArgs) -> Pile {
+    if let Some(pile) = args.pile.clone() {
         pile
     } else {
-        let classes = args.classes.unwrap();
-        let mut rng: Box<dyn RngCore> = if let Some(seed) = args.seed {
+        let classes = args.classes.clone().unwrap();
+        let mut rng: Box<dyn RngCore> = if let Some(seed) = args.seed.clone() {
             Box::new(Seeder::from(seed).make_rng::<Pcg64>())
         } else {
             Box::new(thread_rng())
@@ -57,7 +63,7 @@ fn get_starting_pile_from_args(args: StandardArgs) -> Pile {
 
 pub fn get_starting_pile() -> Pile {
     let args = StandardArgs::parse();
-    get_starting_pile_from_args(args)
+    get_starting_pile_from_args(&args)
 }
 
 pub fn get_model_for_pile(pile: &Pile) -> Model {
@@ -101,7 +107,7 @@ mod tests {
     fn test_classes_with_seed() {
         let args =
             StandardArgs::parse_from(["cmd", "--classes", "warrior", "ogre", "--seed", "abc"]);
-        let pile = get_starting_pile_from_args(args);
+        let pile = get_starting_pile_from_args(&args);
         assert_eq!(pile, string_to_pile("3A 9A 4A 1A 5A 7A 2A 8A 6A"));
     }
 }

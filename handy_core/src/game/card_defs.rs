@@ -43,6 +43,7 @@ impl CharBuilder {
 
 fn row() -> Row {
     Row {
+        is_mandatory: false,
         condition: None,
         mandatory: None,
         actions: vec![],
@@ -62,6 +63,11 @@ impl Row {
 
     fn energy_cost(mut self, cost: ConditionCountType) -> Self {
         self.condition = Some(Condition::Energy(cost));
+        self
+    }
+
+    fn dodge_cost(mut self, cost: ConditionCountType) -> Self {
+        self.condition = Some(Condition::Dodge(cost));
         self
     }
 
@@ -413,6 +419,35 @@ impl Row {
         });
         self
     }
+
+    fn backstab_any(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Backstab,
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn backstab_any_twice(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::BackstabTwice,
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn poison_any(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Poison,
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn is_mandatory(mut self) -> Self {
+        self.is_mandatory = true;
+        self
+    }
 }
 
 fn side(health: Health) -> FaceDef {
@@ -457,6 +492,13 @@ impl FaceDef {
         }))
     }
 
+    fn block_to_flip(self) -> Self {
+        self.reaction(Reaction::Standard(StandardReaction {
+            trigger: ReactionTrigger::Block,
+            outcome: Some(SelfAction::Flip),
+        }))
+    }
+
     fn block_perm(self) -> Self {
         self.reaction(Reaction::Standard(StandardReaction {
             trigger: ReactionTrigger::Block,
@@ -464,7 +506,7 @@ impl FaceDef {
         }))
     }
 
-    fn dodge_to_turn(self) -> Self {
+    fn dodge_to_rotate(self) -> Self {
         self.reaction(Reaction::Standard(StandardReaction {
             trigger: ReactionTrigger::Dodge,
             outcome: Some(SelfAction::Rotate),
@@ -478,9 +520,7 @@ impl FaceDef {
     }
 
     fn call_assist_perm(self) -> Self {
-        self.reaction(Reaction::Assist(RequestAssistReaction {
-            outcome: None,
-        }))
+        self.reaction(Reaction::Assist(RequestAssistReaction { outcome: None }))
     }
 
     fn on_hit_reaction(self, actions: WhenHitType) -> Self {
@@ -517,6 +557,10 @@ impl FaceDef {
             assist_cost: SelfAction::Flip,
         });
         self
+    }
+
+    fn roll(self) -> Self {
+        self.reaction(Reaction::Roll)
     }
 
     fn add_row(mut self, row: Row) -> Self {
@@ -1014,7 +1058,7 @@ impl CardDefs {
                 11,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
-                        .dodge_to_turn()
+                        .dodge_to_rotate()
                         .add_row(row()
                                  .arrow_any()
                                  .rotate()
@@ -1066,7 +1110,7 @@ impl CardDefs {
                 12,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
-                        .dodge_to_turn()
+                        .dodge_to_rotate()
                         .add_row(row()
                                  .manouver()
                                  .quicken_enemy(2)
@@ -1169,7 +1213,7 @@ impl CardDefs {
                 14,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
-                        .dodge_to_turn()
+                        .dodge_to_rotate()
                         .add_row(row()
                                  .arrow_any()
                                  .rotate()
@@ -3028,6 +3072,464 @@ impl CardDefs {
                                  .push_enemy(2)
                                  .push_enemy(2)
                                  )
+                        ,
+                },
+            ));
+        }
+
+        {
+            let assassin = CharBuilder::new(Class::Assassin, Allegiance::Hero);
+            card_defs.register_card(assassin.card(
+                46,
+                enum_map! {
+                    FaceKey::A => side(Health::Half)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .backstab_any_twice()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .quicken_ally(2)
+                        )
+                        .add_row(row()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .delay_ally(2)
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .roll()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .delay_ally(1)
+                                .manouver()
+                        )
+                        .add_row(row()
+                                .quicken_ally(1)
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .flip()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .manouver()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(assassin.card(
+                47,
+                enum_map! {
+                    FaceKey::A => side(Health::Half)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .delay_ally(1)
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .roll()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .delay_ally(1)
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(4)
+                                .revive_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .backstab_any_twice()
+                        )
+                        .add_row(row()
+                                .delay_ally(1)
+                                .delay_enemy(1)
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .delay_ally(1)
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(assassin.card(
+                48,
+                enum_map! {
+                    FaceKey::A => side(Health::Half)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .delay_enemy(1)
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .delay_ally(1)
+                                .delay_enemy(1)
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .teleport_ally()
+                                .teleport_enemy()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .quicken_enemy(1)
+                                .delay_enemy(1)
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .roll()
+                        .add_row(row()
+                                .dodge_cost(4)
+                                .revive_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .delay_enemy(1)
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(assassin.card(
+                49,
+                enum_map! {
+                    FaceKey::A => side(Health::Half)
+                        .roll()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .quicken_ally(2)
+                                .delay_enemy(2)
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .delay_ally(2)
+                                .manouver()
+                                .quicken_ally(2)
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .poison_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .delay_enemy(1)
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .delay_enemy(2)
+                        )
+                        .add_row(row()
+                                 .manouver()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(4)
+                                .revive_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .backstab_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .delay_ally(1)
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(assassin.card(
+                50,
+                enum_map! {
+                    FaceKey::A => side(Health::Half)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .delay_enemy(1)
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .poison_any()
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .quicken_enemy(1)
+                                .delay_ally(1)
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .roll()
+                        .add_row(row()
+                                .dodge_cost(3)
+                                .flip()
+                        )
+                        .add_row(row()
+                                .dodge_cost(1)
+                                .quicken_ally(2)
+                        )
+                        .add_row(row()
+                                 .manouver()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .dodge_to_rotate()
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .backstab_any()
+                        )
+                        .add_row(row()
+                                .dodge_cost(2)
+                                .poison_any()
+                        )
+                        .add_row(row()
+                                .manouver()
+                        )
+                        ,
+                },
+            ));
+        }
+
+        {
+            let wall = CharBuilder::new(Class::Wall, Allegiance::Baddie);
+            card_defs.register_card(wall.card(
+                51,
+                enum_map! {
+                    FaceKey::A => side(Health::Empty)
+                        .feature(Features::Wall)
+                        .feature(Features::Invulnerable)
+                        .add_row(row()
+                                .pull_ally_inf()
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Empty)
+                        .feature(Features::Wall)
+                        .feature(Features::Invulnerable)
+                        .block_perm()
+                        .add_row(row()
+                                .heal_ally()
+                                .flip()
+                                .is_mandatory()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .feature(Features::Wall)
+                        .feature(Features::Invulnerable)
+                        .add_row(row()
+                                .death()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::Wall)
+                        .feature(Features::Invulnerable)
+                        .block_perm()
+                        .add_row(row()
+                                .push_enemy_inf()
+                                .pull_ally_inf()
+                                .rotate()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(wall.card(
+                52,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::Weight)
+                        .block_to_rotate()
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .block_to_flip()
+                        .add_row(row()
+                                .rotate()
+                                .is_mandatory()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty),
+                    FaceKey::D => side(Health::Half)
+                        .feature(Features::Weight)
+                        .block_to_rotate()
+                        .add_row(row()
+                                .flip()
+                                .is_mandatory()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(wall.card(
+                53,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::Weight)
+                        .block_to_rotate()
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .block_to_flip()
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .add_row(row()
+                                .rotate()
+                                .is_mandatory()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .feature(Features::Weight)
+                        .block_to_rotate()
+                        .add_row(row()
+                                .flip()
+                                .is_mandatory()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(wall.card(
+                54,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .block_to_rotate()
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::Weight)
+                        .block_to_flip()
+                        .add_row(row()
+                                .rotate()
+                                .is_mandatory()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .add_row(row()
+                                .rotate()
+                                .is_mandatory()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .block_to_rotate()
                         ,
                 },
             ));

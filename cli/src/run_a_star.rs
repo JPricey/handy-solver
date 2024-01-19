@@ -6,6 +6,7 @@ pub fn run_a_star_solver(
     start_pile: Pile,
     max_depth: Option<DepthType>,
     max_iters: Option<usize>,
+    g_bias: Option<f32>,
 ) -> Vec<Pile> {
     let model = get_model_for_pile(&start_pile);
 
@@ -15,6 +16,9 @@ pub fn run_a_star_solver(
     }
     if let Some(def_max_depth) = max_depth {
         a_star_solver.set_max_depth(def_max_depth);
+    }
+    if let Some(g_bias) = g_bias {
+        a_star_solver.set_g_bias(g_bias);
     }
     let mut count: usize = 0;
     loop {

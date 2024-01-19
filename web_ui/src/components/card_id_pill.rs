@@ -17,11 +17,13 @@ fn card_ptr_to_hex(card_ptr: CardPtr) -> String {
             }
         }
         Class::Beastmaster => "#463723".to_owned(),
+        Class::Assassin => "#ca4f96".to_owned(),
         Class::Ogre => "#7b4627".to_owned(),
         Class::Vampire => "#478577".to_owned(),
         Class::Spider => "#726490".to_owned(),
         Class::Demon => "#921833".to_owned(),
         Class::Flora => "#203176".to_owned(),
+        Class::Wall => "#463723".to_owned(),
         // _ => "#000000".to_owned(),
     }
 }
