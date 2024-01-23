@@ -671,7 +671,7 @@ fn resolve_player_action<T: EngineGameState>(
                     HitType::Backstab,
                 ));
                 let post_hit_states =
-                    hurt_card_get_all_outcomes(&pre_hit_state, target_idx, HitType::Backstab);
+                    unblockable_hit_get_all_outcomes(&pre_hit_state, target_idx, HitType::Backstab);
 
                 results.extend(post_hit_states);
             }
@@ -693,7 +693,7 @@ fn resolve_player_action<T: EngineGameState>(
                     HitType::Backstab,
                 ));
                 let post_hit_states_1 =
-                    hurt_card_get_all_outcomes(&pre_hit_state_1, target_idx_1, HitType::Backstab);
+                    unblockable_hit_get_all_outcomes(&pre_hit_state_1, target_idx_1, HitType::Backstab);
 
                 for first_backstab_state in post_hit_states_1 {
                     for j in 0..target_ids.len() {
@@ -712,7 +712,7 @@ fn resolve_player_action<T: EngineGameState>(
                                 first_backstab_state.get_pile()[target_idx_2],
                                 HitType::Backstab,
                             ));
-                        let post_hit_states_2 = hurt_card_get_all_outcomes(
+                        let post_hit_states_2 = unblockable_hit_get_all_outcomes(
                             &pre_hit_state_2,
                             target_idx_2,
                             HitType::Backstab,
@@ -721,7 +721,8 @@ fn resolve_player_action<T: EngineGameState>(
                         results.extend(post_hit_states_2);
                     }
 
-                    results.push(first_backstab_state.append_event(Event::SkipHit(HitType::Backstab)));
+                    results
+                        .push(first_backstab_state.append_event(Event::SkipHit(HitType::Backstab)));
                 }
             }
         }
@@ -753,7 +754,7 @@ fn resolve_player_action<T: EngineGameState>(
                 ));
 
                 let post_hit_states =
-                    hurt_card_get_all_outcomes(&pre_hit_state, target_idx, HitType::Poison);
+                    unblockable_hit_get_all_outcomes(&pre_hit_state, target_idx, HitType::Poison);
                 results.extend(post_hit_states);
             }
         }
@@ -932,7 +933,11 @@ fn _move_card_inner<T: EngineGameState>(
         let mut new_state_with_move = new_state
             .clone()
             .append_event(Event::MoveResult(move_type, distance_since_last_event + 1))
-            .append_event(Event::AttackCard(target_idx, new_state.get_pile()[target_idx], HitType::Roll));
+            .append_event(Event::AttackCard(
+                target_idx,
+                new_state.get_pile()[target_idx],
+                HitType::Roll,
+            ));
 
         perform_mandatory_action(&mut new_state_with_move, SelfAction::Rotate, swap_with_idx);
 
@@ -1625,6 +1630,37 @@ fn attack_all_in_range<T: EngineGameState>(
     }
 }
 
+fn damage_card_with_on_hit_row<T: EngineGameState>(
+    state: &T,
+    target_idx: usize,
+    hit_type: HitType,
+    row: &Row,
+) -> Vec<T> {
+    let mut results: Vec<T> = Vec::new();
+    let pile = state.get_pile();
+    let target_card = pile[target_idx];
+    let target_face = target_card.get_active_face();
+
+    let reaction_results = resolve_enemy_row(
+        &state
+            .clone()
+            .append_event(Event::OnHurt(target_idx, target_card)),
+        target_face.allegiance,
+        &row,
+        target_idx,
+        true,
+    );
+
+    for reaction_result in reaction_results {
+        let post_hurt_results = hurt_card_get_all_outcomes(&reaction_result, target_idx, hit_type);
+        for hurt_result in post_hurt_results {
+            results.push(hurt_result);
+        }
+    }
+
+    results
+}
+
 fn attack_card_get_all_outcomes<T: EngineGameState>(
     state: &T,
     target_idx: usize,
@@ -1670,24 +1706,43 @@ fn attack_card_get_all_outcomes<T: EngineGameState>(
                 }
             }
             Reaction::WhenHit(row) => {
-                let reaction_results = resolve_enemy_row(
-                    &state
-                        .clone()
-                        .append_event(Event::OnHurt(target_idx, target_card)),
-                    target_face.allegiance,
-                    &row,
-                    target_idx,
-                    true,
-                );
-
-                for reaction_result in reaction_results {
-                    let post_hurt_results =
-                        hurt_card_get_all_outcomes(&reaction_result, target_idx, hit_type);
-                    for hurt_result in post_hurt_results {
-                        results.push(hurt_result);
-                    }
-                }
+                results.extend(damage_card_with_on_hit_row(
+                    state, target_idx, hit_type, row,
+                ));
             }
+        }
+
+        if results.len() > 0 && is_reaction_forced {
+            return results;
+        }
+    }
+
+    results.extend(hurt_card_get_all_outcomes(state, target_idx, hit_type));
+
+    results
+}
+
+fn unblockable_hit_get_all_outcomes<T: EngineGameState>(
+    state: &T,
+    target_idx: usize,
+    hit_type: HitType,
+) -> Vec<T> {
+    let mut results: Vec<T> = vec![];
+
+    let pile = state.get_pile();
+    let target_card = pile[target_idx];
+    let target_face = target_card.get_active_face();
+    let target_allegiance = target_face.allegiance;
+    let is_reaction_forced = target_allegiance != Allegiance::Hero;
+
+    if let Some(reaction) = target_face.reaction {
+        match reaction {
+            Reaction::WhenHit(row) => {
+                results.extend(damage_card_with_on_hit_row(
+                    state, target_idx, hit_type, row,
+                ));
+            }
+            _ => {}
         }
 
         if results.len() > 0 && is_reaction_forced {
@@ -1802,6 +1857,23 @@ fn move_card_to_end<T: EngineGameState>(
         let moved_card = state.get_pile()[target_idx];
         let moved_over_card = state.get_pile()[swap_with_idx];
         state.get_pile_mut().swap(target_idx, swap_with_idx);
+
+        if moved_card.get_active_face().reaction == Some(Reaction::Roll) {
+            let mut new_state_with_move = state.clone();
+
+            new_state_with_move.mut_append_event(Event::AttackCard(
+                swap_with_idx,
+                moved_over_card,
+                HitType::Roll,
+            ));
+            new_state_with_move.mut_append_event(Event::EndPileMoveResult(move_type));
+            perform_mandatory_action(&mut new_state_with_move, SelfAction::Rotate, swap_with_idx);
+
+            let hit_options =
+                attack_card_get_all_outcomes(&new_state_with_move, target_idx, HitType::Roll);
+
+            results_agg.extend(hit_options);
+        }
 
         target_idx = swap_with_idx;
 

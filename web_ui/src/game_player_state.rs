@@ -291,14 +291,14 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Perform Move".to_string());
             }
-            Event::AttackCard(_, card_ptr, _) => {
+            Event::AttackCard(_, card_ptr, hit_type) => {
                 add_clickable_card_option(
                     card_ptr.get_card_id(),
                     ClickableCardReason::Move(available_move.clone()),
                 );
                 new_interaction_options
                     .hints
-                    .insert("Target Attack".to_owned());
+                    .insert(format!("Target {:?}", hit_type));
             }
             Event::Block(_, card_ptr, self_action) => {
                 // If this card is getting damaged, show the block as both a damage and card option
