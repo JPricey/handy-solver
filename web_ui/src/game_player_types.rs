@@ -64,7 +64,7 @@ pub struct RenderRowOption {
     pub placement_pct: WindowUnit,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DamageCardOption {
     pub card_ptr: CardPtr,
     pub move_option: MoveOption,

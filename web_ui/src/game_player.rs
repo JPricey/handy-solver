@@ -481,7 +481,7 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                                 interaction_getter.get().damage_card_options
                             }
                         }
-                        key=|e| e.card_ptr view=move |cx, damage_option| {
+                        key=|e| e.clone() view=move |cx, damage_option| {
                             view! { cx,
                                 <div
                                     style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}

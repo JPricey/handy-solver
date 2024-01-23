@@ -721,7 +721,7 @@ fn resolve_player_action<T: EngineGameState>(
                         results.extend(post_hit_states_2);
                     }
 
-                    results.push(first_backstab_state.append_event(Event::SkipHit(HitType::Arrow)));
+                    results.push(first_backstab_state.append_event(Event::SkipHit(HitType::Backstab)));
                 }
             }
         }

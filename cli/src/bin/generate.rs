@@ -1,16 +1,14 @@
 use cli::run_a_star::run_a_star_solver;
 use cli::*;
 use handy_core::game::*;
-use handy_core::utils::string_to_pile;
+// use handy_core::utils::string_to_pile;
 use rand::thread_rng;
 
 const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 8_000_000;
 
 fn generate_example(hero: Class, monster: Class) {
     let mut rng = thread_rng();
-    // let start_pile = get_random_pile_matching_stats(hero, monster, 30, 30, &mut rng);
-
-    let start_pile = string_to_pile("42C, 46A, 49D, 43B, 48C, 47B, 45B, 50D, 44B");
+    let start_pile = get_random_pile_matching_stats(hero, monster, 30, 30, &mut rng);
 
     println!(
         "{}, Starting new pile {hero:?} v {monster:?}: {:?}",
