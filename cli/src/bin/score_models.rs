@@ -5,6 +5,7 @@ use cli::DepthModeTrainingExample;
 use handy_core::solver::Matchup;
 use handy_core::solver::BADDIES;
 use handy_core::solver::HEROS;
+// use handy_core::game::Class;
 use serde_jsonlines::json_lines;
 
 fn main() {
