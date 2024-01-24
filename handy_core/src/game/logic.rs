@@ -349,7 +349,7 @@ fn resolve_player_action<T: EngineGameState>(
                 if first_card
                     .get_active_face()
                     .features
-                    .intersects(Features::Weight)
+                    .intersects(Features::Weight | Features::Invulnerable)
                 {
                     continue;
                 }
@@ -370,7 +370,7 @@ fn resolve_player_action<T: EngineGameState>(
                     if second_card
                         .get_active_face()
                         .features
-                        .intersects(Features::Weight)
+                        .intersects(Features::Weight | Features::Invulnerable)
                     {
                         continue;
                     }
@@ -573,6 +573,7 @@ fn resolve_player_action<T: EngineGameState>(
                     target_idx,
                     max_move_amount as i32,
                     MoveType::Quicken,
+                    Allegiance::Hero,
                 );
                 results.extend(move_results);
             }
@@ -599,6 +600,7 @@ fn resolve_player_action<T: EngineGameState>(
                     target_idx,
                     max_move_amount as i32,
                     MoveType::Delay,
+                    Allegiance::Hero,
                 );
                 results.extend(move_results);
             }
@@ -692,8 +694,11 @@ fn resolve_player_action<T: EngineGameState>(
                     pile[target_idx_1],
                     HitType::Backstab,
                 ));
-                let post_hit_states_1 =
-                    unblockable_hit_get_all_outcomes(&pre_hit_state_1, target_idx_1, HitType::Backstab);
+                let post_hit_states_1 = unblockable_hit_get_all_outcomes(
+                    &pre_hit_state_1,
+                    target_idx_1,
+                    HitType::Backstab,
+                );
 
                 for first_backstab_state in post_hit_states_1 {
                     for j in 0..target_ids.len() {
@@ -821,12 +826,13 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
     target_idx: usize,
     moves_remaining: i32,
     move_type: MoveType,
+    source_allegiance: Allegiance,
 ) -> Vec<T> {
     assert!(moves_remaining >= 1);
     if state.get_pile()[target_idx]
         .get_active_face()
         .features
-        .intersects(Features::Weight)
+        .intersects(Features::Weight | Features::Invulnerable)
     {
         return vec![];
     }
@@ -845,6 +851,7 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
         0,
         0,
         move_type,
+        source_allegiance,
         &mut results_agg,
     );
 
@@ -876,6 +883,7 @@ fn _move_card_inner<T: EngineGameState>(
     distance_so_far: usize,
     distance_since_last_event: usize,
     move_type: MoveType,
+    source_allegiance: Allegiance,
     results_agg: &mut Vec<(usize, T)>,
 ) {
     assert!(distance_remaining >= 1);
@@ -884,9 +892,17 @@ fn _move_card_inner<T: EngineGameState>(
         MoveType::Delay => 1,
         MoveType::Quicken => -1,
     };
+
     let swap_with_idx = (target_idx as i32 + direction) as usize;
     let moved_card = pile[target_idx];
     let moved_over_card = pile[swap_with_idx];
+    let moved_over_face = moved_over_card.get_active_face();
+
+    if moved_over_face.allegiance != source_allegiance
+        && moved_over_face.features.intersects(Features::Wall)
+    {
+        return;
+    }
 
     let mut new_state = state.clone();
     new_state.get_pile_mut().swap(target_idx, swap_with_idx);
@@ -909,7 +925,7 @@ fn _move_card_inner<T: EngineGameState>(
                     && !hit_option.get_pile()[swap_with_idx]
                         .get_active_face()
                         .features
-                        .intersects(Features::Weight)
+                        .intersects(Features::Weight | Features::Invulnerable)
                 {
                     _move_card_inner(
                         &hit_option,
@@ -918,6 +934,7 @@ fn _move_card_inner<T: EngineGameState>(
                         distance_so_far + 1,
                         0,
                         move_type,
+                        source_allegiance,
                         results_agg,
                     );
                 }
@@ -973,6 +990,7 @@ fn _move_card_inner<T: EngineGameState>(
             distance_so_far + 1,
             distance_since_last_event + 1,
             move_type,
+            source_allegiance,
             results_agg,
         );
     }
@@ -1049,8 +1067,13 @@ fn resolve_enemy_turn_no_swarm<T: EngineGameState>(
             active_idx,
             state.get_pile()[active_idx],
         ));
-        let row_outcomes =
-            resolve_enemy_row(&state_with_row_idx, allegiance, &row, active_idx, false);
+        let row_outcomes = resolve_enemy_row(
+            &state_with_row_idx,
+            allegiance,
+            &row,
+            active_idx,
+            row.is_mandatory,
+        );
 
         if row_outcomes.len() > 0 {
             return row_outcomes;
@@ -1353,6 +1376,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                         target_idx,
                         &mut pull_results,
                         EndPileMoveType::Pull,
+                        allegiance,
                     );
 
                     results.extend(pull_results);
@@ -1406,6 +1430,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                         target_idx,
                         &mut pull_results,
                         EndPileMoveType::Push,
+                        allegiance,
                     );
 
                     results.extend(pull_results);
@@ -1836,6 +1861,7 @@ fn move_card_to_end<T: EngineGameState>(
     mut target_idx: usize,
     mut results_agg: &mut Vec<T>,
     move_type: EndPileMoveType,
+    source_allegiance: Allegiance,
 ) {
     let direction = match move_type {
         EndPileMoveType::Push => 1,
@@ -1845,7 +1871,21 @@ fn move_card_to_end<T: EngineGameState>(
     let mut did_move = false;
     loop {
         let swap_with_idx = (target_idx as i32 + direction) as usize;
-        if swap_with_idx <= active_idx || swap_with_idx >= state.get_pile().len() {
+
+        let is_in_bounds =
+            !(swap_with_idx <= active_idx || swap_with_idx >= state.get_pile().len());
+
+        let mut should_continue = is_in_bounds;
+        if should_continue {
+            let swap_with_face = state.get_pile()[swap_with_idx].get_active_face();
+            let swap_is_enemy = swap_with_face.allegiance != source_allegiance;
+            let swap_has_wall = swap_with_face.features.intersects(Features::Wall);
+            if swap_is_enemy && swap_has_wall {
+                should_continue = false;
+            }
+        }
+
+        if !should_continue {
             if did_move {
                 state.mut_append_event(Event::EndPileMoveResult(move_type))
             }
@@ -1897,6 +1937,7 @@ fn move_card_to_end<T: EngineGameState>(
                         target_idx,
                         &mut results_agg,
                         move_type,
+                        source_allegiance,
                     )
                 }
                 return;
@@ -2868,8 +2909,13 @@ mod tests {
     fn test_move_card_by_up_to_amount() {
         let starting_pile = string_to_pile("1 7 2 6 5 4 8 9 3");
         {
-            let new_states =
-                move_card_by_up_to_amount(&T::new(starting_pile), 3, 2, MoveType::Quicken);
+            let new_states = move_card_by_up_to_amount(
+                &T::new(starting_pile),
+                3,
+                2,
+                MoveType::Quicken,
+                Allegiance::Hero,
+            );
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec!["1 7 6 2 5 4 8 9 3", "1 6 7 2 5 4 8 9 3"],

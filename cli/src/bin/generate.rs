@@ -4,7 +4,7 @@ use handy_core::game::*;
 // use handy_core::utils::string_to_pile;
 use rand::thread_rng;
 
-const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 8_000_000;
+const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 5_000_000;
 
 fn generate_example(hero: Class, monster: Class) {
     let mut rng = thread_rng();

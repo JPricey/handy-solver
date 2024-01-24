@@ -37,6 +37,21 @@ impl CharBuilder {
             id,
             faces,
             class: self.class,
+            is_back_start: false,
+        }
+    }
+
+    fn back_card(&self, id: CardId, mut faces: EnumMap<FaceKey, FaceDef>) -> CardDef {
+        for face in faces.values_mut() {
+            if face.allegiance != Allegiance::Werewolf {
+                face.allegiance = self.allegiance
+            }
+        }
+        CardDef {
+            id,
+            faces,
+            class: self.class,
+            is_back_start: true,
         }
     }
 }
@@ -3414,7 +3429,7 @@ impl CardDefs {
 
         {
             let wall = CharBuilder::new(Class::Wall, Allegiance::Baddie);
-            card_defs.register_card(wall.card(
+            card_defs.register_card(wall.back_card(
                 51,
                 enum_map! {
                     FaceKey::A => side(Health::Empty)

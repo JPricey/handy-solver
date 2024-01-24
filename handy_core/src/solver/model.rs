@@ -17,12 +17,13 @@ pub const HEROS: [Class; 6] = [
     Class::Assassin,
 ];
 
-pub const BADDIES: [Class; 5] = [
+pub const BADDIES: [Class; 6] = [
     Class::Ogre,
     Class::Vampire,
     Class::Spider,
     Class::Demon,
     Class::Flora,
+    Class::Wall,
 ];
 
 pub type Matchup = (Class, Class);

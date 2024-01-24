@@ -226,6 +226,7 @@ pub struct CardDef {
     pub id: CardId,
     pub class: Class,
     pub faces: EnumMap<FaceKey, FaceDef>,
+    pub is_back_start: bool,
 }
 
 impl PartialEq for CardDef {

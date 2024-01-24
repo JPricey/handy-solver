@@ -16,6 +16,16 @@ pub fn get_start_from_classes(
     cards.append(&mut CARDS.get_cards_for_class(monster_class));
     cards.shuffle(rng);
 
+    let mut back_idx = cards.len() - 1;
+    for i in (0..cards.len()).rev() {
+        if cards[i].is_back_start {
+            if i != back_idx {
+                cards.swap(i, back_idx);
+            }
+            back_idx = i - 1
+        }
+    }
+
     let cards_vec = cards
         .iter()
         .map(|&card_def| CardPtr::new_from_id(card_def.id, FaceKey::A))

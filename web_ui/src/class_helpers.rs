@@ -25,12 +25,12 @@ pub fn class_to_full_class_name(class: Class) -> &'static str {
         Class::Pyro => "Pyromancer",
         Class::Cursed => "Cursed",
         Class::Beastmaster => "Beastmaster",
-        Class::Assassin => "Assassin",
+        Class::Assassin => "Assassin (BETA)",
         Class::Ogre => "Ogre",
         Class::Vampire => "Vampire",
         Class::Spider => "Spider Swarm",
         Class::Demon => "Blood Demon",
         Class::Flora => "Sentient Flora",
-        Class::Wall => "Wall",
+        Class::Wall => "Wall (BETA)",
     }
 }
