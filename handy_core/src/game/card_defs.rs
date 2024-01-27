@@ -77,12 +77,12 @@ impl Row {
     }
 
     fn energy_cost(mut self, cost: ConditionCountType) -> Self {
-        self.condition = Some(Condition::Energy(cost));
+        self.condition = Some(Condition::Cost(ConditionCostType::Energy, cost));
         self
     }
 
     fn dodge_cost(mut self, cost: ConditionCountType) -> Self {
-        self.condition = Some(Condition::Dodge(cost));
+        self.condition = Some(Condition::Cost(ConditionCostType::Dodge, cost));
         self
     }
 

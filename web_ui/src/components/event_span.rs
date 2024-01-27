@@ -7,7 +7,7 @@ use leptos::*;
 
 fn format_cost(cost: &Option<SelfAction>) -> String {
     match cost {
-        None => "".to_owned(),
+        None => " (None)".to_owned(),
         Some(action) => format!(" ({})", action),
     }
 }
@@ -333,25 +333,33 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::Block(card_idx, card_ptr, cost) => {
+        Event::Block(card_idx, card_ptr, cost, face_key) => {
+            let mut new_card_ptr = card_ptr.clone();
+            new_card_ptr.key = face_key;
+
             view! { cx,
                 <span>
                     <TokenSpan
                         elements=vec![
                             SpanItem::CardPtrAndIndex(card_ptr, card_idx),
                             SpanItem::Text(format!("Blocks{}", format_cost(&cost))),
+                            SpanItem::CardPtr(new_card_ptr),
                         ]
                     />
                 </span>
             }
         }
-        Event::Dodge(card_idx, card_ptr, cost) => {
+        Event::Dodge(card_idx, card_ptr, cost, face_key) => {
+            let mut new_card_ptr = card_ptr.clone();
+            new_card_ptr.key = face_key;
+
             view! { cx,
                 <span>
                     <TokenSpan
                         elements=vec![
                             SpanItem::CardPtrAndIndex(card_ptr, card_idx),
                             SpanItem::Text(format!("Dodges{}", format_cost(&cost))),
+                            SpanItem::CardPtr(new_card_ptr),
                         ]
                     />
                 </span>
@@ -369,10 +377,10 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::PayEnergy(cards) => {
+        Event::PayRowConditionCosts(_, cards) => {
             let mut elems = vec![SpanItem::Text("Pay".to_owned())];
             for (card_idx, card_ptr) in cards {
-                elems.push(SpanItem::CardPtrAndIndex(card_ptr,card_idx));
+                elems.push(SpanItem::CardPtrAndIndex(card_ptr, card_idx));
             }
 
             view! {cx,

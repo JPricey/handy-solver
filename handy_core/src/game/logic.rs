@@ -10,10 +10,6 @@ use strum::IntoEnumIterator;
 
 const NO_TARGETS: TargetIds = vec![];
 
-fn did_states_change<T: EngineGameState>(state_agg: &Vec<T>, state: &T) -> bool {
-    !(state_agg.len() == 1 && state_agg[0].get_pile() == state.get_pile())
-}
-
 // Public
 pub fn resolve_top_card<T: EngineGameState>(state: &T) -> Vec<T> {
     let mut card_outcomes = resolve_card_at_index(state, 0);
@@ -46,8 +42,8 @@ fn resolve_card_at_index<T: EngineGameState>(state: &T, active_idx: usize) -> Ve
                     state
                         .clone()
                         .append_event(Event::PickRow(row_idx, active_idx, *active_card));
-                let row_outcomes = resolve_player_row(&base_row_state, row, active_idx);
-                all_outcomes.extend(row_outcomes);
+                let mut row_outcomes = resolve_player_row(&base_row_state, row, active_idx);
+                all_outcomes.append(&mut row_outcomes);
             }
 
             all_outcomes.push(state.clone().append_event(Event::SkipTurn(*active_card)));
@@ -56,83 +52,93 @@ fn resolve_card_at_index<T: EngineGameState>(state: &T, active_idx: usize) -> Ve
     }
 }
 
+fn does_card_have_energy(card_ptr: &CardPtr) -> bool {
+    card_ptr
+        .get_active_face()
+        .features
+        .intersects(Features::Energy)
+}
+
+fn does_card_have_dodge(card_ptr: &CardPtr) -> bool {
+    if let Some(reaction) = card_ptr.get_active_face().reaction {
+        if let Reaction::Standard(standard_reaction) = reaction {
+            if standard_reaction.trigger == ReactionTrigger::Dodge {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn get_cost_predicate(condition_cost_type: ConditionCostType) -> fn(&CardPtr) -> bool {
+    match condition_cost_type {
+        ConditionCostType::Dodge => does_card_have_dodge,
+        ConditionCostType::Energy => does_card_have_energy,
+    }
+}
+
+fn is_moveable_target(card_ptr: &CardPtr, active_allegiance: Allegiance, target: Target) -> bool {
+    let target_face = card_ptr.get_active_face();
+    let target_allegiance = target_face.allegiance;
+
+    if !is_allegiance_match(active_allegiance, target_allegiance, target) {
+        return false;
+    }
+
+    if target_allegiance != active_allegiance
+        && target_face
+            .features
+            .intersects(Features::Weight | Features::Invulnerable)
+    {
+        return false;
+    }
+
+    true
+}
+
 // Player only
 fn resolve_player_row<T: EngineGameState>(state: &T, row: &Row, active_idx: usize) -> Vec<T> {
     let pile = state.get_pile();
     let mut active_states = match row.condition {
-        Some(Condition::Dodge(amount)) => {
-            let mut dodge_options: Vec<TargetId> = vec![];
+        Some(Condition::Cost(cost_type, amount)) => {
+            let mut cost_options: Vec<TargetId> = vec![];
+            let does_have_cost_predicate = get_cost_predicate(cost_type);
+
             for i in active_idx + 1..pile.len() {
-                if let Some(reaction) = pile[i].get_active_face().reaction {
-                    if let Reaction::Standard(standard_reaction) = reaction {
-                        if standard_reaction.trigger == ReactionTrigger::Dodge {
-                            dodge_options.push(i as TargetId)
-                        }
-                    }
+                if does_have_cost_predicate(&pile[i]) {
+                    cost_options.push(i as TargetId)
                 }
             }
 
             let mut state_agg = vec![];
-            for energy_combo in dodge_options.into_iter().combinations(amount as usize) {
-                let mut energy_used_state = state.clone();
-                let mut used_energy_event_data: PayEnergyArrType = ArrayVec::new();
-                for used_energy_idx in &energy_combo {
-                    let new_key = rotate_key(energy_used_state.get_pile()[*used_energy_idx].key);
-                    energy_used_state.get_pile_mut()[*used_energy_idx].key = new_key;
+            for cost_combination in cost_options.into_iter().combinations(amount as usize) {
+                let mut cost_used_state = state.clone();
+                let mut used_energy_event_data: PayCostArrType = ArrayVec::new();
+                for used_energy_idx in &cost_combination {
+                    let new_key = rotate_key(cost_used_state.get_pile()[*used_energy_idx].key);
+                    cost_used_state.get_pile_mut()[*used_energy_idx].key = new_key;
                     let used_energy_card = state.get_pile()[*used_energy_idx];
                     used_energy_event_data.push((*used_energy_idx, used_energy_card));
                 }
-                // TODO: dodge?
-                energy_used_state.mut_append_event(Event::PayEnergy(used_energy_event_data));
+                cost_used_state.mut_append_event(Event::PayRowConditionCosts(
+                    cost_type,
+                    used_energy_event_data,
+                ));
 
-                let new_states = resolve_player_row_post_conditions_no_mandatory(
-                    &energy_used_state,
+                let mut new_states = resolve_player_row_post_conditions_no_mandatory(
+                    &cost_used_state,
                     row,
                     active_idx,
-                    &energy_combo,
+                    &cost_combination,
                 );
 
-                state_agg.extend(new_states);
-            }
-            state_agg
-        }
-        Some(Condition::Energy(amount)) => {
-            let mut energy_options: Vec<TargetId> = vec![];
-            for i in active_idx + 1..pile.len() {
-                if pile[i]
-                    .get_active_face()
-                    .features
-                    .intersects(Features::Energy)
-                {
-                    energy_options.push(i as TargetId)
-                }
-            }
-
-            let mut state_agg = vec![];
-            for energy_combo in energy_options.iter().copied().combinations(amount as usize) {
-                let mut energy_used_state = state.clone();
-                let mut used_energy_event_data: PayEnergyArrType = ArrayVec::new();
-                for used_energy_idx in &energy_combo {
-                    let new_key = rotate_key(energy_used_state.get_pile()[*used_energy_idx].key);
-                    energy_used_state.get_pile_mut()[*used_energy_idx].key = new_key;
-                    let used_energy_card = state.get_pile()[*used_energy_idx];
-                    used_energy_event_data.push((*used_energy_idx, used_energy_card));
-                }
-                energy_used_state.mut_append_event(Event::PayEnergy(used_energy_event_data));
-
-                let new_states = resolve_player_row_post_conditions_no_mandatory(
-                    &energy_used_state,
-                    row,
-                    active_idx,
-                    &energy_combo,
-                );
-
-                state_agg.extend(new_states);
+                state_agg.append(&mut new_states);
             }
             state_agg
         }
         Some(Condition::ExhaustedAllies(_) | Condition::Rage(_)) => {
-            panic!("Unhandled condition {:?}", row.condition)
+            panic!("Unhandled condition for player turn {:?}", row.condition)
         }
         None => {
             resolve_player_row_post_conditions_no_mandatory(state, row, active_idx, &NO_TARGETS)
@@ -159,14 +165,61 @@ fn resolve_player_row_post_conditions_no_mandatory<T: EngineGameState>(
     for action in &row.actions {
         let mut next_active_states: Vec<T> = vec![];
         for current_state in active_states {
-            let new_states =
+            let mut new_states =
                 resolve_player_action(&current_state, action, active_idx, energy_options);
-            next_active_states.extend(new_states);
+            next_active_states.append(&mut new_states);
         }
         active_states = next_active_states;
     }
 
     active_states
+}
+
+fn get_claws_results<T: EngineGameState>(
+    state: &T,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    range: Range,
+    target: Target,
+) -> Vec<T> {
+    let pile = state.get_pile();
+    if active_allegiance != Allegiance::Baddie
+        && is_action_prevented(pile, Features::Venom, active_idx)
+    {
+        return Vec::new();
+    }
+
+    let range_cap = match range {
+        Range::Inf => pile.len(),
+        Range::Int(amount) => cmp::min(active_idx + amount + 1, pile.len()),
+    };
+
+    let iter = (active_idx + 1..range_cap).rev();
+    attack_all_in_iter(state, active_allegiance, iter, target, HitType::Claw)
+}
+
+fn get_spaced_claws_result<T: EngineGameState>(
+    state: &T,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    claw_space_type: ClawSpaceType,
+    target: Target,
+) -> Vec<T> {
+    let pile = state.get_pile();
+    if active_allegiance != Allegiance::Baddie
+        && is_action_prevented(pile, Features::Venom, active_idx)
+    {
+        return Vec::new();
+    }
+
+    let start_idx = match claw_space_type {
+        ClawSpaceType::Odd => active_idx + 1,
+        ClawSpaceType::Even => active_idx + 2,
+    };
+
+    let iter = (start_idx..pile.len()).step_by(2).rev();
+
+    attack_all_in_iter(state, active_allegiance, iter, target, HitType::Claw)
 }
 
 fn resolve_player_action<T: EngineGameState>(
@@ -230,56 +283,18 @@ fn resolve_player_action<T: EngineGameState>(
                     let inspire_state = state
                         .clone()
                         .append_event(Event::Inspire(target_idx, pile[target_idx]));
-                    results.extend(resolve_card_at_index(&inspire_state, target_idx));
-                }
-            }
-        }
-        Action::Revive => {
-            if is_action_prevented(pile, Features::Venom, active_idx) {
-                return results;
-            }
-
-            for target_idx in active_idx + 1..pile.len() {
-                let target_card = pile[target_idx];
-                if !is_allegiance_match(
-                    Allegiance::Hero,
-                    target_card.get_active_face().allegiance,
-                    wrapped_action.target,
-                ) {
-                    continue;
-                }
-
-                if target_card.get_active_face().health == Health::Empty {
-                    let mut new_state = state.clone();
-                    new_state.get_pile_mut()[target_idx].key = FaceKey::A;
-                    new_state.mut_append_event(Event::Revive(
-                        target_idx,
-                        new_state.get_pile()[target_idx],
-                    ));
-                    results.push(new_state);
+                    results.append(&mut resolve_card_at_index(&inspire_state, target_idx));
                 }
             }
         }
         Action::Claws(range) => {
-            if is_action_prevented(pile, Features::Venom, active_idx) {
-                return results;
-            }
-
-            let range_cap = match range {
-                Range::Inf => pile.len(),
-                Range::Int(amount) => cmp::min(active_idx + amount + 1, pile.len()),
-            };
-
-            let states = attack_all_in_range(
+            results.append(&mut get_claws_results(
                 &state,
+                active_idx,
                 Allegiance::Hero,
-                active_idx + 1,
-                range_cap,
+                range,
                 wrapped_action.target,
-                HitType::Claw,
-            );
-
-            results.extend(states)
+            ));
         }
         Action::Ablaze => {
             if is_action_prevented(pile, Features::Venom, active_idx) {
@@ -298,16 +313,15 @@ fn resolve_player_action<T: EngineGameState>(
                         pile[energy_end_idx],
                     ));
 
-                    let post_attack_states = attack_all_in_range(
+                    let mut post_attack_states = attack_all_in_iter(
                         &state_with_ablaze_event,
                         Allegiance::Hero,
-                        energy_start_idx + 1,
-                        energy_end_idx,
+                        (energy_start_idx + 1..energy_end_idx).rev(),
                         wrapped_action.target,
                         HitType::Ablaze,
                     );
 
-                    results.extend(post_attack_states);
+                    results.append(&mut post_attack_states);
                 }
             }
         }
@@ -319,24 +333,36 @@ fn resolve_player_action<T: EngineGameState>(
             for energy_idx in target_ids {
                 let behind_idx = energy_idx + 1;
 
-                let mut fireball_results = vec![state
+                let pre_attack_state = state
                     .clone()
-                    .append_event(Event::FireballTarget(*energy_idx, pile[*energy_idx]))];
+                    .append_event(Event::FireballTarget(*energy_idx, pile[*energy_idx]));
 
-                if behind_idx < pile.len() {
-                    fireball_results =
-                        attack_idx_in_all_states(fireball_results, behind_idx, HitType::Fireball);
-                }
+                let mut fireball_results = if behind_idx < pile.len() {
+                    let first_hit_outcomes = attack_card_get_all_outcomes(
+                        &pre_attack_state,
+                        behind_idx,
+                        HitType::Fireball,
+                    );
+
+                    if first_hit_outcomes.len() > 0 {
+                        first_hit_outcomes
+                    } else {
+                        vec![pre_attack_state]
+                    }
+                } else {
+                    vec![pre_attack_state]
+                };
+
                 if *energy_idx > active_idx + 1 {
                     let infront_attack_idx = energy_idx - 1;
-                    fireball_results = attack_idx_in_all_states(
-                        fireball_results,
+                    fireball_results = attack_idx_in_all_states_ignore_no_outcomes_for_any_state(
+                        &fireball_results,
                         infront_attack_idx,
                         HitType::Fireball,
                     );
                 }
 
-                results.extend(fireball_results);
+                results.append(&mut fireball_results);
             }
         }
         Action::Teleport => {
@@ -346,50 +372,22 @@ fn resolve_player_action<T: EngineGameState>(
 
             for first_idx in active_idx + 1..pile.len() {
                 let first_card = pile[first_idx];
-                if first_card
-                    .get_active_face()
-                    .features
-                    .intersects(Features::Weight | Features::Invulnerable)
-                {
+                if !is_moveable_target(&first_card, Allegiance::Hero, wrapped_action.target) {
                     continue;
                 }
 
-                let first_allegiance = first_card.get_active_face().allegiance;
-                if !(wrapped_action.target == Target::Any
-                    || is_allegiance_match(
-                        Allegiance::Hero,
-                        first_allegiance,
-                        wrapped_action.target,
-                    ))
-                {
-                    continue;
-                }
+                let second_target = match wrapped_action.target {
+                    Target::Any => match first_card.get_active_face().allegiance {
+                        Allegiance::Hero => Target::Enemy,
+                        _ => Target::Ally,
+                    },
+                    x => x,
+                };
 
                 for second_idx in first_idx + 1..pile.len() {
                     let second_card = pile[second_idx];
-                    if second_card
-                        .get_active_face()
-                        .features
-                        .intersects(Features::Weight | Features::Invulnerable)
-                    {
+                    if !is_moveable_target(&second_card, Allegiance::Hero, second_target) {
                         continue;
-                    }
-
-                    let second_allegiance = second_card.get_active_face().allegiance;
-                    if wrapped_action.target == Target::Any {
-                        if (first_allegiance == Allegiance::Hero)
-                            == (second_allegiance == Allegiance::Hero)
-                        {
-                            continue;
-                        }
-                    } else {
-                        if !is_allegiance_match(
-                            Allegiance::Hero,
-                            second_allegiance,
-                            wrapped_action.target,
-                        ) {
-                            continue;
-                        }
                     }
 
                     let mut new_state = state.clone();
@@ -433,10 +431,10 @@ fn resolve_player_action<T: EngineGameState>(
                     continue;
                 }
 
-                let block_results =
+                let mut block_results =
                     try_prevent_action_with_reaction(&state, blocker_idx, ReactionTrigger::Block);
                 if block_results.len() > 0 {
-                    results.extend(block_results);
+                    results.append(&mut block_results);
 
                     if blocker_face.allegiance != Allegiance::Hero {
                         attack_candidates[blocker_face.allegiance] = false;
@@ -458,7 +456,7 @@ fn resolve_player_action<T: EngineGameState>(
                     HitType::Hit,
                 ));
 
-                results.extend(attack_card_get_all_outcomes(
+                results.append(&mut attack_card_get_all_outcomes(
                     &state_with_target,
                     target_idx,
                     HitType::Hit,
@@ -481,7 +479,7 @@ fn resolve_player_action<T: EngineGameState>(
                     continue;
                 }
 
-                results.extend(attack_card_get_all_outcomes(
+                results.append(&mut attack_card_get_all_outcomes(
                     &state.clone().append_event(Event::AttackCard(
                         target_idx,
                         target_card_ptr,
@@ -557,25 +555,19 @@ fn resolve_player_action<T: EngineGameState>(
             }
             for target_idx in active_idx + 2..pile.len() {
                 let target_card = pile[target_idx];
-                let target_card_allegiance = target_card.get_active_face().allegiance;
-
-                if !is_allegiance_match(
-                    Allegiance::Hero,
-                    target_card_allegiance,
-                    wrapped_action.target,
-                ) {
+                if !is_moveable_target(&target_card, Allegiance::Hero, wrapped_action.target) {
                     continue;
                 }
 
                 let max_move_amount = cmp::min(max_amount, target_idx - active_idx - 1);
-                let move_results = move_card_by_up_to_amount(
+                let mut move_results = move_card_by_up_to_amount(
                     &state,
                     target_idx,
                     max_move_amount as i32,
                     MoveType::Quicken,
                     Allegiance::Hero,
                 );
-                results.extend(move_results);
+                results.append(&mut move_results);
             }
         }
         Action::Delay(max_amount) => {
@@ -584,25 +576,19 @@ fn resolve_player_action<T: EngineGameState>(
             }
             for target_idx in active_idx + 1..pile.len() - 1 {
                 let target_card = pile[target_idx];
-                let target_card_allegiance = target_card.get_active_face().allegiance;
-
-                if !is_allegiance_match(
-                    Allegiance::Hero,
-                    target_card_allegiance,
-                    wrapped_action.target,
-                ) {
+                if !is_moveable_target(&target_card, Allegiance::Hero, wrapped_action.target) {
                     continue;
                 }
 
                 let max_move_amount = cmp::min(max_amount, pile.len() - target_idx - 1);
-                let move_results = move_card_by_up_to_amount(
+                let mut move_results = move_card_by_up_to_amount(
                     &state,
                     target_idx,
                     max_move_amount as i32,
                     MoveType::Delay,
                     Allegiance::Hero,
                 );
-                results.extend(move_results);
+                results.append(&mut move_results);
             }
         }
         Action::Heal => {
@@ -628,6 +614,32 @@ fn resolve_player_action<T: EngineGameState>(
                 new_state.get_pile_mut()[target_idx].key = FaceKey::A;
                 let new_event = Event::Heal(target_idx, pile[target_idx]);
                 results.push(new_state.append_event(new_event));
+            }
+        }
+        Action::Revive => {
+            if is_action_prevented(pile, Features::Venom, active_idx) {
+                return results;
+            }
+
+            for target_idx in active_idx + 1..pile.len() {
+                let target_card = pile[target_idx];
+                if !is_allegiance_match(
+                    Allegiance::Hero,
+                    target_card.get_active_face().allegiance,
+                    wrapped_action.target,
+                ) {
+                    continue;
+                }
+
+                if target_card.get_active_face().health == Health::Empty {
+                    let mut new_state = state.clone();
+                    new_state.get_pile_mut()[target_idx].key = FaceKey::A;
+                    new_state.mut_append_event(Event::Revive(
+                        target_idx,
+                        new_state.get_pile()[target_idx],
+                    ));
+                    results.push(new_state);
+                }
             }
         }
         Action::Manouver => {
@@ -672,10 +684,10 @@ fn resolve_player_action<T: EngineGameState>(
                     pile[target_idx],
                     HitType::Backstab,
                 ));
-                let post_hit_states =
+                let mut post_hit_states =
                     unblockable_hit_get_all_outcomes(&pre_hit_state, target_idx, HitType::Backstab);
 
-                results.extend(post_hit_states);
+                results.append(&mut post_hit_states);
             }
         }
         Action::BackstabTwice => {
@@ -717,13 +729,13 @@ fn resolve_player_action<T: EngineGameState>(
                                 first_backstab_state.get_pile()[target_idx_2],
                                 HitType::Backstab,
                             ));
-                        let post_hit_states_2 = unblockable_hit_get_all_outcomes(
+                        let mut post_hit_states_2 = unblockable_hit_get_all_outcomes(
                             &pre_hit_state_2,
                             target_idx_2,
                             HitType::Backstab,
                         );
 
-                        results.extend(post_hit_states_2);
+                        results.append(&mut post_hit_states_2);
                     }
 
                     results
@@ -829,18 +841,18 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
     source_allegiance: Allegiance,
 ) -> Vec<T> {
     assert!(moves_remaining >= 1);
-    if state.get_pile()[target_idx]
-        .get_active_face()
-        .features
-        .intersects(Features::Weight | Features::Invulnerable)
-    {
-        return vec![];
-    }
-
     let target_state = state.clone().append_event(Event::MoveTarget(
         target_idx,
         state.get_pile()[target_idx],
         move_type,
+    ));
+
+    let mut final_results = Vec::new();
+
+    final_results.append(&mut try_prevent_action_with_reaction(
+        &target_state,
+        target_idx,
+        ReactionTrigger::Dodge,
     ));
 
     let mut results_agg = Vec::new();
@@ -855,25 +867,24 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
         &mut results_agg,
     );
 
-    results_agg
-        .into_iter()
-        .map(|(distance, moved_state)| {
-            let anchor_idx = match move_type {
-                MoveType::Quicken => target_idx - distance,
-                MoveType::Delay => target_idx + distance,
-            };
-            let anchor_card = state.get_pile()[anchor_idx];
+    final_results.extend(results_agg.into_iter().map(|(distance, moved_state)| {
+        let anchor_idx = match move_type {
+            MoveType::Quicken => target_idx - distance,
+            MoveType::Delay => target_idx + distance,
+        };
+        let anchor_card = state.get_pile()[anchor_idx];
 
-            let result_prefix = target_state.clone().append_event(Event::MoveBy(
-                anchor_idx,
-                anchor_card,
-                move_type,
-                distance,
-            ));
+        let result_prefix = target_state.clone().append_event(Event::MoveBy(
+            anchor_idx,
+            anchor_card,
+            move_type,
+            distance,
+        ));
 
-            T::combine(result_prefix, moved_state)
-        })
-        .collect()
+        T::combine(result_prefix, moved_state)
+    }));
+
+    final_results
 }
 
 fn _move_card_inner<T: EngineGameState>(
@@ -945,9 +956,10 @@ fn _move_card_inner<T: EngineGameState>(
         }
     }
 
-    let mut skipped_roll = false;
+    let mut could_skip_roll = false;
     if moved_card.get_active_face().reaction == Some(Reaction::Roll) {
-        let mut new_state_with_move = new_state
+        could_skip_roll = true;
+        let mut new_state_with_roll_move = new_state
             .clone()
             .append_event(Event::MoveResult(move_type, distance_since_last_event + 1))
             .append_event(Event::AttackCard(
@@ -956,14 +968,26 @@ fn _move_card_inner<T: EngineGameState>(
                 HitType::Roll,
             ));
 
-        perform_mandatory_action(&mut new_state_with_move, SelfAction::Rotate, swap_with_idx);
+        perform_mandatory_action(
+            &mut new_state_with_roll_move,
+            SelfAction::Rotate,
+            swap_with_idx,
+        );
 
-        let hit_options =
-            attack_card_get_all_outcomes(&new_state_with_move, target_idx, HitType::Roll);
+        let mut hit_options =
+            attack_card_get_all_outcomes(&new_state_with_roll_move, target_idx, HitType::Roll);
 
-        if hit_options.len() > 0 {
-            skipped_roll = true;
+        // Can roll even if you do no damage
+        // This includes if the enemy was 0 health, but could have dodged the attack anyway
+        if hit_options.len() == 0
+            || new_state_with_roll_move.get_pile()[target_idx]
+                .get_active_face()
+                .health
+                == Health::Empty
+        {
+            hit_options.push(new_state_with_roll_move);
         }
+
         for hit_option in hit_options {
             let final_state = hit_option
                 .clone()
@@ -976,7 +1000,7 @@ fn _move_card_inner<T: EngineGameState>(
         let mut final_state = new_state
             .clone()
             .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
-        if skipped_roll {
+        if could_skip_roll {
             final_state.mut_append_event(Event::SkipHit(HitType::Roll));
         }
         results_agg.push((distance_so_far + 1, final_state));
@@ -1094,11 +1118,8 @@ fn resolve_enemy_row<T: EngineGameState>(
     let pile = state.get_pile();
     if let Some(condition) = row.condition {
         match condition {
-            Condition::Dodge(_) => {
-                panic!("Didn't expect to use dodge for enemy row")
-            }
-            Condition::Energy(_) => {
-                panic!("Didn't expect to use energy for enemy row")
+            Condition::Cost(_, _) => {
+                panic!("Unhandled cost condition for enemy turn: {:?}", condition)
             }
             Condition::ExhaustedAllies(required_amount) => {
                 let revive_targets = find_all_revive_targets(pile, allegiance, active_idx + 1);
@@ -1243,56 +1264,22 @@ fn resolve_enemy_action<T: EngineGameState>(
             }
         }
         Action::Claws(range) => {
-            if allegiance == Allegiance::Werewolf
-                && is_action_prevented(pile, Features::Venom, active_idx)
-            {
-                return results;
-            }
-            let range_cap = match range {
-                Range::Inf => pile.len(),
-                Range::Int(amount) => cmp::min(active_idx + amount + 1, pile.len()),
-            };
-
-            let states = attack_all_in_range(
+            results.append(&mut get_claws_results(
                 &state,
+                active_idx,
                 allegiance,
-                active_idx + 1,
-                range_cap,
+                range,
                 wrapped_action.target,
-                HitType::Claw,
-            );
-
-            results.extend(states)
+            ));
         }
         Action::SpacedClaws(space_type) => {
-            if allegiance == Allegiance::Werewolf
-                && is_action_prevented(pile, Features::Venom, active_idx)
-            {
-                return results;
-            }
-            let start_idx = match space_type {
-                ClawSpaceType::Odd => active_idx + 1,
-                ClawSpaceType::Even => active_idx + 2,
-            };
-
-            let mut state_agg = vec![state.clone()];
-
-            for target_idx in (start_idx..pile.len()).step_by(2).rev() {
-                let target_card = pile[target_idx];
-                if !is_allegiance_match(
-                    allegiance,
-                    target_card.get_active_face().allegiance,
-                    wrapped_action.target,
-                ) {
-                    continue;
-                }
-
-                state_agg = attack_idx_in_all_states(state_agg, target_idx, HitType::Claw);
-            }
-
-            if did_states_change(&state_agg, &state) {
-                results.extend(state_agg)
-            }
+            results.append(&mut get_spaced_claws_result(
+                &state,
+                active_idx,
+                allegiance,
+                space_type,
+                wrapped_action.target,
+            ));
         }
         Action::Void => {
             for target_idx in active_idx + 1..pile.len() {
@@ -1324,7 +1311,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                     card.get_active_face().allegiance,
                     wrapped_action.target,
                 ) {
-                    exhaust_card_no_options(card);
+                    mut_exhaust_card_dont_give_options(card);
                 }
             }
             results.push(new_state.append_event(Event::Death));
@@ -1356,7 +1343,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                              || target_card
                                  .get_active_face()
                                  .features
-                                 .intersects(Features::Weight)
+                                 .intersects(Features::Weight | Features::Invulnerable)
                     )
                 {
                     continue;
@@ -1410,7 +1397,7 @@ fn resolve_enemy_action<T: EngineGameState>(
                         target_card
                             .get_active_face()
                             .features
-                            .intersects(Features::Weight)
+                            .intersects(Features::Weight | Features::Invulnerable)
                     )
                 {
                     continue;
@@ -1603,39 +1590,47 @@ fn get_reaction_assist_results<T: EngineGameState>(
     final_results
 }
 
-fn attack_idx_in_all_states<T: EngineGameState>(
-    states: Vec<T>,
+fn attack_idx_in_all_states_ignore_no_outcomes_for_any_state<T: EngineGameState>(
+    states: &Vec<T>,
     target_idx: usize,
     hit_type: HitType,
 ) -> Vec<T> {
     let mut results = vec![];
+    let mut did_any_outcome = false;
     for state in states {
-        let hit_outcomes = attack_card_get_all_outcomes(&state, target_idx, hit_type);
+        let mut hit_outcomes = attack_card_get_all_outcomes(state, target_idx, hit_type);
 
         if hit_outcomes.len() > 0 {
-            for outcome in hit_outcomes {
-                results.push(outcome);
-            }
+            did_any_outcome = true;
+            results.append(&mut hit_outcomes);
         } else {
-            results.push(state);
+            results.push(state.clone());
         }
     }
 
-    results
+    if did_any_outcome {
+        results
+    } else {
+        Vec::new()
+    }
 }
 
-fn attack_all_in_range<T: EngineGameState>(
+fn attack_all_in_iter<T, I>(
     state: &T,
     attacker_allegiance: Allegiance,
-    start_idx_inclusive: usize,
-    end_idx_exclusive: usize,
+    iter: I,
     target: Target,
     hit_type: HitType,
-) -> Vec<T> {
+) -> Vec<T>
+where
+    T: EngineGameState,
+    I: Iterator<Item = usize>,
+{
     let pile = state.get_pile();
     let mut state_agg = vec![state.clone()];
+    let mut did_any_outcome = false;
 
-    for target_idx in (start_idx_inclusive..end_idx_exclusive).rev() {
+    for target_idx in iter {
         let target_card = pile[target_idx];
         if !is_allegiance_match(
             attacker_allegiance,
@@ -1645,10 +1640,17 @@ fn attack_all_in_range<T: EngineGameState>(
             continue;
         }
 
-        state_agg = attack_idx_in_all_states(state_agg, target_idx, hit_type);
+        let new_state_agg = attack_idx_in_all_states_ignore_no_outcomes_for_any_state(
+            &state_agg, target_idx, hit_type,
+        );
+
+        if new_state_agg.len() > 0 {
+            did_any_outcome = true;
+            state_agg = new_state_agg;
+        }
     }
 
-    if did_states_change(&state_agg, &state) {
+    if did_any_outcome {
         state_agg
     } else {
         vec![]
@@ -1742,7 +1744,7 @@ fn attack_card_get_all_outcomes<T: EngineGameState>(
         }
     }
 
-    results.extend(hurt_card_get_all_outcomes(state, target_idx, hit_type));
+    results.append(&mut hurt_card_get_all_outcomes(state, target_idx, hit_type));
 
     results
 }
@@ -1794,11 +1796,13 @@ fn get_standard_reaction_results<T: EngineGameState>(
             target_idx,
             state.get_pile()[target_idx],
             standard_reaction.outcome,
+            new_state.get_pile_mut()[target_idx].key,
         ),
         ReactionTrigger::Dodge => Event::Dodge(
             target_idx,
             state.get_pile()[target_idx],
             standard_reaction.outcome,
+            new_state.get_pile_mut()[target_idx].key,
         ),
     };
     new_state.mut_append_event(event);
@@ -1900,7 +1904,6 @@ fn move_card_to_end<T: EngineGameState>(
 
         if moved_card.get_active_face().reaction == Some(Reaction::Roll) {
             let mut new_state_with_move = state.clone();
-
             new_state_with_move.mut_append_event(Event::AttackCard(
                 swap_with_idx,
                 moved_over_card,
@@ -1909,10 +1912,21 @@ fn move_card_to_end<T: EngineGameState>(
             new_state_with_move.mut_append_event(Event::EndPileMoveResult(move_type));
             perform_mandatory_action(&mut new_state_with_move, SelfAction::Rotate, swap_with_idx);
 
-            let hit_options =
+            let mut hit_options =
                 attack_card_get_all_outcomes(&new_state_with_move, target_idx, HitType::Roll);
 
-            results_agg.extend(hit_options);
+            // Can roll even if you do no damage
+            // This includes if the enemy was 0 health, but could have dodged the attack anyway
+            if hit_options.len() == 0
+                || new_state_with_move.get_pile()[target_idx]
+                    .get_active_face()
+                    .health
+                    == Health::Empty
+            {
+                results_agg.push(new_state_with_move);
+            }
+
+            results_agg.append(&mut hit_options);
         }
 
         target_idx = swap_with_idx;
@@ -2115,7 +2129,7 @@ fn exhaust_card(card: &CardPtr) -> Vec<FaceKey> {
     return results;
 }
 
-fn exhaust_card_no_options(card: &mut CardPtr) {
+fn mut_exhaust_card_dont_give_options(card: &mut CardPtr) {
     if card.get_active_face().health == Health::Empty {
         return;
     }
@@ -2172,7 +2186,15 @@ mod tests {
         let expected_piles: HashSet<Pile> =
             HashSet::from_iter(expected_strings.iter().map(|x| string_to_pile(x)));
 
-        assert_eq!(actual_piles, expected_piles)
+        let actual_only: Vec<_> = actual_piles.difference(&expected_piles).collect();
+        let expected_only: Vec<_> = expected_piles.difference(&actual_piles).collect();
+
+        assert!(
+            actual_only.len() == 0 && expected_only.len() == 0,
+            "Found piles that we didn't expect: {:?}.\n Expected piles that we didn't find: {:?}",
+            actual_only,
+            expected_only
+        );
     }
 
     #[test]
@@ -2924,6 +2946,30 @@ mod tests {
     }
 
     #[test]
+    fn test_dodge_delay() {
+        let starting_pile = string_to_pile("12A 6A 14A 7A");
+
+        let new_states = resolve_player_action(
+            &T::new(starting_pile.clone()),
+            &WrappedAction {
+                action: Action::Quicken(2),
+                target: Target::Ally,
+            },
+            0,
+            &NO_TARGETS,
+        );
+
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                "12A 6A 14A 7A", // Skip
+                "12A 14A 6A 7A", // Quicken
+                "12A 6A 14B 7A", // Dodge
+            ],
+        );
+    }
+
+    #[test]
     fn test_quicken_delay() {
         let starting_pile = string_to_pile("1 7 2 6 5 4 8 9 3");
 
@@ -3550,15 +3596,48 @@ mod tests {
     }
 
     #[test]
-    fn test_attack_all_in_range() {
+    fn test_spaced_claws_odd() {
+        let starting_pile = string_to_pile("43A 1A 2A 3A 4B");
+        let new_states = resolve_enemy_action(
+            &T::new(starting_pile),
+            Allegiance::Baddie,
+            &WrappedAction {
+                action: Action::SpacedClaws(ClawSpaceType::Odd),
+                target: Target::Enemy,
+            },
+            0,
+        );
+        let futures = states_to_pile_set(&new_states);
+        let expected_futures = HashSet::from([string_to_pile("43A 1D 2A 3D 4B")]);
+        assert_eq!(futures, expected_futures);
+    }
+
+    #[test]
+    fn test_spaced_claws_even() {
+        let starting_pile = string_to_pile("43A 1A 2A 3A 4B");
+        let new_states = resolve_enemy_action(
+            &T::new(starting_pile),
+            Allegiance::Baddie,
+            &WrappedAction {
+                action: Action::SpacedClaws(ClawSpaceType::Even),
+                target: Target::Enemy,
+            },
+            0,
+        );
+        let futures = states_to_pile_set(&new_states);
+        let expected_futures = HashSet::from([string_to_pile("43A 1A 2D 3A 4C")]);
+        assert_eq!(futures, expected_futures);
+    }
+
+    #[test]
+    fn test_attack_all_in_iter_range() {
         {
             // Basic ex:
             let pile = string_to_pile("4 1 2 3 5");
-            let new_states = attack_all_in_range(
+            let new_states = attack_all_in_iter(
                 &T::new(pile),
                 Allegiance::Baddie,
-                1,
-                4,
+                (1..4).rev(),
                 Target::Any,
                 HitType::Hit,
             );
@@ -3568,11 +3647,10 @@ mod tests {
         {
             // Even when someone doesn't get hit in middle
             let pile = string_to_pile("4 1 2C 3 5");
-            let new_states = attack_all_in_range(
+            let new_states = attack_all_in_iter(
                 &T::new(pile),
                 Allegiance::Baddie,
-                1,
-                4,
+                (1..4).rev(),
                 Target::Any,
                 HitType::Hit,
             );
@@ -3582,11 +3660,10 @@ mod tests {
         {
             // When no one gets hit, there should be no results
             let pile = string_to_pile("4 1C 2C");
-            let new_states = attack_all_in_range(
+            let new_states = attack_all_in_iter(
                 &T::new(pile),
                 Allegiance::Baddie,
-                1,
-                3,
+                (1..3).rev(),
                 Target::Any,
                 HitType::Hit,
             );
@@ -3747,6 +3824,79 @@ mod tests {
                 "11B 13B 10D 12D", // Rotate 13
                 "11B 13A 10C 12D", // Rotate 10, which damages it
                                    // 12 cannot rotate, which would result in a heal
+            ],
+        );
+    }
+
+    #[test]
+    fn test_fireball_no_targets() {
+        let pile = string_to_pile("20D 6C 23B 7C");
+
+        let new_states = resolve_player_action(
+            &T::new(pile),
+            &WrappedAction {
+                action: Action::Fireball,
+                target: Target::Any,
+            },
+            0,
+            &vec![2],
+        );
+
+        assert!(new_states.len() == 1);
+        assert!(new_states[0].events.len() == 1);
+        assert!(match new_states[0].events[0] {
+            Event::SkipAction(_, _) => true,
+            _ => false,
+        });
+    }
+
+    #[test]
+    fn test_roll_delay() {
+        let pile = string_to_pile("47B 48A 46D 6A");
+
+        let new_states =
+            move_card_by_up_to_amount(&T::new(pile), 0, 3, MoveType::Delay, Allegiance::Hero);
+
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                "48A 47B 46D 6A", // Move by 1
+                "48A 46D 47B 6A", // Move by 2
+                "48A 46D 6A 47B", // Move by 3
+                "48B 47A 46D 6A", // Roll over 1, dodges
+                "48C 47A 46D 6A", // Roll over 1, hit => C
+                "48D 47A 46D 6A", // Roll over 1, hit => D
+                "48A 46C 47A 6A", // Roll over 2, dodges
+                "48A 46D 47A 6A", // Roll over 2, doesn't dodge
+                "48A 46D 6D 47A", // Roll over 3, hit
+            ],
+        );
+    }
+
+    #[test]
+    fn test_roll_push() {
+        let pile = string_to_pile("1 47B 48A 46D 6A");
+        let mut new_states = Vec::new();
+        move_card_to_end(
+            &mut T::new(pile),
+            0,
+            1,
+            &mut new_states,
+            EndPileMoveType::Push,
+            Allegiance::Hero,
+        );
+
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                // Cant choose to move by 1 or 2 for a full push
+                "1A 48A 46D 6A 47B", // Move by 3
+                "1A 48B 47A 46D 6A", // Roll over 1, dodges
+                "1A 48C 47A 46D 6A", // Roll over 1, hit => C
+                "1A 48D 47A 46D 6A", // Roll over 1, hit => D
+                "1A 48A 46C 47A 6A", // Roll over 2, dodges
+                "1A 48A 46D 47A 6A", // Roll over 2, doesn't dodge
+                "1A 48A 46D 6D 47A", // Roll over 3, hit
             ],
         );
     }

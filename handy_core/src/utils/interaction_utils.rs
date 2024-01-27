@@ -148,16 +148,16 @@ pub fn format_event_for_cli(event: &Event) -> String {
         Event::Revive(card_idx, card_ptr) => {
             format!("{:?}@{}: Revive", card_ptr, card_idx)
         }
-        Event::Block(card_idx, card_ptr, cost) => {
+        Event::Block(card_idx, card_ptr, cost, _) => {
             format!("{:?}@{}: Block({:?})", card_ptr, card_idx, cost)
         }
-        Event::Dodge(card_idx, card_ptr, cost) => {
+        Event::Dodge(card_idx, card_ptr, cost, _) => {
             format!("{:?}@{}: Dodge({:?})", card_ptr, card_idx, cost)
         }
         Event::OnHurt(card_idx, card_ptr) => {
             format!("{:?}@{}: Hurt", card_ptr, card_idx)
         }
-        Event::PayEnergy(cards) => {
+        Event::PayRowConditionCosts(_, cards) => {
             let cards = cards
                 .iter()
                 .map(|(id, ptr)| format!("{ptr:?}@{id}"))

@@ -18,7 +18,7 @@ pub type ArrayVecPile = ArrayVec<CardPtr, 9>;
 
 pub type Pile = ArrayVecPile;
 
-pub type PayEnergyArrType = ArrayVec<(usize, CardPtr), 4>;
+pub type PayCostArrType = ArrayVec<(usize, CardPtr), 4>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Health {
@@ -107,10 +107,15 @@ pub enum SelfAction {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ConditionCostType {
+    Energy,
+    Dodge,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Condition {
-    Energy(ConditionCountType),
+    Cost(ConditionCostType, ConditionCountType),
     Rage(ConditionCountType),
-    Dodge(ConditionCountType),
     ExhaustedAllies(usize),
 }
 
@@ -312,12 +317,12 @@ pub enum Event {
     Revive(usize, CardPtr),
 
     // Reactions
-    Block(usize, CardPtr, Option<SelfAction>),
-    Dodge(usize, CardPtr, Option<SelfAction>),
+    Block(usize, CardPtr, Option<SelfAction>, FaceKey),
+    Dodge(usize, CardPtr, Option<SelfAction>, FaceKey),
     OnHurt(usize, CardPtr),
 
     // Other
-    PayEnergy(PayEnergyArrType),
+    PayRowConditionCosts(ConditionCostType, PayCostArrType),
     Manouver(usize, CardPtr),
     Swarm(usize, CardPtr),
     UseActionAssistCard(usize, CardPtr), // card_idx, card_ptr

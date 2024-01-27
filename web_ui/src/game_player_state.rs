@@ -74,17 +74,18 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Pick Teleport Targets".to_owned());
             }
-            Event::PayEnergy(cards) => {
+            Event::PayRowConditionCosts(cost_type, cards) => {
                 new_interaction_options
                     .selection_options
                     .push(CompleteSelectionOption::new(
                         cards.iter().map(|(_, ptr)| ptr.get_card_id()).collect(),
                         available_move.clone(),
-                        "Pay Energy".to_owned(),
+                        format!("Pay {}", string_condition_cost_type(cost_type)),
                     ));
-                new_interaction_options
-                    .hints
-                    .insert("Pick Energy".to_owned());
+                new_interaction_options.hints.insert(format!(
+                    "Pick {} Sources",
+                    string_condition_cost_type(cost_type)
+                ));
             }
             Event::PickRow(row_index, card_index, card_ptr) => {
                 let active_face = card_ptr.get_active_face();
@@ -300,14 +301,11 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert(format!("Target {:?}", hit_type));
             }
-            Event::Block(_, card_ptr, self_action) => {
+            Event::Block(_, card_ptr, _self_action, face_key) => {
+                let mut new_card_ptr = card_ptr.clone();
+                new_card_ptr.key = *face_key;
                 // If this card is getting damaged, show the block as both a damage and card option
                 if Some(card_ptr.get_card_id()) == only_damage_option {
-                    let mut new_card_ptr = card_ptr.clone();
-                    if let Some(definite_action) = self_action {
-                        perform_card_self_action(*definite_action, &mut new_card_ptr);
-                    };
-
                     new_interaction_options
                         .damage_card_options
                         .push(DamageCardOption {
@@ -352,11 +350,9 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Take Damage".to_owned());
             }
-            Event::Dodge(_, card_ptr, self_action) => {
+            Event::Dodge(_, card_ptr, _self_action, face_key) => {
                 let mut new_card_ptr = card_ptr.clone();
-                if let Some(definite_action) = self_action {
-                    perform_card_self_action(*definite_action, &mut new_card_ptr);
-                };
+                new_card_ptr.key = *face_key;
 
                 new_interaction_options
                     .damage_card_options
