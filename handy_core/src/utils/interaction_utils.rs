@@ -190,7 +190,7 @@ pub fn format_event_for_cli(event: &Event) -> String {
         //     card_ptr,
         //     format_wrapped_action(wrapped_action)
         // ),
-        // _ => format!("{:?}", event),
+        _ => format!("{:?}", event),
     }
 }
 

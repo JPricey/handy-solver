@@ -974,19 +974,11 @@ fn _move_card_inner<T: EngineGameState>(
             swap_with_idx,
         );
 
-        let mut hit_options =
-            attack_card_get_all_outcomes(&new_state_with_roll_move, target_idx, HitType::Roll);
-
-        // Can roll even if you do no damage
-        // This includes if the enemy was 0 health, but could have dodged the attack anyway
-        if hit_options.len() == 0
-            || new_state_with_roll_move.get_pile()[target_idx]
-                .get_active_face()
-                .health
-                == Health::Empty
-        {
-            hit_options.push(new_state_with_roll_move);
-        }
+        let hit_options = attack_card_get_all_outcomes_allow_whif_hits(
+            &new_state_with_roll_move,
+            target_idx,
+            HitType::Roll,
+        );
 
         for hit_option in hit_options {
             let final_state = hit_option
@@ -1403,16 +1395,21 @@ fn resolve_enemy_action<T: EngineGameState>(
                     continue;
                 }
 
-                let dodge_outcomes =
-                    try_prevent_action_with_reaction(&state, target_idx, ReactionTrigger::Dodge);
+                let target = state.get_pile()[target_idx];
+                let mut post_target_state =
+                    state.clone().append_event(Event::Push(target_idx, target));
+
+                let dodge_outcomes = try_prevent_action_with_reaction(
+                    &post_target_state,
+                    target_idx,
+                    ReactionTrigger::Dodge,
+                );
                 results.extend(dodge_outcomes);
 
                 {
-                    let target = state.get_pile()[target_idx];
-
                     let mut pull_results = vec![];
                     move_card_to_end(
-                        &mut state.clone().append_event(Event::Push(target_idx, target)),
+                        &mut post_target_state,
                         active_idx,
                         target_idx,
                         &mut pull_results,
@@ -1511,7 +1508,7 @@ fn try_prevent_action_with_reaction<T: EngineGameState>(
             }
             Reaction::Standard(standard_reaction) => {
                 if standard_reaction.trigger == trigger {
-                    return vec![get_standard_reaction_results(
+                    return vec![get_standard_reaction_result(
                         state,
                         target_idx,
                         standard_reaction,
@@ -1565,7 +1562,7 @@ fn get_reaction_assist_results<T: EngineGameState>(
         assist.trigger,
         assist.assist_cost,
     ));
-    react_cost_state = get_standard_reaction_results(
+    react_cost_state = get_standard_reaction_result(
         &react_cost_state,
         assist_user_idx,
         StandardReaction {
@@ -1688,32 +1685,28 @@ fn damage_card_with_on_hit_row<T: EngineGameState>(
     results
 }
 
-fn attack_card_get_all_outcomes<T: EngineGameState>(
+fn attack_card_get_reaction_outcomes<T: EngineGameState>(
     state: &T,
     target_idx: usize,
     hit_type: HitType,
 ) -> Vec<T> {
-    let mut results: Vec<T> = vec![];
-
     let pile = state.get_pile();
     let target_card = pile[target_idx];
     let target_face = target_card.get_active_face();
     let target_allegiance = target_face.allegiance;
-    let is_reaction_forced = target_allegiance != Allegiance::Hero;
 
     if let Some(reaction) = target_face.reaction {
         match reaction {
-            Reaction::Roll => {
-                // Do nothing
-            }
+            Reaction::Roll => Vec::new(),
             Reaction::Standard(standard_reaction) => {
-                results.push(get_standard_reaction_results(
+                vec![get_standard_reaction_result(
                     state,
                     target_idx,
                     standard_reaction,
-                ));
+                )]
             }
             Reaction::Assist(assist_reaction) => {
+                let mut results = Vec::new();
                 for assist_idx in 0..pile.len() {
                     let assist_card = pile[assist_idx];
                     let assist_face = assist_card.get_active_face();
@@ -1731,17 +1724,59 @@ fn attack_card_get_all_outcomes<T: EngineGameState>(
                         ));
                     }
                 }
+                results
             }
-            Reaction::WhenHit(row) => {
-                results.extend(damage_card_with_on_hit_row(
-                    state, target_idx, hit_type, row,
-                ));
-            }
+            Reaction::WhenHit(row) => damage_card_with_on_hit_row(state, target_idx, hit_type, row),
         }
+    } else {
+        Vec::new()
+    }
+}
 
-        if results.len() > 0 && is_reaction_forced {
-            return results;
-        }
+fn attack_card_get_all_outcomes_allow_whif_hits<T: EngineGameState>(
+    state: &T,
+    target_idx: usize,
+    hit_type: HitType,
+) -> Vec<T> {
+    let target_card = state.get_pile()[target_idx];
+    let target_face = target_card.get_active_face();
+    let target_allegiance = target_face.allegiance;
+    let is_reaction_forced = target_allegiance != Allegiance::Hero;
+
+    let mut results = attack_card_get_reaction_outcomes(state, target_idx, hit_type);
+
+    if results.len() > 0 && is_reaction_forced {
+        return results;
+    }
+
+    if target_face.health == Health::Empty {
+        results.push(state.clone().append_event(Event::WhiffHit(
+            target_idx,
+            target_card,
+            hit_type,
+        )));
+    } else {
+        results.append(&mut hurt_card_get_all_outcomes(state, target_idx, hit_type));
+    }
+
+    assert!(results.len() > 0, "Not able to get result on whifable hit");
+
+    results
+}
+
+fn attack_card_get_all_outcomes<T: EngineGameState>(
+    state: &T,
+    target_idx: usize,
+    hit_type: HitType,
+) -> Vec<T> {
+    let target_face = state.get_pile()[target_idx].get_active_face();
+    let target_allegiance = target_face.allegiance;
+    let is_reaction_forced = target_allegiance != Allegiance::Hero;
+
+    let mut results = attack_card_get_reaction_outcomes(state, target_idx, hit_type);
+
+    if results.len() > 0 && is_reaction_forced {
+        return results;
     }
 
     results.append(&mut hurt_card_get_all_outcomes(state, target_idx, hit_type));
@@ -1782,7 +1817,7 @@ fn unblockable_hit_get_all_outcomes<T: EngineGameState>(
     results
 }
 
-fn get_standard_reaction_results<T: EngineGameState>(
+fn get_standard_reaction_result<T: EngineGameState>(
     state: &T,
     target_idx: usize,
     standard_reaction: StandardReaction,
@@ -1912,19 +1947,11 @@ fn move_card_to_end<T: EngineGameState>(
             new_state_with_move.mut_append_event(Event::EndPileMoveResult(move_type));
             perform_mandatory_action(&mut new_state_with_move, SelfAction::Rotate, swap_with_idx);
 
-            let mut hit_options =
-                attack_card_get_all_outcomes(&new_state_with_move, target_idx, HitType::Roll);
-
-            // Can roll even if you do no damage
-            // This includes if the enemy was 0 health, but could have dodged the attack anyway
-            if hit_options.len() == 0
-                || new_state_with_move.get_pile()[target_idx]
-                    .get_active_face()
-                    .health
-                    == Health::Empty
-            {
-                results_agg.push(new_state_with_move);
-            }
+            let mut hit_options = attack_card_get_all_outcomes_allow_whif_hits(
+                &new_state_with_move,
+                target_idx,
+                HitType::Roll,
+            );
 
             results_agg.append(&mut hit_options);
         }

@@ -350,6 +350,17 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Take Damage".to_owned());
             }
+            Event::WhiffHit(_, card_ptr, _) => {
+                new_interaction_options
+                    .damage_card_options
+                    .push(DamageCardOption {
+                        move_option: available_move.clone(),
+                        card_ptr: card_ptr.clone(),
+                    });
+                new_interaction_options
+                    .hints
+                    .insert("Whiff Hit".to_owned());
+            }
             Event::Dodge(_, card_ptr, _self_action, face_key) => {
                 let mut new_card_ptr = card_ptr.clone();
                 new_card_ptr.key = *face_key;

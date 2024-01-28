@@ -134,6 +134,18 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
+        Event::WhiffHit(card_idx, card_ptr, hit_type) => {
+            view! { cx,
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                            SpanItem::Text(format!("Whiffed {}",  hit_type)),
+                        ]
+                    />
+                </span>
+            }
+        }
         Event::Death => {
             view! { cx,
                 <span>

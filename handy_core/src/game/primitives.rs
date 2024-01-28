@@ -287,6 +287,7 @@ pub enum Event {
     // StartAction(CardPtr, WrappedAction),
     AttackCard(usize, CardPtr, HitType),
     Damage(usize, CardPtr, HitType, FaceKey),
+    WhiffHit(usize, CardPtr, HitType),
 
     // Special Attacks
     Death,
