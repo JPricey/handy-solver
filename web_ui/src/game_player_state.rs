@@ -357,9 +357,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                         move_option: available_move.clone(),
                         card_ptr: card_ptr.clone(),
                     });
-                new_interaction_options
-                    .hints
-                    .insert("Whiff Hit".to_owned());
+                new_interaction_options.hints.insert("Whiff Hit".to_owned());
             }
             Event::Dodge(_, card_ptr, _self_action, face_key) => {
                 let mut new_card_ptr = card_ptr.clone();
@@ -474,7 +472,7 @@ pub fn calculate_selection_options(interaction_options: &mut InteractionOptions)
         let remaining_options =
             &complete_selection_option.selected_cards - &interaction_options.selected_cards;
         // If choosable cards for this option is a superset of selected cards, add the
-        // remaining cards as selectablw options
+        // remaining cards as selectable options
         if remaining_options.len()
             == complete_selection_option.selected_cards.len()
                 - interaction_options.selected_cards.len()
@@ -860,18 +858,25 @@ impl GamePlayerState {
 
         calculate_selection_options(&mut new_interaction_options);
 
-        let mut render_card_map = self.render_card_map_getter.get();
-        render_pile_update(
-            &mut render_card_map,
-            &new_interaction_options,
-            &self
-                .game_history_getter
-                .get()
-                .all_frames
-                .last()
-                .unwrap()
-                .current_pile,
-        );
-        self.interaction_setter.set(new_interaction_options);
+        if new_interaction_options.valid_selection_buttons.len() == 1
+            && new_interaction_options.total_buttons_available() == 1
+        {
+            let selection_option = &new_interaction_options.valid_selection_buttons[0];
+            self.apply_option(&selection_option.move_option);
+        } else {
+            let mut render_card_map = self.render_card_map_getter.get();
+            render_pile_update(
+                &mut render_card_map,
+                &new_interaction_options,
+                &self
+                    .game_history_getter
+                    .get()
+                    .all_frames
+                    .last()
+                    .unwrap()
+                    .current_pile,
+            );
+            self.interaction_setter.set(new_interaction_options);
+        }
     }
 }

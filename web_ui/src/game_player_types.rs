@@ -144,4 +144,12 @@ impl InteractionOptions {
             hints: HashSet::new(),
         }
     }
+
+    pub fn total_buttons_available(&self) -> usize {
+        self.row_options.len()
+            + self.interaction_buttons.len()
+            + self.valid_selection_buttons.len()
+            + self.skip_button.len()
+            + self.damage_card_options.len()
+    }
 }
