@@ -4,6 +4,7 @@ members = [
     "cli",
     "web_ui",
 ]
+resolver = "2"
 
 [profile.release]
 debug = true

@@ -10,7 +10,6 @@ use handy_core::game::Class;
 use handy_core::solver::{BADDIES, HEROS};
 use handy_core::utils::pile_utils::*;
 use leptos::*;
-use web_sys::Navigator;
 use std::collections::HashSet;
 use url::Url;
 
