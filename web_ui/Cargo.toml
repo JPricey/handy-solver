@@ -20,6 +20,7 @@ glam = "0.24.2"
 closure = "0.3.0"
 url = "2.4.1"
 colors-transform = "0.2.11"
+regex = { workspace = true }
 
 [dependencies.web-sys]
 version = "0.3.64"

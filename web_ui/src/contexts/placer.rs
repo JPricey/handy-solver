@@ -1,6 +1,7 @@
+use crate::components::*;
 use crate::types::*;
 use leptos::*;
-use crate::components::*;
+use regex::Regex;
 
 fn min_f64(a: f64, b: f64) -> f64 {
     if a < b {
@@ -12,20 +13,29 @@ fn min_f64(a: f64, b: f64) -> f64 {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GameComponentPlacer {
-    scale: f64,
+    pub scale: f64,
+    pub is_rotated: bool,
 }
 
 impl GameComponentPlacer {
-    pub fn new(scale: f64) -> Self {
-        Self { scale }
+    pub fn new(scale: f64, is_rotated: bool) -> Self {
+        Self { scale, is_rotated }
     }
 
-    pub fn new_from_root_window_size(window_size: WindowSize) -> Self {
-        let width_scale = window_size.0 / GOLDEN_WIDTH;
-        let height_scale = window_size.1 / GOLDEN_HEIGHT;
+    pub fn new_from_root_window_size(window_size: WindowSize, is_mobile: bool) -> Self {
+        let (mut width, mut height) = window_size;
+
+        let should_rotate = is_mobile && height > width * 1.5;
+
+        if should_rotate {
+            (width, height) = (height, width);
+        }
+
+        let width_scale = width / GOLDEN_WIDTH;
+        let height_scale = height / GOLDEN_HEIGHT;
         let scale = min_f64(width_scale, height_scale);
 
-        Self::new(scale)
+        Self::new(scale, should_rotate)
     }
 
     pub fn scale(&self, size: WindowUnit) -> WindowUnit {
@@ -45,14 +55,6 @@ pub fn get_places(
         x: Box::new(move || wrap_px(placer_getter.get().scale(point.0))),
         y: Box::new(move || wrap_px(placer_getter.get().scale(point.1))),
     }
-}
-
-pub fn get_origin_from_window_size(window_size: WindowSize) -> WindowSize {
-    let placer = GameComponentPlacer::new_from_root_window_size(window_size);
-
-    let projected_size = scalar_mult(GOLDEN_SIZE, placer.scale);
-    let origin = scalar_mult(point_sub(window_size, projected_size), 0.5);
-    origin
 }
 
 pub struct Places {
@@ -80,6 +82,13 @@ fn get_current_window_size() -> Option<WindowSize> {
     Some((width, height))
 }
 
+pub fn compute_is_mobile() -> bool {
+    let user_agent_string = format!("{}", window().navigator().user_agent().unwrap_or("".to_owned()));
+    let re = Regex::new(r"/Mobile|iP(hone|od|ad)|Android|BlackBerry|IEMobile/").unwrap();
+
+    re.is_match(&user_agent_string)
+}
+
 #[component]
 pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
     let (window_size_getter, window_size_setter) =
@@ -93,12 +102,21 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
         }
     });
 
+    let is_mobile = compute_is_mobile();
     let placer_getter = create_memo(cx, move |_| {
-        GameComponentPlacer::new_from_root_window_size(window_size_getter.get())
+        GameComponentPlacer::new_from_root_window_size(window_size_getter.get(), is_mobile)
     });
     provide_context(cx, placer_getter);
 
+    let origin = create_memo(cx, move |_| {
+        let window_size = window_size_getter.get();
+        let placer = placer_getter.get();
+        let projected_size = scalar_mult(GOLDEN_SIZE, placer.scale);
+        scalar_mult(point_sub(window_size, projected_size), 0.5)
+    });
+
     let places = get_places(placer_getter, (0.0, 0.0), GOLDEN_WIDTH, GOLDEN_HEIGHT);
+
     view! { cx,
         <div
             style:background="#bae8f5"
@@ -109,9 +127,10 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
                 style:position="absolute"
                 style:width={places.width}
                 style:height={places.height}
-                style:left={move || format!("{}px", get_origin_from_window_size(window_size_getter.get()).0)}
-                style:top={move || format!("{}px", get_origin_from_window_size(window_size_getter.get()).1)}
+                style:left={move || format!("{}px", origin.get().0)}
+                style:top={move || format!("{}px", origin.get().1)}
                 style:background="rgb(248, 238, 226)"
+                style:transform={move || if placer_getter.get().is_rotated { "rotate(90deg)" } else { "" } }
                 style:font-size={move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE))}
             >
                 {children(cx)}
