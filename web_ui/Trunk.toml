@@ -1,0 +1,4 @@
+[[hooks]]
+stage = "post_build"
+command = "sh"
+command_arguments = ["-c", "./build_service_worker_file.sh"]
