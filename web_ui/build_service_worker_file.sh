@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# $(cd $TRUNK_STAGING_DIR && find . | sed "s#^\./#$TRUNK_PUBLIC_URL#" | xargs -I@ echo "'@',")
-echo Using Public URL: $TRUNK_PUBLIC_URL
-
 cat >$TRUNK_STAGING_DIR/service_worker.js << EOL
 var cacheName = 'handy-solver';
 var filesToCache = [
