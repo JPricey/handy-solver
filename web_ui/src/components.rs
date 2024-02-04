@@ -7,6 +7,7 @@ pub mod utils;
 pub mod index_badge;
 pub mod token_span;
 pub mod icon_badge;
+pub mod game_card;
 
 pub use button::*;
 pub use card_id_pill::*;
@@ -17,3 +18,4 @@ pub use utils::*;
 pub use index_badge::*;
 pub use token_span::*;
 pub use icon_badge::*;
+pub use game_card::*;

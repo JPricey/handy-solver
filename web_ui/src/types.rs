@@ -8,10 +8,6 @@ use std::time::Duration;
 pub type WindowUnit = f64;
 pub type WindowSize = (WindowUnit, WindowUnit);
 
-// pub static GOLDEN_WIDTH: WindowUnit = 1920.0;
-// pub static GOLDEN_HEIGHT: WindowUnit = 1080.0;
-// My laptop is 1920 x 1200
-// mozilla reports width as 1280?
 pub static GOLDEN_WIDTH: WindowUnit = 1280.0;
 pub static GOLDEN_HEIGHT: WindowUnit = 800.0;
 pub static GOLDEN_SIZE: WindowSize = (GOLDEN_WIDTH, GOLDEN_HEIGHT);

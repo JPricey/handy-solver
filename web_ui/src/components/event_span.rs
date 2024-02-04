@@ -31,7 +31,7 @@ pub fn FrameSpan(cx: Scope, frame: GameFrame) -> impl IntoView {
                                 style:flex="1"
                             >
                                 <CardIdPill card_ptr=current_pile[0].clone() />
-                                Activates
+                                Go
                             </span>
 
                             <PileSpan pile=current_pile.clone() />

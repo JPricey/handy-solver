@@ -14,12 +14,13 @@ fn min_f64(a: f64, b: f64) -> f64 {
 #[derive(Clone, Debug, PartialEq)]
 pub struct GameComponentPlacer {
     pub scale: f64,
+    pub is_mobile: bool,
     pub is_rotated: bool,
 }
 
 impl GameComponentPlacer {
-    pub fn new(scale: f64, is_rotated: bool) -> Self {
-        Self { scale, is_rotated }
+    pub fn new(scale: f64, is_mobile: bool, is_rotated: bool) -> Self {
+        Self { scale, is_mobile, is_rotated }
     }
 
     pub fn new_from_root_window_size(window_size: WindowSize, is_mobile: bool) -> Self {
@@ -35,7 +36,7 @@ impl GameComponentPlacer {
         let height_scale = height / GOLDEN_HEIGHT;
         let scale = min_f64(width_scale, height_scale);
 
-        Self::new(scale, should_rotate)
+        Self::new(scale, is_mobile,should_rotate)
     }
 
     pub fn scale(&self, size: WindowUnit) -> WindowUnit {
@@ -96,8 +97,6 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
 
     window_event_listener(ev::resize, move |_ev| {
         if let Some(current_window) = get_current_window_size() {
-            // let now = performance_now();
-            // log!("{now:?} Updating window size {current_window:?}");
             window_size_setter.set(current_window);
         }
     });

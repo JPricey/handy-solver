@@ -74,7 +74,7 @@ pub fn string_to_card_ptr_result(input: &str) -> Result<CardPtr, String> {
         .parse()
         .unwrap_or(FaceKey::A);
 
-    let Ok(id) = id_str.parse::<u8>() else {
+    let Ok(id) = id_str.parse::<CardId>() else {
         return Err("Card Id does not exist".to_owned());
     };
 

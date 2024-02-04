@@ -11,12 +11,12 @@ const BACK_SECTION_HEIGHT: WindowUnit = 40.0;
 
 #[component]
 pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView {
-
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
     view! { cx,
         <div
             style:width="100%"
             style:border-bottom="solid"
-            style:border-width="1px"
+            style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
             style:overflow="hidden"
         >
             <div
@@ -88,7 +88,6 @@ where
     view! { cx,
         <div
             // History Panel
-            class="history-panel-full-back"
             style:width={move || wrap_px(placer_getter.get().scale(width))}
             style:height={move || wrap_px(placer_getter.get().scale(height))}
         >
@@ -117,7 +116,7 @@ where
                 style:width="100%"
                 style:height={move || wrap_px(placer_getter.get().scale(2.0))}
                 style:border-bottom="solid"
-                style:border-width="1px"
+                style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
             />
 
             <div

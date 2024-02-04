@@ -79,10 +79,7 @@ where
                             Gameplay Shortcuts
                         </div>
                         <div>
-                            Reveal a card in the pile (Hold Ctrl + Mouseover)
-                        </div>
-                        <div>
-                            Reveal a card backside in the pile (Hold Shift + Mouseover)
+                            Hover over cards to fully reveal them
                         </div>
                         <div>
                             Execute an action that targets a card in the stack (1-9)

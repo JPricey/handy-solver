@@ -69,7 +69,7 @@ where
         move |_| {
             set_hovered.set(false);
         },
-        listener_options,
+        listener_options.clone(),
     );
 
     return Signal::derive(cx, move || {

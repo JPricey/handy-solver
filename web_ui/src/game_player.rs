@@ -1,19 +1,23 @@
+use std::collections::HashSet;
+
 use crate::components::*;
+use crate::constants::*;
 use crate::contexts::*;
-use crate::game_card::*;
 use crate::game_player_state::*;
 use crate::game_player_types::*;
 use crate::init_pile_provider::*;
 use crate::oracle_panel::*;
+use crate::panels::*;
 use crate::screens::*;
 use crate::types::*;
-use crate::constants::*;
 use closure::closure;
 use handy_core::game::*;
 use leptos::leptos_dom::helpers::window_event_listener;
 use leptos::*;
+use web_sys::HtmlDivElement;
 
-const ACTION_ROW_MARGIN_PX: WindowUnit = 4.0;
+const ACTION_ROW_SIDE_MARGIN: WindowUnit = 4.0;
+const ACTION_ROW_TOP_MARGIN: WindowUnit = 8.0;
 
 fn get_combined_interaction_buttons(
     interaction_options: &InteractionOptions,
@@ -249,14 +253,40 @@ pub fn action_button(cx: Scope, text: String, is_skip: bool) -> impl IntoView {
     }
 }
 
+fn get_hovered_card_ids(points: Vec<(f32, f32)>) -> Vec<CardId> {
+    let mut set_ids: HashSet<CardId> = HashSet::new();
+
+    for point in points {
+        let (x, y) = point;
+        let elems = document().elements_from_point(x, y);
+        let hovered_card_ids = elems.iter().filter_map(|elem| {
+            let maybe_div_element: Result<HtmlDivElement, _> = elem.try_into();
+            if let Ok(div_elem) = maybe_div_element {
+                let div_id = div_elem.id();
+                try_card_string_to_id(div_id)
+            } else {
+                None
+            }
+        });
+        set_ids.extend(hovered_card_ids);
+    }
+
+    set_ids.into_iter().collect()
+}
+
 #[component]
-pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_playing: RwSignal<bool>) -> impl IntoView {
+pub fn GamePlayer(
+    cx: Scope,
+    init_pile_provider: Box<dyn InitPileProvider>,
+    is_playing: RwSignal<bool>,
+) -> impl IntoView {
     let game_state = GamePlayerState::new(cx, init_pile_provider.get_init_pile());
     let game_history_getter = game_state.game_history_getter;
     let render_card_map_getter = game_state.render_card_map_getter;
     let options = use_options(cx);
 
     let (pile_provider_getter, _) = create_signal(cx, init_pile_provider.clone());
+    let (hovered_cards_getter, hovered_cards_setter) = create_signal(cx, Vec::<CardId>::new());
 
     let current_state = create_memo(cx, move |_| {
         game_history_getter.get().all_frames.last().unwrap().clone()
@@ -287,6 +317,26 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
         });
         result
     };
+
+    let maybe_selected_card_id_and_face = create_memo(cx, move |_| {
+        let hovered_cards = hovered_cards_getter.get();
+        let render_card_map = render_card_map_getter.get();
+
+        let min_card_id: Option<CardId> = hovered_cards
+            .iter()
+            .min_by_key(|card_id: &&CardId| {
+                let render_card = render_card_map.get(card_id).unwrap();
+                (render_card.animated_position_in_pile.get() * 100.0).round() as i64
+            })
+            .copied();
+
+        min_card_id.map(|card_id| {
+            (
+                card_id,
+                render_card_map.get(&card_id).unwrap().active_face.get(),
+            )
+        })
+    });
 
     let maybe_animation_queue = game_state.maybe_animation_queue;
     let is_animating = create_memo(cx, move |_| maybe_animation_queue.get().is_some());
@@ -371,6 +421,48 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
         }
     });
 
+    window_event_listener(ev::contextmenu, move |ev| {
+        let placer = placer_getter.get();
+        if placer.is_mobile {
+            ev.prevent_default();
+        }
+    });
+
+    window_event_listener(ev::touchstart, move |ev| {
+        let touches = ev.touches();
+        let mut points = Vec::with_capacity(touches.length() as usize);
+        for i in 0..touches.length() {
+            let Some(touch) = touches.get(i) else {
+                continue;
+            };
+            points.push((touch.client_x() as f32, touch.client_y() as f32));
+        }
+
+        let hovered_card_ids = get_hovered_card_ids(points.clone());
+        hovered_cards_setter.set(hovered_card_ids);
+    });
+
+    window_event_listener(ev::touchmove, move |ev| {
+        let touches = ev.touches();
+        let mut points = Vec::with_capacity(touches.length() as usize);
+        for i in 0..touches.length() {
+            let Some(touch) = touches.get(i) else {
+                continue;
+            };
+            points.push((touch.client_x() as f32, touch.client_y() as f32));
+        }
+
+        let hovered_card_ids = get_hovered_card_ids(points.clone());
+        hovered_cards_setter.set(hovered_card_ids);
+        ev.prevent_default();
+    });
+
+    window_event_listener(ev::mousemove, move |ev| {
+        let points = vec![(ev.client_x() as f32, ev.client_y() as f32)];
+        let hovered_card_ids = get_hovered_card_ids(points.clone());
+        hovered_cards_setter.set(hovered_card_ids);
+    });
+
     let init_animation = game_state.do_render_pile_update();
     game_state.maybe_schedule_next_move(init_animation);
 
@@ -385,6 +477,8 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
         <div
             // Parent container
             style:display="flex"
+            style:width="100%"
+            style:height="100%"
         >
             <div
                 // Play Zone
@@ -398,7 +492,7 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                     // Hint Zone
                     style:width="100%"
                     style:font-size={move || wrap_px(placer_getter.get().scale(24.0))}
-                    style:margin={move || wrap_px(placer_getter.get().scale(12.0))}
+                    style:margin-top={move || wrap_px(placer_getter.get().scale(12.0))}
                     style:display="flex"
                     style:justify-content="center"
                     style:align-content="center"
@@ -411,13 +505,13 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                     style:width="100%"
                     style:display="flex"
                     style:height=wrap_pct(*OPTIONS_HEADER_ZONE_HEIGHT_PCT)
+                    style:margin-top={move || wrap_px(placer_getter.get().scale(ACTION_ROW_TOP_MARGIN))}
                 >
                     <div
                         // Button Zone
                         style:display="flex"
                         style:justify-content="center"
                         style:flex-grow=1.0
-                        style:margin-top={move || wrap_px(placer_getter.get().scale(22.0))}
                     >
                         <For each=move || {
                             if is_animating.get() {
@@ -433,7 +527,8 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
 
                             view! { cx,
                                 <div
-                                    style:margin={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                    style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
+                                    style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
                                 >
                                     <ActionButton
                                         text=option.text.to_owned()
@@ -457,7 +552,8 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
 
                             view! { cx,
                                 <div
-                                    style:margin={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                    style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
+                                    style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
                                 >
                                     <ActionButton
                                         text=option.text.to_owned()
@@ -473,6 +569,7 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                         style:display="flex"
                         style:justify-content="center"
                         style:flex-grow=1.0
+                        style:flex-basis="20%"
                     >
                         <For each=move || {
                             if is_animating.get() {
@@ -484,14 +581,14 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                         key=|e| e.clone() view=move |cx, damage_option| {
                             view! { cx,
                                 <div
-                                    style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
-                                    style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_MARGIN_PX))}
+                                    style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
+                                    style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
                                 >
                                     <StaticGameCard
                                         card_id=damage_option.card_ptr.get_card_id()
                                         face_key=damage_option.card_ptr.get_card_face()
                                         is_clickable=true
-                                        scale=1.0
+                                        scale=0.9
                                         on:click= move |_| { game_state.apply_option(&damage_option.move_option) }
                                     />
                                 </div>
@@ -573,15 +670,32 @@ pub fn GamePlayer(cx: Scope, init_pile_provider: Box<dyn InitPileProvider>, is_p
                         </InPlayGameCard>
                     }
                 }/>
-
         </div>
 
-        <HistoryPanel
-            game_history_getter=game_history_getter.into()
-            do_undo = move || undo()
-            width=*HISTORY_ZONE_WIDTH_PX
-            height=GOLDEN_HEIGHT
-        />
+        <div
+            style:position="relative"
+            style:width=move || wrap_px(placer_getter.get().scale(*HISTORY_ZONE_WIDTH_PX))
+            style:height="100%"
+            style:border-left="solid"
+            style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
+        >
+            <Show
+                when=move || maybe_selected_card_id_and_face.get().is_none()
+                fallback=move |_| {
+                    let (card_id, face_key) = maybe_selected_card_id_and_face.get().unwrap();
+                    view! {cx,
+                        <CardSidesPanel card_id face_key />
+                    }
+                }
+            >
+                <HistoryPanel
+                    game_history_getter=game_history_getter.into()
+                    do_undo = move || undo()
+                    width=*HISTORY_ZONE_WIDTH_PX
+                    height=GOLDEN_HEIGHT
+                />
+            </Show>
+        </div>
 
         // Special placements
         <div

@@ -1,17 +1,17 @@
 use crate::components::*;
-use crate::contexts::*;
 use crate::constants::*;
-use crate::key_manager::*;
+use crate::contexts::*;
 use crate::types::*;
 use glam::{DQuat, DVec3, EulerRot};
 use handy_core::game::*;
 use lazy_static::lazy_static;
 use leptos::html::Div;
 use leptos::*;
+use regex::Regex;
 
 lazy_static! {
     pub static ref NATIVE_CARD_SIZE: WindowSize = (223.0, 312.0);
-    pub static ref RENDER_CARD_SIZE: WindowSize = scalar_mult(*NATIVE_CARD_SIZE, 1.1);
+    pub static ref RENDER_CARD_SIZE: WindowSize = scalar_mult(*NATIVE_CARD_SIZE, 1.2);
 }
 
 enum CardSide {
@@ -51,6 +51,25 @@ fn is_quat_up(quat: &DQuat) -> bool {
 const INDEX_OFFSET_LEFT: &str = "0.6%";
 const INDEX_OFFSET_TOP: &str = "0.6%";
 
+pub fn card_id_to_id_str(card_id: CardId) -> String {
+    format!("in-play-card-{}", card_id)
+}
+
+pub fn try_card_string_to_id(card_id_string: String) -> Option<CardId> {
+    if card_id_string.len() == 0 {
+        return None;
+    }
+    let re = Regex::new(r"^in-play-card-(\d+)$").unwrap();
+    if let Some(id_capture) = re.captures(&card_id_string) {
+        let id_str = id_capture.get(1).unwrap().as_str();
+        if let Ok(id) = id_str.parse::<CardId>() {
+            return Some(id);
+        }
+    }
+
+    None
+}
+
 #[component]
 pub fn InPlayGameCard(
     cx: Scope,
@@ -59,8 +78,11 @@ pub fn InPlayGameCard(
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let card_div_id = format!("in-play-card-{}", render_card.card_id);
+
     view! { cx,
         <div
+            id=card_div_id
             style:position = "absolute"
             style:top={move || wrap_px(placer_getter.get().scale(render_card.animated_point.get().y))}
             style:left={move || wrap_px(placer_getter.get().scale(render_card.animated_point.get().x))}
@@ -88,40 +110,17 @@ pub fn GameCard(
     #[prop(optional_no_strip)] children: Option<Children>,
 ) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let key_manager_getter = get_key_manager_getter(cx);
     let el = create_node_ref::<Div>(cx);
-    let is_hovered = use_single_element_hover(cx, el);
-
-    let is_highlighted = create_memo(cx, move |_| {
-        let key_manager = key_manager_getter.get();
-        is_hovered.get() && (key_manager.is_control() || key_manager.is_shift())
-    });
-
-    let is_highlighted_modified = create_memo(cx, move |_| {
-        let key_manager = key_manager_getter.get();
-        is_hovered.get() && key_manager.is_shift()
-    });
-
-    let z_index = move || {
-        if is_highlighted.get() {
-            "1"
-        } else {
-            "0"
-        }
-    };
 
     let src = move || {
         let quat = quat.get();
 
-        let mut card_side = if is_quat_up(&quat) {
+        let card_side = if is_quat_up(&quat) {
             CardSide::Front
         } else {
             CardSide::Back
         };
 
-        if is_highlighted.get() && key_manager_getter.get().is_shift() {
-            card_side = flip_card_side(card_side);
-        }
         get_card_url(card_id, card_side)
     };
 
@@ -130,7 +129,6 @@ pub fn GameCard(
             style:position="relative"
             style:display="grid"
             node_ref=el
-            style:z-index={z_index}
             style:width={move || wrap_px(placer_getter.get().scale(RENDER_CARD_SIZE.0 * scale))}
             style:height={move || wrap_px(placer_getter.get().scale(RENDER_CARD_SIZE.1 * scale))}
             style:transform=move || {
@@ -156,7 +154,6 @@ pub fn GameCard(
                     style:position="absolute"
                     style:width="100%"
                     style:height="100%"
-                    style:visibility={move || if is_highlighted_modified.get() {"hidden"} else {"visible"} }
                 >
                     {children(cx)}
                 </div>

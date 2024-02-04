@@ -2120,7 +2120,7 @@ fn one_damage(health: Health) -> Health {
     }
 }
 
-fn rotate_key(key: FaceKey) -> FaceKey {
+pub fn rotate_key(key: FaceKey) -> FaceKey {
     match key {
         FaceKey::A => FaceKey::B,
         FaceKey::B => FaceKey::A,
@@ -2129,7 +2129,7 @@ fn rotate_key(key: FaceKey) -> FaceKey {
     }
 }
 
-fn flip_key(key: FaceKey) -> FaceKey {
+pub fn flip_key(key: FaceKey) -> FaceKey {
     match key {
         FaceKey::A => FaceKey::C,
         FaceKey::C => FaceKey::A,
