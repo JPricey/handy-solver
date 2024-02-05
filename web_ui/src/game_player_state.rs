@@ -523,7 +523,6 @@ pub fn get_card_position(
         y += SELECTED_Y_DELTA_PX;
     }
     let max_x = zone_width - *CARD_ZONE_BUFFER_WIDTH - RENDER_CARD_SIZE.0;
-    log!("{:?}", (zone_width, max_x));
 
     let x = place_within_inclusive(card_index, pile_len - 1, *CARD_ZONE_BUFFER_WIDTH, max_x);
 
@@ -536,7 +535,8 @@ pub fn render_pile_update(
     pile: &Pile,
     card_zone_width_px: WindowUnit,
 ) -> Duration {
-    let card_move_speed = (card_zone_width_px / (GOLDEN_MIN_WIDTH - *HISTORY_ZONE_WIDTH_PX)) * BASE_CARD_MOVE_SPEED;
+    let card_move_speed =
+        (card_zone_width_px / (GOLDEN_MIN_WIDTH - *HISTORY_ZONE_WIDTH_PX)) * BASE_CARD_MOVE_SPEED;
     let pile_len = pile.len();
 
     let mut max_applied_duration = Duration::new(0, 0);

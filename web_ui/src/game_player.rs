@@ -292,7 +292,6 @@ pub fn GamePlayer(
     );
 
     create_effect(cx, move |_| {
-        log!("Forced rerender");
         gameplay_width.track();
         game_state.do_render_pile_update();
     });
