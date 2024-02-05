@@ -31,16 +31,11 @@ pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView {
 }
 
 #[component]
-pub fn HistoryPanel<F>(
+pub fn HistoryPanel(
     cx: Scope,
     game_history_getter: Signal<GameHistory>,
-    do_undo: F,
-    width: WindowUnit,
     height: WindowUnit,
-) -> impl IntoView
-where
-    F: Fn() + Clone + 'static,
-{
+) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
     let (is_bottom_locked, set_bottom_locked) = create_signal(cx, true);
     let (did_scroll_after_new_items, set_did_scroll_after_new_items) = create_signal(cx, true);
@@ -88,9 +83,10 @@ where
     view! { cx,
         <div
             // History Panel
-            style:width={move || wrap_px(placer_getter.get().scale(width))}
-            style:height={move || wrap_px(placer_getter.get().scale(height))}
+            style:width="100%"
+            // style:height={move || wrap_px(placer_getter.get().scale(height))}
         >
+            /*
             <div
                 style:width="100%"
                 style:display="flex"
@@ -118,6 +114,7 @@ where
                 style:border-bottom="solid"
                 style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
             />
+            */
 
             <div
                 class="select-text"

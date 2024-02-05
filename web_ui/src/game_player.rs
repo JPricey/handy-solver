@@ -18,6 +18,7 @@ use web_sys::HtmlDivElement;
 
 const ACTION_ROW_SIDE_MARGIN: WindowUnit = 4.0;
 const ACTION_ROW_TOP_MARGIN: WindowUnit = 8.0;
+const MENU_BUTTONS_SPACE_BETWEEN_PX: WindowUnit = 4.0;
 
 fn get_combined_interaction_buttons(
     interaction_options: &InteractionOptions,
@@ -280,7 +281,22 @@ pub fn GamePlayer(
     init_pile_provider: Box<dyn InitPileProvider>,
     is_playing: RwSignal<bool>,
 ) -> impl IntoView {
-    let game_state = GamePlayerState::new(cx, init_pile_provider.get_init_pile());
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let gameplay_width = create_memo(cx, move |_| {
+        placer_getter.get().golden_width - *HISTORY_ZONE_WIDTH_PX
+    });
+    let game_state = GamePlayerState::new(
+        cx,
+        init_pile_provider.get_init_pile(),
+        gameplay_width.into(),
+    );
+
+    create_effect(cx, move |_| {
+        log!("Forced rerender");
+        gameplay_width.track();
+        game_state.do_render_pile_update();
+    });
+
     let game_history_getter = game_state.game_history_getter;
     let render_card_map_getter = game_state.render_card_map_getter;
     let options = use_options(cx);
@@ -291,7 +307,6 @@ pub fn GamePlayer(
     let current_state = create_memo(cx, move |_| {
         game_history_getter.get().all_frames.last().unwrap().clone()
     });
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
     let interaction_getter = game_state.interaction_getter;
 
     let (is_showing_settings_getter, is_showing_settings_setter) = create_signal(cx, false);
@@ -482,11 +497,12 @@ pub fn GamePlayer(
         >
             <div
                 // Play Zone
-                style:width={move || wrap_px(placer_getter.get().scale(*CARD_ZONE_WIDTH_PX))}
+                style:width={move || wrap_px(placer_getter.get().scale(gameplay_width.get()))}
                 style:height={move || wrap_px(placer_getter.get().scale(GOLDEN_HEIGHT))}
                 style:background="#f8eee2"
                 style:display="flex"
                 style:flex-direction="column"
+                style:position="relative"
             >
                 <div
                     // Hint Zone
@@ -670,6 +686,90 @@ pub fn GamePlayer(
                         </InPlayGameCard>
                     }
                 }/>
+
+            // End game popup
+            <Show
+                when=move || current_state.get().resolution.is_over()
+                fallback=move |_| ()
+            >
+                <div
+                    style:position="absolute"
+                    style:width={move || wrap_px(placer_getter.get().scale(END_WINDOW_WIDTH_PX))}
+                    style:height={move || wrap_px(placer_getter.get().scale(END_WINDOW_HEIGHT_PX))}
+                    style:left="50%"
+                    style:top="50%"
+                    style:transform="translate(-50%, -50%)"
+                    style:border-radius={move || wrap_px(placer_getter.get().scale(4.0))}
+                    style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
+                    style:border-style="solid"
+                    style:background="white"
+
+                    style:display="flex"
+                    style:flex-direction="column"
+                    style:justify-content="space-evenly"
+                    style:align-items="center"
+                >
+                    <div>
+                        {end_game_text}
+                    </div>
+
+
+                    <div>
+                        <Show
+                            when=move || pile_provider_getter.get().is_pile_random()
+                            fallback=|_| ()
+                        >
+                            <Button
+                                background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                                width=100.0
+                                height=30.0
+                                on:click=move |_| {
+                                    let init_pile = pile_provider_getter.get().get_init_pile();
+                                    game_state.set_init_pile(init_pile);
+                                    let init_animation = game_state.do_render_pile_update();
+                                    game_state.maybe_schedule_next_move(init_animation);
+                                }
+                            >
+                                New Match
+                            </Button>
+
+                            <div
+                                style:height={move || wrap_px(placer_getter.get().scale(2.0))}
+                            />
+                        </Show>
+
+                        <Button
+                            background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                            width=100.0
+                            height=30.0
+                            on:click=move |_| {
+                                let mut new_history = game_history_getter.get();
+                                new_history.all_frames.truncate(1);
+                                game_state.set_history(new_history.clone());
+                                let init_animation = game_state.do_render_pile_update();
+                                game_state.maybe_schedule_next_move(init_animation);
+                            }
+                        >
+                            Replay
+                        </Button>
+
+                        <div
+                            style:height={move || wrap_px(placer_getter.get().scale(2.0))}
+                        />
+
+                        <Button
+                            background=Signal::derive(cx, || BUTTON_NON_SELECTED_COLOUR.to_string())
+                            width=100.0
+                            height=30.0
+                            on:click=move |_| {
+                                is_playing.set(false)
+                            }
+                        >
+                            Back to Menu
+                        </Button>
+                    </div>
+                </div>
+            </Show>
         </div>
 
         <div
@@ -690,8 +790,6 @@ pub fn GamePlayer(
             >
                 <HistoryPanel
                     game_history_getter=game_history_getter.into()
-                    do_undo = move || undo()
-                    width=*HISTORY_ZONE_WIDTH_PX
                     height=GOLDEN_HEIGHT
                 />
             </Show>
@@ -715,7 +813,20 @@ pub fn GamePlayer(
             />
 
             <div
-                style:width=move || wrap_px(placer_getter.get().scale(4.0))
+                style:width=move || wrap_px(placer_getter.get().scale(MENU_BUTTONS_SPACE_BETWEEN_PX))
+            />
+
+            <Button
+                width=ORACLE_ZONE_WIDTH_PX
+                height=80.0
+                background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
+                on:click = move |_| undo()
+            >
+                Undo (U)
+            </Button>
+
+            <div
+                style:width=move || wrap_px(placer_getter.get().scale(MENU_BUTTONS_SPACE_BETWEEN_PX))
             />
 
             <Button
@@ -724,91 +835,9 @@ pub fn GamePlayer(
                 background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
                 on:click =move |_| is_showing_settings_setter.set(true)
             >
-                Help & Shortcuts (?)
+                Help & Shortcuts (X,?)
             </Button>
         </div>
-
-        <Show
-            when=move || current_state.get().resolution.is_over()
-            fallback=move |_| ()
-        >
-            <div
-                style:position="absolute"
-                style:width={move || wrap_px(placer_getter.get().scale(END_WINDOW_WIDTH_PX))}
-                style:height={move || wrap_px(placer_getter.get().scale(END_WINDOW_HEIGHT_PX))}
-                style:left={move || wrap_px(placer_getter.get().scale(*END_WINDOW_LEFT_PX))}
-                style:top={move || wrap_px(placer_getter.get().scale(*END_WINDOW_TOP_PX))}
-                style:border-radius={move || wrap_px(placer_getter.get().scale(4.0))}
-                style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
-                style:border-style="solid"
-                style:background="white"
-
-                style:display="flex"
-                style:flex-direction="column"
-                style:justify-content="space-evenly"
-                style:align-items="center"
-            >
-                <div>
-                    {end_game_text}
-                </div>
-
-
-                <div>
-                    <Show
-                        when=move || pile_provider_getter.get().is_pile_random()
-                        fallback=|_| ()
-                    >
-                        <Button
-                            background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
-                            width=100.0
-                            height=30.0
-                            on:click=move |_| {
-                                let init_pile = pile_provider_getter.get().get_init_pile();
-                                game_state.set_init_pile(init_pile);
-                                let init_animation = game_state.do_render_pile_update();
-                                game_state.maybe_schedule_next_move(init_animation);
-                            }
-                        >
-                            New Match
-                        </Button>
-
-                        <div
-                            style:height={move || wrap_px(placer_getter.get().scale(2.0))}
-                        />
-                    </Show>
-
-                    <Button
-                        background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
-                        width=100.0
-                        height=30.0
-                        on:click=move |_| {
-                            let mut new_history = game_history_getter.get();
-                            new_history.all_frames.truncate(1);
-                            game_state.set_history(new_history.clone());
-                            let init_animation = game_state.do_render_pile_update();
-                            game_state.maybe_schedule_next_move(init_animation);
-                        }
-                    >
-                        Replay
-                    </Button>
-
-                    <div
-                        style:height={move || wrap_px(placer_getter.get().scale(2.0))}
-                    />
-
-                    <Button
-                        background=Signal::derive(cx, || BUTTON_NON_SELECTED_COLOUR.to_string())
-                        width=100.0
-                        height=30.0
-                        on:click=move |_| {
-                            is_playing.set(false)
-                        }
-                    >
-                        Back to Menu
-                    </Button>
-                </div>
-            </div>
-        </Show>
 
         <Show
             when=move || is_showing_settings_getter.get()

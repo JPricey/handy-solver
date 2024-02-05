@@ -1,3 +1,4 @@
+use crate::components::game_card::*;
 use crate::contexts::*;
 use crate::game_player_types::*;
 use crate::types::*;
@@ -506,7 +507,12 @@ fn place_within_inclusive(
     return small_amount + delta * (1.0 - (index as WindowUnit / max as WindowUnit));
 }
 
-pub fn get_card_position(card_index: usize, pile_len: usize, is_selected: bool) -> Point2D {
+pub fn get_card_position(
+    card_index: usize,
+    pile_len: usize,
+    zone_width: WindowUnit,
+    is_selected: bool,
+) -> Point2D {
     let mut y = place_within_inclusive(
         card_index,
         pile_len - 1,
@@ -516,12 +522,10 @@ pub fn get_card_position(card_index: usize, pile_len: usize, is_selected: bool) 
     if is_selected {
         y += SELECTED_Y_DELTA_PX;
     }
-    let x = place_within_inclusive(
-        card_index,
-        pile_len - 1,
-        *CARD_ZONE_BUFFER_WIDTH,
-        *TOP_CARD_LEFT_PX,
-    );
+    let max_x = zone_width - *CARD_ZONE_BUFFER_WIDTH - RENDER_CARD_SIZE.0;
+    log!("{:?}", (zone_width, max_x));
+
+    let x = place_within_inclusive(card_index, pile_len - 1, *CARD_ZONE_BUFFER_WIDTH, max_x);
 
     Point2D::new(x, y)
 }
@@ -530,6 +534,7 @@ pub fn render_pile_update(
     render_card_map: &mut RenderCardMap,
     interaction_options: &InteractionOptions,
     pile: &Pile,
+    card_zone_width_px: WindowUnit,
 ) -> Duration {
     let pile_len = pile.len();
 
@@ -544,7 +549,7 @@ pub fn render_pile_update(
         render_card.active_face.set(card.get_card_face());
 
         let current_pos = render_card.animated_point.get_untracked();
-        let desired_pos = get_card_position(i, pile_len, is_selected);
+        let desired_pos = get_card_position(i, pile_len, card_zone_width_px, is_selected);
 
         if current_pos != desired_pos {
             let position_s = (current_pos - desired_pos).length() / CARD_MOVE_SPEED;
@@ -713,10 +718,11 @@ pub struct GamePlayerState {
     pub game_history_getter: Signal<GameHistory>,
     pub render_card_map_getter: Signal<RenderCardMap>,
     pub interaction_getter: ReadSignal<InteractionOptions>,
+    pub card_zone_width_px: Signal<WindowUnit>,
 }
 
 impl GamePlayerState {
-    pub fn new(cx: Scope, init_pile: Pile) -> Self {
+    pub fn new(cx: Scope, init_pile: Pile, card_zone_width_px: Signal<WindowUnit>) -> Self {
         let initial_frame = get_frame_from_root_pile(init_pile.clone());
         let init_state = GameHistory {
             all_frames: vec![initial_frame.clone()],
@@ -741,6 +747,7 @@ impl GamePlayerState {
             interaction_setter,
             maybe_animation_queue,
             options: use_options(cx),
+            card_zone_width_px,
         }
     }
 
@@ -783,6 +790,7 @@ impl GamePlayerState {
             &mut render_card_map,
             &new_interaction_options,
             &game_frame.current_pile,
+            self.card_zone_width_px.get_untracked(),
         );
         self.interaction_setter.set(new_interaction_options);
         return result;
@@ -875,6 +883,7 @@ impl GamePlayerState {
                     .last()
                     .unwrap()
                     .current_pile,
+                self.card_zone_width_px.get_untracked(),
             );
             self.interaction_setter.set(new_interaction_options);
         }

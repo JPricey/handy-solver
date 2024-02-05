@@ -8,9 +8,9 @@ use std::time::Duration;
 pub type WindowUnit = f64;
 pub type WindowSize = (WindowUnit, WindowUnit);
 
-pub static GOLDEN_WIDTH: WindowUnit = 1280.0;
+pub static GOLDEN_MAX_WIDTH: WindowUnit = 1920.0;
+pub static GOLDEN_MIN_WIDTH: WindowUnit = 1280.0;
 pub static GOLDEN_HEIGHT: WindowUnit = 800.0;
-pub static GOLDEN_SIZE: WindowSize = (GOLDEN_WIDTH, GOLDEN_HEIGHT);
 
 pub fn quat_for_face(face_key: FaceKey) -> DQuat {
     match face_key {

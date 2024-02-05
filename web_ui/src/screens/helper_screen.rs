@@ -8,6 +8,15 @@ const H1_FONT_SIZE: WindowUnit = 30.0;
 const H2_FONT_SIZE: WindowUnit = 18.0;
 
 #[component]
+fn ShortcutRow(cx: Scope, shortcut: String, text: String) -> impl IntoView {
+    view! { cx,
+        <div>
+            <b>{shortcut}:</b>{format!(" {text}")}
+        </div>
+    }
+}
+
+#[component]
 pub fn HelperScreen<F, G, H>(
     cx: Scope,
     is_showing_settings_setter: WriteSignal<bool>,
@@ -78,22 +87,26 @@ where
                         >
                             Gameplay Shortcuts
                         </div>
-                        <div>
-                            Hover over cards to fully reveal them
-                        </div>
-                        <div>
-                            Execute an action that targets a card in the stack (1-9)
-                        </div>
-                        <div>
-                            Execute an action that rotates / flips a card (A, B, C, D)
-                        </div>
-                        <div>
-                            Execute an action with no targets (Enter)
-                        </div>
-                        <div>
-                            Skip an action or turn (0)
-                        </div>
-
+                        <ShortcutRow
+                            shortcut="1-9".to_owned()
+                            text="Execute an action that targets a card in the stack".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="0".to_owned()
+                            text="Skip an action or turn".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="A, B, C, D".to_owned()
+                            text="Execute an action that rotates / flips a card".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="0".to_owned()
+                            text="Skip an action or turn".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="Enter".to_owned()
+                            text="Execute an action that has already been targetted".to_owned()
+                        />
 
                         <div
                             style:height={move || wrap_px(placer_getter.get().scale(10.0))}
@@ -103,18 +116,22 @@ where
                         >
                             Menu Shortcuts
                         </div>
-                        <div>
-                            Show / Hide this screen (?, /, X)
-                        </div>
-                        <div>
-                            Show / Hide the engine (E)
-                        </div>
-                        <div>
-                            {format!("Undo the last action (U, ←)")}
-                        </div>
-                        <div>
-                            {format!("Execute an only-move (→)")}
-                        </div>
+                        <ShortcutRow
+                            shortcut="X, ?, /".to_owned()
+                            text="Show / Hide this screen".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="E".to_owned()
+                            text="Show / Hide the engine".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="U, ←".to_owned()
+                            text="Undo the last action".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="→".to_owned()
+                            text="Execute an only-move (when auto-move is disabled)".to_owned()
+                        />
                     </div>
 
                     <div
@@ -127,12 +144,14 @@ where
                         >
                             Settings
                         </div>
-                        <div>
-                            Toggle Settings Bar Visibility (H)
-                        </div>
-                        <div>
-                            Toggle Auto Only-Moves (O)
-                        </div>
+                        <ShortcutRow
+                            shortcut="H".to_owned()
+                            text="Toggle Settings Bar Visibility".to_owned()
+                        />
+                        <ShortcutRow
+                            shortcut="O".to_owned()
+                            text="Toggle Auto Only-Moves".to_owned()
+                        />
                     </div>
 
                     <div

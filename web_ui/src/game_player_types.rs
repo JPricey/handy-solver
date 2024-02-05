@@ -8,7 +8,7 @@ pub const FONT_BASE_SIZE: WindowUnit = 14.0;
 
 pub const CARD_WINDOW_BUFFER_PX: WindowUnit = 20.0;
 pub const ORACLE_ZONE_WIDTH_PX: WindowUnit = 220.0;
-pub const ORACLE_ZONE_HEIGHT_PX: WindowUnit = 160.0;
+pub const ORACLE_ZONE_HEIGHT_PX: WindowUnit = 120.0;
 
 pub const CHOICE_BUTTON_WIDTH_PX: WindowUnit = 120.0;
 pub const CHOICE_BUTTON_HEIGHT_PX: WindowUnit = 80.0;
@@ -18,7 +18,7 @@ pub const SELECTED_Y_DELTA_PX: WindowUnit = -40.0;
 
 lazy_static! {
     pub static ref HISTORY_ZONE_WIDTH_PX: WindowUnit = 280.0;
-    pub static ref CARD_ZONE_WIDTH_PX: WindowUnit = GOLDEN_WIDTH - *HISTORY_ZONE_WIDTH_PX;
+
     pub static ref CARD_ZONE_HEIGHT_PX: WindowUnit = GOLDEN_HEIGHT;
     pub static ref CARD_ZONE_BUFFER_WIDTH: WindowUnit = 24.0;
     pub static ref TOP_CARD_Y_OFFSET_PX: WindowUnit =
@@ -26,10 +26,6 @@ lazy_static! {
     pub static ref BOTTOM_CARD_Y_OFFSET_PX: WindowUnit = *TOP_CARD_Y_OFFSET_PX - 260.0;
     pub static ref ROW_OPTION_WIDTH_PX: WindowUnit = RENDER_CARD_SIZE.0;
     pub static ref ROW_OPTION_HEIGHT_PX: WindowUnit = RENDER_CARD_SIZE.1 * 0.105;
-    pub static ref TOP_CARD_LEFT_PX: WindowUnit =
-        *CARD_ZONE_WIDTH_PX - *CARD_ZONE_BUFFER_WIDTH - RENDER_CARD_SIZE.0;
-    pub static ref END_WINDOW_LEFT_PX: WindowUnit =
-        (*CARD_ZONE_WIDTH_PX - END_WINDOW_WIDTH_PX) / 2.0;
     pub static ref END_WINDOW_TOP_PX: WindowUnit =
         (*CARD_ZONE_HEIGHT_PX - END_WINDOW_HEIGHT_PX) / 2.0;
     pub static ref OPTIONS_HEADER_ZONE_HEIGHT_PCT: WindowUnit =

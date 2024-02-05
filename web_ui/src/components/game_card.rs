@@ -19,13 +19,6 @@ enum CardSide {
     Back,
 }
 
-fn flip_card_side(card_side: CardSide) -> CardSide {
-    match card_side {
-        CardSide::Front => CardSide::Back,
-        CardSide::Back => CardSide::Front,
-    }
-}
-
 fn card_side_to_str(card_side: CardSide) -> &'static str {
     match card_side {
         CardSide::Front => "f",

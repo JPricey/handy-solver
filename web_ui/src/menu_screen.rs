@@ -278,99 +278,105 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                 style:height="100%"
                 style:background="white"
                 style:display="flex"
-                style:flex-direction="row"
+                style:justify-content="center"
             >
                 <div
-                    style:width=wrap_pct(OPTIONS_WIDTH_PCT)
-                    style:height=wrap_pct(100.0)
+                    style:width=move || wrap_px(placer_getter.get().scale(GOLDEN_MIN_WIDTH))
+                    style:height="100%"
                     style:display="flex"
-                    style:flex-direction="column"
-                    style:justify-content="space-around"
                 >
                     <div
+                        style:width=wrap_pct(OPTIONS_WIDTH_PCT)
+                        style:height=wrap_pct(100.0)
                         style:display="flex"
                         style:flex-direction="column"
-                        style:justify-content="center"
-                        style:align-items="center"
+                        style:justify-content="space-around"
                     >
-                        // Matchup Div
                         <div
-                            style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
+                            style:display="flex"
+                            style:flex-direction="column"
+                            style:justify-content="center"
+                            style:align-items="center"
                         >
-                            Select a Matchup
+                            // Matchup Div
+                            <div
+                                style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
+                            >
+                                Select a Matchup
+                            </div>
+
+                            <MatchupSelector hero=hero_signal baddie=enemy_signal/>
+
+                            <div
+                                style:height={move || wrap_px(placer_getter.get().scale(32.0))}
+                            />
+
+                            <Button
+                                background=Signal::derive(cx, || BRAWL_COLOUR.to_string())
+                                width=BRAWL_BUTTON_WIDTH_PX
+                                height=BRAWL_BUTTON_HEIGHT_PX
+                                on:click=move |_| {
+                                    pile_provider_signal.set(Box::new(MatchupPileProvider {
+                                        matchup: (hero_signal.get(), enemy_signal.get())
+                                    }));
+
+                                    is_playing.set(true)
+                                }
+                            >
+                                BRAWL
+                            </Button>
                         </div>
 
-                        <MatchupSelector hero=hero_signal baddie=enemy_signal/>
 
                         <div
-                            style:height={move || wrap_px(placer_getter.get().scale(32.0))}
-                        />
-
-                        <Button
-                            background=Signal::derive(cx, || BRAWL_COLOUR.to_string())
-                            width=BRAWL_BUTTON_WIDTH_PX
-                            height=BRAWL_BUTTON_HEIGHT_PX
-                            on:click=move |_| {
-                                pile_provider_signal.set(Box::new(MatchupPileProvider {
-                                    matchup: (hero_signal.get(), enemy_signal.get())
+                            style:display="flex"
+                            style:flex-direction="column"
+                            style:justify-content="center"
+                            style:align-items="center"
+                        >
+                            <div
+                                style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
+                            >
+                                Or Use a Custom Start
+                            </div>
+                            <PileSelector on_select=move |pile| {
+                                pile_provider_signal.set(Box::new(ExactPileProvider {
+                                    pile,
                                 }));
-
                                 is_playing.set(true)
-                            }
-                        >
-                            BRAWL
-                        </Button>
+                            }/>
+                        </div>
                     </div>
-
 
                     <div
-                        style:display="flex"
-                        style:flex-direction="column"
-                        style:justify-content="center"
-                        style:align-items="center"
+                        style:width=wrap_pct(LOGO_WIDTH_PCT)
+                        style:height=wrap_pct(100.0)
                     >
-                        <div
-                            style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
-                        >
-                            Or Use a Custom Start
+                        <img
+                            src="static/images/logo-full.webp"
+                            style:width=wrap_pct(100.0)
+                        />
+                    </div>
+                    <div
+                        style:position="absolute"
+                        style:right="0%"
+                        style:bottom="0%"
+                        style:margin={move || wrap_px(placer_getter.get().scale(2.0))}
+                    >
+                        <div>
+                            <a href="https://boardgamegeek.com/boardgame/362692/handy-brawl">Handy Brawl</a>
+                            game designed by
+                            <a href="https://boardgamegeek.com/boardgamedesigner/145462/igor-zuber" >Igor Zuber</a>
                         </div>
-                        <PileSelector on_select=move |pile| {
-                            pile_provider_signal.set(Box::new(ExactPileProvider {
-                                pile,
-                            }));
-                            is_playing.set(true)
-                        }/>
-                    </div>
-                </div>
-
-                <div
-                    style:width=wrap_pct(LOGO_WIDTH_PCT)
-                    style:height=wrap_pct(100.0)
-                >
-                    <img
-                        src="static/images/logo-full.webp"
-                        style:width=wrap_pct(100.0)
-                    />
-                </div>
-                <div
-                    style:position="absolute"
-                    style:right="0%"
-                    style:bottom="0%"
-                    style:margin={move || wrap_px(placer_getter.get().scale(2.0))}
-                >
-                    <div>
-                        <a href="https://boardgamegeek.com/boardgame/362692/handy-brawl">Handy Brawl</a>
-                        game designed by
-                        <a href="https://boardgamegeek.com/boardgamedesigner/145462/igor-zuber" >Igor Zuber</a>
-                    </div>
-                    <div>
-                        Art by
-                        <a href="https://boardgamegeek.com/boardgameartist/116088/aleksander-jagodzinski">Aleksander Jagodziński</a>
-                        and
-                        <a href="https://boardgamegeek.com/boardgameartist/145463/weronika-kaluza">Weronika Kałuża</a>
-                    </div>
-                    <div>
-                        <a href="https://github.com/JPricey/handy-solver"> Implemented by Joe Price</a>
+                        <div>
+                            Art by
+                            <a href="https://boardgamegeek.com/boardgameartist/116088/aleksander-jagodzinski">Aleksander Jagodziński</a>
+                            and
+                            <a href="https://boardgamegeek.com/boardgameartist/145463/weronika-kaluza">Weronika Kałuża</a>
+                        </div>
+                        <div>
+                            <a href="https://github.com/JPricey/handy-solver"> Implemented by Joe Price</a>
+                        </div>
                     </div>
                 </div>
             </div>

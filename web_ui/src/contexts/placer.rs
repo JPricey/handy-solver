@@ -13,14 +13,25 @@ fn min_f64(a: f64, b: f64) -> f64 {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GameComponentPlacer {
-    pub scale: f64,
+    pub scale: WindowUnit,
+    pub golden_width: WindowUnit,
     pub is_mobile: bool,
     pub is_rotated: bool,
 }
 
 impl GameComponentPlacer {
-    pub fn new(scale: f64, is_mobile: bool, is_rotated: bool) -> Self {
-        Self { scale, is_mobile, is_rotated }
+    pub fn new(
+        scale: WindowUnit,
+        golden_width: WindowUnit,
+        is_mobile: bool,
+        is_rotated: bool,
+    ) -> Self {
+        Self {
+            scale,
+            golden_width,
+            is_mobile,
+            is_rotated,
+        }
     }
 
     pub fn new_from_root_window_size(window_size: WindowSize, is_mobile: bool) -> Self {
@@ -32,29 +43,18 @@ impl GameComponentPlacer {
             (width, height) = (height, width);
         }
 
-        let width_scale = width / GOLDEN_WIDTH;
+        let width_scale = width / GOLDEN_MIN_WIDTH;
         let height_scale = height / GOLDEN_HEIGHT;
         let scale = min_f64(width_scale, height_scale);
 
-        Self::new(scale, is_mobile,should_rotate)
+        let computed_golden_width = width / scale;
+        let golden_width = min_f64(computed_golden_width, GOLDEN_MAX_WIDTH);
+
+        Self::new(scale, golden_width, is_mobile, should_rotate)
     }
 
     pub fn scale(&self, size: WindowUnit) -> WindowUnit {
         size * self.scale
-    }
-}
-
-pub fn get_places(
-    placer_getter: Memo<GameComponentPlacer>,
-    point: WindowSize,
-    width: WindowUnit,
-    height: WindowUnit,
-) -> Places {
-    Places {
-        width: Box::new(move || wrap_px(placer_getter.get().scale(width))),
-        height: Box::new(move || wrap_px(placer_getter.get().scale(height))),
-        x: Box::new(move || wrap_px(placer_getter.get().scale(point.0))),
-        y: Box::new(move || wrap_px(placer_getter.get().scale(point.1))),
     }
 }
 
@@ -84,7 +84,10 @@ fn get_current_window_size() -> Option<WindowSize> {
 }
 
 pub fn compute_is_mobile() -> bool {
-    let user_agent_string = format!("{}", window().navigator().user_agent().unwrap_or("".to_owned()));
+    let user_agent_string = format!(
+        "{}",
+        window().navigator().user_agent().unwrap_or("".to_owned())
+    );
     let re = Regex::new(r"/Mobile|iP(hone|od|ad)|Android|BlackBerry|IEMobile/").unwrap();
 
     re.is_match(&user_agent_string)
@@ -110,11 +113,19 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
     let origin = create_memo(cx, move |_| {
         let window_size = window_size_getter.get();
         let placer = placer_getter.get();
-        let projected_size = scalar_mult(GOLDEN_SIZE, placer.scale);
+        let projected_size = scalar_mult((placer.golden_width, GOLDEN_HEIGHT), placer.scale);
         scalar_mult(point_sub(window_size, projected_size), 0.5)
     });
 
-    let places = get_places(placer_getter, (0.0, 0.0), GOLDEN_WIDTH, GOLDEN_HEIGHT);
+    let width = move || {
+        let placer = placer_getter.get();
+        wrap_px(placer.scale(placer.golden_width))
+    };
+
+    let height = move || {
+        let placer = placer_getter.get();
+        wrap_px(placer.scale(GOLDEN_HEIGHT))
+    };
 
     view! { cx,
         <div
@@ -124,16 +135,15 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
         >
             <div
                 style:position="absolute"
-                style:width={places.width}
-                style:height={places.height}
-                style:left={move || format!("{}px", origin.get().0)}
-                style:top={move || format!("{}px", origin.get().1)}
+                style:width=width
+                style:height=height
+                style:left=move || format!("{}px", origin.get().0)
+                style:top=move || format!("{}px", origin.get().1)
                 style:background="rgb(248, 238, 226)"
-                style:transform={move || if placer_getter.get().is_rotated { "rotate(90deg)" } else { "" } }
-                style:font-size={move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE))}
+                style:transform=move || if placer_getter.get().is_rotated { "rotate(90deg)" } else { "" } 
+                style:font-size=move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE))
             >
                 {children(cx)}
-                // <GamePlayer init_pile={init_pile} />
             </div>
         </div>
     }
