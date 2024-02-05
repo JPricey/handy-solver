@@ -11,7 +11,7 @@ use leptos_animation::*;
 use std::cmp::max;
 use std::f64::consts::PI;
 
-const CARD_MOVE_SPEED: WindowUnit = 1000.0;
+const BASE_CARD_MOVE_SPEED: WindowUnit = 1000.0;
 const CARD_ROTATE_SPEED: WindowUnit = 2.0 * PI;
 
 fn selectable_row_offset(face_def: &FaceDef) -> usize {
@@ -536,6 +536,7 @@ pub fn render_pile_update(
     pile: &Pile,
     card_zone_width_px: WindowUnit,
 ) -> Duration {
+    let card_move_speed = (card_zone_width_px / (GOLDEN_MIN_WIDTH - *HISTORY_ZONE_WIDTH_PX)) * BASE_CARD_MOVE_SPEED;
     let pile_len = pile.len();
 
     let mut max_applied_duration = Duration::new(0, 0);
@@ -552,7 +553,7 @@ pub fn render_pile_update(
         let desired_pos = get_card_position(i, pile_len, card_zone_width_px, is_selected);
 
         if current_pos != desired_pos {
-            let position_s = (current_pos - desired_pos).length() / CARD_MOVE_SPEED;
+            let position_s = (current_pos - desired_pos).length() / card_move_speed;
             let distance_duration = Duration::from_secs_f64(position_s);
             max_applied_duration = max(max_applied_duration, distance_duration);
             render_card.point.set((desired_pos, distance_duration));
