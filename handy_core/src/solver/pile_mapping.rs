@@ -1,6 +1,5 @@
 use crate::game::*;
 
-
 #[derive(Debug, Clone)]
 pub struct PileMappings {
     card_id_to_index: Vec<usize>,

@@ -14,7 +14,8 @@ fn App(cx: Scope) -> impl IntoView {
     // There seems to be a bug in leptos_animation where when all animated signals are destroyed
     // future signals will stall as well.
     // We create this useless animation so that there's an animated signal around at all times
-    let animation_hack: Signal<f64> = create_animated_signal(cx, move || (0.0).into(), tween_default);
+    let animation_hack: Signal<f64> =
+        create_animated_signal(cx, move || (0.0).into(), tween_default);
     create_effect(cx, move |_| animation_hack.track());
 
     view! { cx,

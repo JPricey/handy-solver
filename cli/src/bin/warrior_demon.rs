@@ -64,17 +64,20 @@ fn main() {
 
         for demon_i in 0..num_demon_perms {
             let demon_perm = number_to_ordering(demon_i, 4);
-            let pile: Pile = Pile::from_iter(vec![
-                demon_cards[demon_perm[0]],
-                demon_cards[demon_perm[1]],
-                demon_cards[demon_perm[2]],
-                demon_cards[demon_perm[3]],
-                warrior_cards[warrior_perm[0]],
-                warrior_cards[warrior_perm[1]],
-                warrior_cards[warrior_perm[2]],
-                warrior_cards[warrior_perm[3]],
-                warrior_cards[warrior_perm[4]],
-            ].into_iter());
+            let pile: Pile = Pile::from_iter(
+                vec![
+                    demon_cards[demon_perm[0]],
+                    demon_cards[demon_perm[1]],
+                    demon_cards[demon_perm[2]],
+                    demon_cards[demon_perm[3]],
+                    warrior_cards[warrior_perm[0]],
+                    warrior_cards[warrior_perm[1]],
+                    warrior_cards[warrior_perm[2]],
+                    warrior_cards[warrior_perm[3]],
+                    warrior_cards[warrior_perm[4]],
+                ]
+                .into_iter(),
+            );
 
             print!("w: {}, d: {}, pile: {:?}", warrior_i, demon_i, pile);
             solve_pile(pile, model.clone());

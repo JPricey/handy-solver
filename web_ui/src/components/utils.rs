@@ -11,7 +11,6 @@ pub const BUTTON_BORDER_RADIUS_PX: WindowUnit = 2.0;
 pub const BUTTON_BORDER_WIDTH_PX: WindowUnit = 2.0;
 pub const MENU_BUTTON_COLOUR: &str = "#c9ced6";
 
-
 pub fn wrap_px(unit: WindowUnit) -> String {
     format!("{unit}px")
 }

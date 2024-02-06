@@ -104,6 +104,11 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                             SpanItem::Text(format!("Skip {action_text}")),
                         ]
                     />
+                    // <IconBadge
+                    //     action=wrapped_action
+                    //     actor=card_ptr.get_card_def().class
+                    //     scale=3.0
+                    // />
                 </span>
             }
         }
@@ -177,6 +182,18 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                     <TokenSpan
                         elements=vec![
                             SpanItem::Text("Inspire".to_owned()),
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                        ]
+                    />
+                </span>
+            }
+        }
+        Event::Hypnosis(card_idx, card_ptr) => {
+            view! { cx,
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::Text("Hypnosis".to_owned()),
                             SpanItem::CardPtrAndIndex(card_ptr, card_idx),
                         ]
                     />
@@ -327,6 +344,18 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                     <TokenSpan
                         elements=vec![
                             SpanItem::Text("Revive".to_owned()),
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                        ]
+                    />
+                </span>
+            }
+        }
+        Event::Rat(card_idx, card_ptr) => {
+            view! { cx,
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::Text("Rat".to_owned()),
                             SpanItem::CardPtrAndIndex(card_ptr, card_idx),
                         ]
                     />

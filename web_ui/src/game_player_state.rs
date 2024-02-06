@@ -168,6 +168,15 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Target Inspire".to_owned());
             }
+            Event::Hypnosis(_, card_ptr) => {
+                add_clickable_card_option(
+                    card_ptr.get_card_id(),
+                    ClickableCardReason::Move(available_move.clone()),
+                );
+                new_interaction_options
+                    .hints
+                    .insert("Target Hypnosis".to_owned());
+            }
             Event::Pull(_, card_ptr) => {
                 // Allow both targets and interaction button options
                 add_clickable_card_option(
@@ -223,6 +232,13 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 new_interaction_options
                     .hints
                     .insert("Target Revive".to_owned());
+            }
+            Event::Rat(_, card_ptr) => {
+                add_clickable_card_option(
+                    card_ptr.get_card_id(),
+                    ClickableCardReason::Move(available_move.clone()),
+                );
+                new_interaction_options.hints.insert("Heal Rat".to_owned());
             }
             Event::OnHurt(_, card_ptr) => {
                 add_clickable_card_option(

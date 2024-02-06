@@ -299,12 +299,6 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                             style:align-items="center"
                         >
                             // Matchup Div
-                            <div
-                                style:font-size={move || wrap_px(placer_getter.get().scale(VS_FONT_SIZE))}
-                            >
-                                Select a Matchup
-                            </div>
-
                             <MatchupSelector hero=hero_signal baddie=enemy_signal/>
 
                             <div

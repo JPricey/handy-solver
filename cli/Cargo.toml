@@ -26,3 +26,4 @@ text_io = { workspace = true }
 priq = {workspace=true}
 lazy_static = {workspace=true}
 csv = "1.1"
+stats-cli = "3.0.1"

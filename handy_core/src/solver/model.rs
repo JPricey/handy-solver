@@ -1,20 +1,21 @@
 use crate::game::card_ptr::*;
 use crate::game::*;
+use crate::solver::model_t::ModelT;
 use crate::solver::vectorize::*;
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashSet};
 use vectorize_derive::*;
-use crate::solver::model_t::ModelT;
 
-pub const HEROS: [Class; 6] = [
+pub const HEROS: [Class; 7] = [
     Class::Warrior,
     Class::Huntress,
     Class::Pyro,
     Class::Cursed,
     Class::Beastmaster,
     Class::Assassin,
+    Class::Piper,
 ];
 
 pub const BADDIES: [Class; 6] = [
@@ -24,6 +25,7 @@ pub const BADDIES: [Class; 6] = [
     Class::Demon,
     Class::Flora,
     Class::Wall,
+    // Class::Wisp,
 ];
 
 pub type Matchup = (Class, Class);

@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="8.8380804mm"
-   height="8.8386269mm"
-   viewBox="0 0 8.8380804 8.8386269"
+   width="8.254282mm"
+   height="8.6261272mm"
+   viewBox="0 0 8.254282 8.6261273"
    version="1.1"
    id="svg18065"
    sodipodi:docname="hit_blank.svg"
@@ -24,10 +24,10 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="10.508033"
-     inkscape:cx="15.749856"
-     inkscape:cy="18.652397"
+     inkscape:cx="15.749855"
+     inkscape:cy="18.699979"
      inkscape:window-width="1920"
-     inkscape:window-height="1163"
+     inkscape:window-height="1136"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
@@ -38,14 +38,7 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(88.273008,-71.58625)">
-    <circle
-       class="fil0"
-       cx="-84.145866"
-       cy="76.085236"
-       r="4.127141"
-       id="circle542"
-       style="clip-rule:evenodd;fill-rule:evenodd;stroke-width:0.013268;image-rendering:optimizeQuality;shape-rendering:geometricPrecision;text-rendering:geometricPrecision;fill:#ffffff;fill-opacity:1" />
+     transform="translate(88.273007,-71.58625)">
     <path
        class="fil2"
        d="m -82.369807,72.651878 c -2.102844,-0.969624 -4.68705,0.07656 -5.451552,2.281033 v -1.32e-4 c 0.668442,-2.415173 3.351229,-3.399657 5.451552,-2.280901 z"

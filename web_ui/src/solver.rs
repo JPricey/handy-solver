@@ -32,10 +32,10 @@ pub enum OutputSignal {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum SolverState {
-    Init, // Waking up
-    Idle, // Done looking
+    Init,    // Waking up
+    Idle,    // Done looking
     Pending, // About to turn off in the next tick. Hack to prevent races in communication between
-             // worker thread and main thread.
+    // worker thread and main thread.
     Working, // Looking for solutions
 }
 

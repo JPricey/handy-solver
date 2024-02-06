@@ -2,7 +2,13 @@ use handy_core::game::*;
 use handy_core::utils::*;
 use rand::Rng;
 
-pub fn get_random_pile_matching_stats<R: Rng>(hero: Class, monster: Class, randomize_sides_pct: usize, randomize_hero_sides_pct: usize, rng: &mut R) -> Pile {
+pub fn get_random_pile_matching_stats<R: Rng>(
+    hero: Class,
+    monster: Class,
+    randomize_sides_pct: usize,
+    randomize_hero_sides_pct: usize,
+    rng: &mut R,
+) -> Pile {
     let score: usize = rng.gen_range(0..100);
     if score < randomize_sides_pct {
         return get_random_pile_with_no_winner(hero, monster, rng);

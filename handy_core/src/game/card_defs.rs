@@ -29,8 +29,14 @@ impl CharBuilder {
 
     fn card(&self, id: CardId, mut faces: EnumMap<FaceKey, FaceDef>) -> CardDef {
         for face in faces.values_mut() {
-            if face.allegiance != Allegiance::Werewolf {
-                face.allegiance = self.allegiance
+            match face.allegiance {
+                Allegiance::Rat | Allegiance::Werewolf => {
+                    // Allegiance is correct already
+                }
+                Allegiance::Hero | Allegiance::Baddie => {
+                    // Overwrite
+                    face.allegiance = self.allegiance
+                }
             }
         }
         CardDef {
@@ -459,6 +465,22 @@ impl Row {
         self
     }
 
+    fn rats(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Rats,
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn hypnosis_enemy(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Hypnosis,
+            target: Target::Enemy,
+        });
+        self
+    }
+
     fn is_mandatory(mut self) -> Self {
         self.is_mandatory = true;
         self
@@ -476,6 +498,7 @@ fn side(health: Health) -> FaceDef {
         assists: vec![],
         swarm: None,
         rage: 0,
+        modifier: None,
     }
 }
 
@@ -597,6 +620,22 @@ impl FaceDef {
         self.rage = rage;
         self
     }
+
+    fn modifier_no_mandatory(mut self, amount: ModifierAmount) -> Self {
+        self.modifier = Some(Modifier {
+            amount,
+            mandatory: None,
+        });
+        self
+    }
+
+    fn modifier_rotate(mut self, amount: ModifierAmount) -> Self {
+        self.modifier = Some(Modifier {
+            amount,
+            mandatory: Some(SelfAction::Rotate),
+        });
+        self
+    }
 }
 
 const CARDS_SIZE: usize = 128;
@@ -618,7 +657,7 @@ impl CardDefs {
 
     pub fn get_card_if_exists(&self, id: usize) -> Option<&CardDef> {
         if let Some(card) = &self.cards[id] {
-            return Some(&card);
+            Some(&card)
         } else {
             None
         }
@@ -3549,6 +3588,431 @@ impl CardDefs {
                 },
             ));
         }
+
+        {
+            let piper = CharBuilder::new(Class::Piper, Allegiance::Hero);
+            card_defs.register_card(piper.card(
+                55,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .modifier_rotate(-2)
+                        .add_row(row()
+                                .arrow_any()
+                                .quicken_enemy(2)
+                        )
+                        .add_row(row()
+                                .teleport_enemy()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .modifier_rotate(1)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .hit_any(0)
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .delay_enemy(2)
+                                .quicken_ally(2)
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .modifier_no_mandatory(1)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                        )
+                        .add_row(row()
+                                .rats()
+                        )
+                        .add_row(row()
+                                .teleport_enemy()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .modifier_rotate(4)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                        )
+                        .add_row(row()
+                                .arrow_any()
+                                .teleport_enemy()
+                        )
+                        .add_row(row()
+                                .delay_enemy(2)
+                                .manouver()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(piper.card(
+                56,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .modifier_rotate(-2)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .rats()
+                                .teleport_enemy()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .quicken_any(1)
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .modifier_rotate(1)
+                        .add_row(row()
+                                .arrow_any()
+                                .delay_ally(1)
+                        )
+                        .add_row(row()
+                                .hit_any(0)
+                                .quicken_any(1)
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .manouver()
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .modifier_no_mandatory(1)
+                        .add_row(row()
+                                .arrow_any()
+                                .quicken_enemy(1)
+                        )
+                        .add_row(row()
+                                .teleport_enemy()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .modifier_rotate(-4)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                        )
+                        .add_row(row()
+                                .rats()
+                        )
+                        .add_row(row()
+                                .teleport_each()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(piper.card(
+                57,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .modifier_rotate(1)
+                        .add_row(row()
+                                .hit_any(0)
+                                .quicken_enemy(1)
+                        )
+                        .add_row(row()
+                                .teleport_each()
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .modifier_rotate(-1)
+                        .add_row(row()
+                                .arrow_any()
+                                .teleport_enemy()
+                        )
+                        .add_row(row()
+                                .quicken_ally(1)
+                                .quicken_ally(1)
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .modifier_no_mandatory(1)
+                        .add_row(row()
+                                .arrow_any()
+                                .quicken_enemy(1)
+                        )
+                        .add_row(row()
+                                .hit_any(0)
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .modifier_rotate(4)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                        )
+                        .add_row(row()
+                                .rats()
+                        )
+                        .add_row(row()
+                                .hit_any(0)
+                                .teleport_each()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(piper.card(
+                58,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .modifier_rotate(1)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                                .quicken_enemy(2)
+                        )
+                        .add_row(row()
+                                .rats()
+                                .delay_ally(2)
+                        )
+                        .add_row(row()
+                                .quicken_enemy(1)
+                                .quicken_enemy(1)
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .modifier_rotate(-1)
+                        .add_row(row()
+                                .teleport_enemy()
+                                .arrow_any()
+                                .rotate()
+                        )
+                        .add_row(row()
+                                .delay_ally(1)
+                                .delay_enemy(1)
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .modifier_no_mandatory(-1)
+                        .add_row(row()
+                                .hypnosis_enemy()
+                        )
+                        .add_row(row()
+                                .rats()
+                        )
+                        .add_row(row()
+                                .hit_any(0)
+                                .delay_enemy(1)
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .modifier_rotate(-4)
+                        .add_row(row()
+                                .arrow_any()
+                                .teleport_enemy()
+                        )
+                        .add_row(row()
+                                .quicken_enemy(2)
+                                .manouver()
+                        )
+                        ,
+                },
+            ));
+
+            let rat = CharBuilder::new(Class::Piper, Allegiance::Rat);
+            card_defs.register_card(rat.card(
+                59,
+                enum_map! {
+                    FaceKey::A => side(Health::Empty)
+                        .add_row(row()
+                                .claw_enemy(0)
+                                .is_mandatory()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .add_row(row()
+                                 .death()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Half)
+                        .add_row(row()
+                                .claw_enemy(2)
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .add_row(row()
+                                .hit_enemy(2)
+                                .hit_enemy(2)
+                        )
+                        ,
+                },
+            ));
+        }
+
+        /*
+            {
+                let wisp = CharBuilder::new(Class::Wisp, Allegiance::Baddie);
+                card_defs.register_card(wisp.card(
+                    55,
+                    enum_map! {
+                        FaceKey::A => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .pull_enemy(5)
+                                .hit_enemy(1)
+                                .rotate()
+                            )
+                            ,
+                        FaceKey::B => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .hit_enemy(4)
+                                .push_enemy(3)
+                            )
+                            .block_to_rotate()
+                            ,
+                        FaceKey::C => side(Health::Empty)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .hit_enemy(5)
+                            )
+                            ,
+                        FaceKey::D => side(Health::Half)
+                            .feature(Features::Wisp)
+                            .feature(Features::Weight)
+                            .add_row(row()
+                                .hit_enemy_inf()
+                                .hit_enemy_inf()
+                                .rotate()
+                            )
+                            .block_perm()
+                            ,
+                    },
+                ));
+
+                card_defs.register_card(wisp.card(
+                    56,
+                    enum_map! {
+                        FaceKey::A => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .feature(Features::Weight)
+                            .add_row(row()
+                                .hit_enemy(4)
+                                .rotate()
+                            )
+                            ,
+                        FaceKey::B => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .heal_ally()
+                                .rotate()
+                            )
+                            .add_row(row()
+                                .hit_enemy(7)
+                                .rotate()
+                            )
+                            .block_to_rotate()
+                            ,
+                        FaceKey::C => side(Health::Empty)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .hit_enemy(5)
+                                .pull_ally(4)
+                            )
+                            ,
+                        FaceKey::D => side(Health::Half)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .push_enemy(3)
+                                .hit_enemy(5)
+                            )
+                            ,
+                    },
+                ));
+
+                card_defs.register_card(wisp.card(
+                    57,
+                    enum_map! {
+                        FaceKey::A => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .hit_enemy(4)
+                                .rotate()
+                            )
+                            ,
+                        FaceKey::B => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .feature(Features::Weight)
+                            .add_row(row()
+                                .heal_ally()
+                                .rotate()
+                            )
+                            .add_row(row()
+                                .hit_enemy(5)
+                                .rotate()
+                            )
+                            ,
+                        FaceKey::C => side(Health::Empty)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .pull_enemy(6)
+                                .hit_enemy(1)
+                            )
+                            ,
+                        FaceKey::D => side(Health::Half)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .pull_enemy(4)
+                                .hit_enemy(1)
+                            )
+                            ,
+                    },
+                ));
+
+                card_defs.register_card(wisp.card(
+                    58,
+                    enum_map! {
+                        FaceKey::A => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .push_enemy(3)
+                                .push_enemy(3)
+                                .rotate()
+                            )
+                            ,
+                        FaceKey::B => side(Health::Full)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .hit_enemy(5)
+                                .rotate()
+                            )
+                            .block_to_rotate()
+                            ,
+                        FaceKey::C => side(Health::Empty)
+                            .feature(Features::Wisp)
+                            .feature(Features::Weight)
+                            .add_row(row()
+                                .hit_enemy_inf()
+                            )
+                            ,
+                        FaceKey::D => side(Health::Half)
+                            .feature(Features::Wisp)
+                            .add_row(row()
+                                .heal_ally()
+                                .heal_ally()
+                                .heal_ally()
+                                .rotate()
+                            )
+                            .add_row(row()
+                                .pull_ally(5)
+                            )
+                            ,
+                    },
+                ));
+            }
+        */
 
         card_defs
     }

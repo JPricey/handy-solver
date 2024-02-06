@@ -24,20 +24,18 @@ fn train<'a, I>(
     learning_rate: f32,
 ) -> (Vec<f32>, f32)
 where
-    I: Iterator<Item = &'a (Vec<f32>, f32)>,
+    I: Iterator<Item = &'a (Vec<f32>, f32, f32)>,
 {
     let mut total_loss = 0.0;
     let mut new_model = model.clone();
 
     let rate = learning_rate / num_examples as f32;
 
-    for (ex_pile, ex_score) in examples {
+    for (ex_pile, ex_score, ex_weight) in examples {
         let deriv = elem_wise_mult(model, ex_pile);
         let local_score: f32 = deriv.iter().sum();
-
         let local_diff = ex_score - local_score;
-
-        let local_coeff = local_diff * rate;
+        let local_coeff = local_diff * rate * ex_weight;
 
         for i in 0..new_model.len() {
             new_model[i] += local_coeff * ex_pile[i];
@@ -62,6 +60,43 @@ pub struct TrainArgs {
     pub suffix: Option<String>,
 }
 
+const MAX_WEIGHT: f32 = 100.0;
+fn get_weight_for_examples(examples: &Vec<DepthModeTrainingExample>) -> Vec<f32> {
+    let mut counts_by_depth = Vec::new();
+
+    for example in examples {
+        let StateEval::Win(depth) = example.eval else {
+            continue;
+        };
+
+        while depth >= counts_by_depth.len() {
+            counts_by_depth.push(0);
+        }
+
+        counts_by_depth[depth] += 1;
+    }
+
+    let weight_per_level = (examples.len() as f32) / (counts_by_depth.len() as f32 - 1.0);
+
+    let weights: Vec<f32> = counts_by_depth
+        .iter()
+        .map(|count| {
+            if *count == 0 {
+                return 0.0;
+            }
+
+            let weight = weight_per_level / (*count as f32);
+            if weight > MAX_WEIGHT {
+                MAX_WEIGHT
+            } else {
+                weight
+            }
+        })
+        .collect();
+
+    weights
+}
+
 fn main() {
     let args = TrainArgs::parse();
     let matchup = try_get_matchup_from_classes(&args.classes).expect("Could not parse matchup");
@@ -75,7 +110,7 @@ fn main() {
     };
     struct_model.trim_to_cards(&relevant_cards);
     let mut model = struct_model.vectorize();
-    let learning_rate = args.rate.unwrap_or(0.01);
+    let learning_rate = args.rate.unwrap_or(0.001);
     println!("Learning rate: {}", learning_rate);
 
     let suffix_str: String = args
@@ -90,13 +125,23 @@ fn main() {
         .collect::<Result<Vec<DepthModeTrainingExample>, _>>()
         .unwrap();
 
+    let weights_by_depth = get_weight_for_examples(&all_examples_base);
+    for (i, x) in weights_by_depth.iter().enumerate() {
+        println!("{:?}", (i, x));
+    }
+
     let all_examples_vec: Vec<_> = all_examples_base
         .iter()
-        .map(|ex| {
-            (
+        .filter_map(|ex| {
+            let StateEval::Win(depth) = ex.eval else {
+                return None;
+            };
+            Some((
                 training_ex_to_model(&ex.pile).vectorize(),
-                state_eval_to_score(ex.eval) as f32,
-            )
+                depth as f32,
+                1.0,
+                // weights_by_depth[depth],
+            ))
         })
         .collect();
 

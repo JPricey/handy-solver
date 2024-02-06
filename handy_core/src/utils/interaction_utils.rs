@@ -29,7 +29,8 @@ pub fn find_final_piles_matching_prefix(root_pile: &Pile, prefix: &Vec<Event>) -
             results.push(state.pile.clone());
         }
     }
-    return results;
+
+    results
 }
 
 pub fn find_next_events_matching_prefix(
@@ -125,7 +126,9 @@ pub fn format_event_for_cli(event: &Event) -> String {
         Event::Push(card_idx, card_ptr) => format!("Push {:?}@{}", card_ptr, card_idx),
         Event::EndPileMoveResult(move_type) => format!("Perform {:?}", move_type),
 
-        Event::MoveTarget(card_idx, card_ptr, move_type) => format!("{:?} {:?}@{}", move_type, card_ptr, card_idx),
+        Event::MoveTarget(card_idx, card_ptr, move_type) => {
+            format!("{:?} {:?}@{}", move_type, card_ptr, card_idx)
+        }
         Event::MoveBy(_, _, move_type, amount) => format!("{:?} by {}", move_type, amount),
         Event::MoveResult(_, _) => format!("Perform move"),
         Event::Teleport(card_idx1, card_ptr1, card_idx2, card_ptr2) => format!(
@@ -171,20 +174,20 @@ pub fn format_event_for_cli(event: &Event) -> String {
         Event::Swarm(card_idx, card_ptr) => {
             format!("{:?}@{}: Swarm", card_ptr, card_idx)
         }
-        Event::UseActionAssistCard(assist_idx, assist_card_ptr) => format!(
-            "{:?}@{}: Assist",
-            assist_card_ptr, assist_idx
-        ),
+        Event::UseActionAssistCard(assist_idx, assist_card_ptr) => {
+            format!("{:?}@{}: Assist", assist_card_ptr, assist_idx)
+        }
         Event::UseActionAssistRow(assist_idx, assist_card_ptr, assist_row_idx) => format!(
             "{:?}@{}: Assist Row {}",
             assist_card_ptr, assist_idx, assist_row_idx
         ),
         Event::ReactAssistUsed(card_idx, card_ptr, trigger, cost) => {
-            format!("{:?}@{}: {:?} React Assited({:?})", card_ptr, card_idx, trigger, cost)
+            format!(
+                "{:?}@{}: {:?} React Assited({:?})",
+                card_ptr, card_idx, trigger, cost
+            )
         }
-        Event::SkipReactActionAssist => {
-            "Skip React Action".to_string()
-        }
+        Event::SkipReactActionAssist => "Skip React Action".to_string(),
         // Event::StartAction(card_ptr, wrapped_action) => format!(
         //     "{:?}: Trigger {}",
         //     card_ptr,
@@ -222,6 +225,8 @@ pub fn action_simple_name(wrapped_action: &WrappedAction) -> String {
         Action::Backstab => "Backstab".to_owned(),
         Action::BackstabTwice => "Backstabx2".to_owned(),
         Action::Poison => "Poison".to_owned(),
+        Action::Rats => "Rats".to_owned(),
+        Action::Hypnosis => "Hypnosis".to_owned(),
     }
 }
 

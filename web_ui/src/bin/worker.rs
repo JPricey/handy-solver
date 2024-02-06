@@ -1,5 +1,5 @@
-use web_ui::solver::SolverWorker;
 use gloo::worker::Registrable;
+use web_ui::solver::SolverWorker;
 
 fn main() {
     console_error_panic_hook::set_once();

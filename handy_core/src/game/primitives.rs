@@ -56,6 +56,7 @@ pub enum Allegiance {
     Hero,
     Baddie,
     Werewolf,
+    Rat,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -82,6 +83,11 @@ pub enum Action {
     Teleport,
     CallAssist,
     CallAssistTwice,
+    Backstab,
+    BackstabTwice,
+    Poison,
+    Rats,
+    Hypnosis,
     // Both
     Hit(Range),
     Inspire,
@@ -89,9 +95,6 @@ pub enum Action {
     Manouver,
     Revive,
     Claws(Range),
-    Backstab,
-    BackstabTwice,
-    Poison,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -162,6 +165,7 @@ bitflags! {
         const Energy        = 0b00010000;
         const Wall          = 0b00100000;
         const Invulnerable  = 0b01000000;
+        const Wisp          = 0b10000000;
     }
 }
 
@@ -170,6 +174,13 @@ pub struct Row {
     pub is_mandatory: bool,
     pub condition: Option<Condition>,
     pub actions: Vec<WrappedAction>,
+    pub mandatory: Option<SelfAction>,
+}
+
+pub type ModifierAmount = i8;
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Modifier {
+    pub amount: ModifierAmount,
     pub mandatory: Option<SelfAction>,
 }
 
@@ -184,6 +195,7 @@ pub struct FaceDef {
     pub rows: Vec<Row>,
     pub assists: Vec<Row>,
     pub rage: ConditionCountType,
+    pub modifier: Option<Modifier>,
 }
 
 #[derive(
@@ -224,6 +236,8 @@ pub enum Class {
     Demon,
     Flora,
     Wall,
+    Piper,
+    Wisp,
 }
 
 #[derive(Debug)]
@@ -293,6 +307,7 @@ pub enum Event {
     Death,
     Void(usize, CardPtr, FaceKey),
     Inspire(usize, CardPtr),
+    Hypnosis(usize, CardPtr),
 
     // Moves
     MoveTarget(usize, CardPtr, MoveType), // index, ptr, type, amount
@@ -316,6 +331,7 @@ pub enum Event {
     // Heals
     Heal(usize, CardPtr),
     Revive(usize, CardPtr),
+    Rat(usize, CardPtr),
 
     // Reactions
     Block(usize, CardPtr, Option<SelfAction>, FaceKey),

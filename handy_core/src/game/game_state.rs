@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use crate::game::primitives::*;
+use std::fmt::Debug;
 
 pub trait EngineGameState: Clone + Debug {
     fn new(pile: Pile) -> Self;
@@ -81,7 +81,6 @@ impl EngineGameState for GameStateWithEventLog {
     }
 }
 
-
 // GameStateWithPileTrackedEventLog
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct GameStateWithPileTrackedEventLog {
@@ -122,4 +121,3 @@ impl EngineGameState for GameStateWithPileTrackedEventLog {
         }
     }
 }
-

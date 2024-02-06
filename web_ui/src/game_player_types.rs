@@ -1,5 +1,5 @@
-use crate::types::*;
 use crate::components::game_card::*;
+use crate::types::*;
 use handy_core::game::*;
 use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
@@ -18,7 +18,6 @@ pub const SELECTED_Y_DELTA_PX: WindowUnit = -40.0;
 
 lazy_static! {
     pub static ref HISTORY_ZONE_WIDTH_PX: WindowUnit = 280.0;
-
     pub static ref CARD_ZONE_HEIGHT_PX: WindowUnit = GOLDEN_HEIGHT;
     pub static ref CARD_ZONE_BUFFER_WIDTH: WindowUnit = 24.0;
     pub static ref TOP_CARD_Y_OFFSET_PX: WindowUnit =

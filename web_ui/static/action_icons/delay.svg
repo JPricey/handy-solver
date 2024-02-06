@@ -8,7 +8,7 @@
    version="1.1"
    id="svg15029"
    inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
-   sodipodi:docname="delay_x.svg"
+   sodipodi:docname="delay_blank.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -46,13 +46,6 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(-83.168211,-91.589043)">
-    <circle
-       class="fil0"
-       cx="88.479691"
-       cy="96.920692"
-       r="4.5399084"
-       id="circle6214"
-       style="clip-rule:evenodd;fill:#fffffc;fill-opacity:1;fill-rule:evenodd;stroke-width:0.013268;image-rendering:optimizeQuality;shape-rendering:geometricPrecision;text-rendering:geometricPrecision" />
     <path
        class="fil56"
        d="m 88.479684,100.84616 c -2.167724,0 -3.9256,-1.758005 -3.9256,-3.925597 0,-2.167857 1.757876,-3.925733 3.9256,-3.925733 2.167724,0 3.9256,1.757876 3.9256,3.925733 0,2.167592 -1.757876,3.925597 -3.9256,3.925597 z m 0.05931,-0.0934 c -2.044332,0 -3.702035,-1.657838 -3.702035,-3.702038 0,-2.044332 1.657836,-3.702034 3.702035,-3.702034 2.044199,0 3.702035,1.657835 3.702035,3.702034 0,2.044332 -1.657836,3.702038 -3.702035,3.702038 z"

@@ -1,7 +1,7 @@
 use crate::{
     game::card_defs::CARDS,
     game::card_ptr::{CardPtrAsTuple, CardPtrT},
-    game::primitives::{CardDef, FaceKey, CardId},
+    game::primitives::{CardDef, CardId, FaceKey},
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;

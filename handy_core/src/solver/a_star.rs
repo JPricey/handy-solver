@@ -179,13 +179,15 @@ impl<M: ModelT> AStarSolver<M> {
                     current_child_entry.depth = child_depth as DepthType;
                     current_child_entry.parent = Some(tiny_pile);
 
-                    let new_score = self.g_bias * child_depth as f32 + self.h_bias * self.model.score_pile(&new_pile);
+                    let new_score = self.g_bias * child_depth as f32
+                        + self.h_bias * self.model.score_pile(&new_pile);
                     if new_score <= self.max_fscore {
                         self.queue.put(new_score, new_tiny_pile);
                     }
                 }
             } else {
-                let new_score = self.g_bias * child_depth as f32 + self.h_bias * self.model.score_pile(&new_pile);
+                let new_score = self.g_bias * child_depth as f32
+                    + self.h_bias * self.model.score_pile(&new_pile);
                 if new_score <= self.max_fscore {
                     self.queue.put(new_score, new_tiny_pile);
                 }
@@ -265,7 +267,6 @@ impl<M: ModelT> AStarSolver<M> {
         let pile = self.tiny_pile_to_pile(tiny_pile);
         self.print_solution_from_pile(&pile);
     }
-
 
     pub fn tiny_pile_to_pile(&self, tiny_pile: &TinyPile) -> Pile {
         self.tiny_pile_converter.tiny_pile_to_pile(tiny_pile)

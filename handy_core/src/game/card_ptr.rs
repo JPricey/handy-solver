@@ -37,6 +37,7 @@ pub trait CardPtrT: Copy + Clone + PartialEq + Eq + Hash + Ord + PartialOrd + De
             Allegiance::Hero => string.blue(),
             Allegiance::Baddie => string.red(),
             Allegiance::Werewolf => string.yellow(),
+            Allegiance::Rat => string.yellow(),
         }
     }
 }

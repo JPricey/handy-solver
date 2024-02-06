@@ -3,12 +3,7 @@ use handy_core::game::*;
 use leptos::*;
 
 #[component]
-pub fn CardSidesPanel(
-    cx: Scope,
-    card_id: CardId,
-    face_key: FaceKey,
-) -> impl IntoView
-{
+pub fn CardSidesPanel(cx: Scope, card_id: CardId, face_key: FaceKey) -> impl IntoView {
     view! { cx,
         <div
             style:width="100%"

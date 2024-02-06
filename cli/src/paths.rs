@@ -52,7 +52,7 @@ pub fn training_path_for_matchup(matchup: Matchup) -> String {
         .to_owned()
 }
 
-fn try_read_model_from_full_path(full_path: &str) -> Result<Model, String> {
+pub fn try_read_model_from_full_path(full_path: &str) -> Result<Model, String> {
     let file = File::open(full_path).map_err(|err| format!("{err}"))?;
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).map_err(|err| format!("{err}"))

@@ -60,8 +60,9 @@ def main():
     for c, file in zip(COLOURS, files):
         plot_file(file, c)
 
-    plt.legend(['a', 'b'])
+    plt.legend(["a", "b"])
     plt.show()
+
 
 def read_file(filename):
     all_datas = []
@@ -71,18 +72,20 @@ def read_file(filename):
             row_transform(row)
             trial = row["trial"]
             while trial > len(all_datas):
-                all_datas.append(dict(trial=len(all_datas), iters=0, depth=0, duration_ms=10000))
+                all_datas.append(
+                    dict(trial=len(all_datas), iters=0, depth=0, duration_ms=10000)
+                )
             all_datas.append(row)
     return all_datas
 
 
 def load_durations():
-    files = list(sorted(DATA_PATH.glob(f"Pyro*.csv")))
+    files = list(sorted(DATA_PATH.glob(f"Cursed.Spider*.csv")))
     percentiles = [25, 50, 75, 90, 95, 99, 99.9, 100]
     for filename in files:
         print(filename)
         rows = read_file(filename)
-        x = [row['duration_ms'] for row in rows]
+        x = [row["duration_ms"] for row in rows]
         x = np.array(x)
         # print(x)
         res = np.percentile(x, percentiles)
@@ -90,8 +93,48 @@ def load_durations():
 
     plt.show()
 
+
+# trial,duration_ms,iters,depth
+DATA_COLUMNS = [
+    "duration_ms",
+    "iters",
+    "depth",
+]
+
+
+def all_stats(data):
+    res = dict()
+    for column in DATA_COLUMNS:
+        res[f"Avg {column}"] = avg_of_column(data, column)
+    return str(res)
+
+
+def avg_of_column(data, column_name):
+    s = sum([row[column_name] for row in data])
+    return float(s) / len(data)
+
+
+def print_for_all(tagged_datas, fn):
+    for thing in tagged_datas:
+        print(thing[0])
+        print(fn(thing[1]))
+
+
+def stats_main():
+    matchup = "Cursed.Spider"
+    files = [
+        f"{matchup}-weighted-0-10-1.csv",
+        f"{matchup}-old-0-10-1.csv",
+    ]
+    files = [DATA_PATH / f for f in files]
+
+    tagged_datas = [(file, read_file(file)) for file in files]
+
+    print_for_all(tagged_datas, all_stats)
+
+
 try:
-    load_durations()
+    stats_main()
 finally:
     plt.close()
 

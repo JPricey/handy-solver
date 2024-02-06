@@ -14,9 +14,10 @@ pub fn class_to_character_name(class: Class) -> &'static str {
         Class::Demon => "Dargoth",
         Class::Flora => "Verdancy",
         Class::Wall => "Wall",
+        Class::Piper => "Piper",
+        Class::Wisp => "Wisp",
     }
 }
-
 
 pub fn class_to_full_class_name(class: Class) -> &'static str {
     match class {
@@ -32,5 +33,7 @@ pub fn class_to_full_class_name(class: Class) -> &'static str {
         Class::Demon => "Blood Demon",
         Class::Flora => "Sentient Flora",
         Class::Wall => "Wall (BETA)",
+        Class::Piper => "Pied Piper (WIP)",
+        Class::Wisp => "Wisp (ALPHA)",
     }
 }

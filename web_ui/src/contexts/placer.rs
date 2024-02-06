@@ -140,7 +140,7 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
                 style:left=move || format!("{}px", origin.get().0)
                 style:top=move || format!("{}px", origin.get().1)
                 style:background="rgb(248, 238, 226)"
-                style:transform=move || if placer_getter.get().is_rotated { "rotate(90deg)" } else { "" } 
+                style:transform=move || if placer_getter.get().is_rotated { "rotate(90deg)" } else { "" }
                 style:font-size=move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE))
             >
                 {children(cx)}

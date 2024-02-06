@@ -87,21 +87,6 @@ fn rate_model(
         }
     }
 
-    /*
-    if let Some(row) = solutions.last() {
-        let new_row = SolutionRow {
-            depth: row.depth,
-            duration_ms: now.elapsed().unwrap().as_millis() as f32,
-            iters,
-            trial,
-        };
-        solutions.push(new_row);
-    }
-    */
-
-    // println!("Done after {:?}, {}", now.elapsed().unwrap(), iters);
-    // println!("{:?}", &solutions);
-
     solutions
 }
 

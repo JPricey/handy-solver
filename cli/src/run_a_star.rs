@@ -40,7 +40,9 @@ pub fn run_a_star_solver(
             AStarIterResult::Continue(_) => {
                 if let Some(def_max_iter) = max_iters {
                     let queue_len = a_star_solver.queue.len();
-                    if queue_len > 2_000_000 && queue_len >> 2 > (def_max_iter - a_star_solver.total_iters) {
+                    if queue_len > 2_000_000
+                        && queue_len >> 2 > (def_max_iter - a_star_solver.total_iters)
+                    {
                         println!("Trimming queue");
                         a_star_solver.reset_queue_and_fscore();
                     }

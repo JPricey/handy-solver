@@ -1,7 +1,7 @@
-pub mod single_hover;
-pub mod placer;
 pub mod options;
+pub mod placer;
+pub mod single_hover;
 
-pub use single_hover::*;
-pub use placer::*;
 pub use options::*;
+pub use placer::*;
+pub use single_hover::*;

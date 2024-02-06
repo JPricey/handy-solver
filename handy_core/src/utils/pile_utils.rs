@@ -22,7 +22,7 @@ pub fn get_start_from_classes(
             if i != back_idx {
                 cards.swap(i, back_idx);
             }
-            back_idx = i - 1
+            back_idx -= 1;
         }
     }
 
@@ -31,7 +31,7 @@ pub fn get_start_from_classes(
         .map(|&card_def| CardPtr::new_from_id(card_def.id, FaceKey::A))
         .collect::<Vec<_>>();
 
-    return (&cards_vec as &[_]).try_into().unwrap();
+    (&cards_vec as &[_]).try_into().unwrap()
 }
 
 pub fn get_random_face<R: Rng>(rng: &mut R) -> FaceKey {
@@ -49,7 +49,7 @@ pub fn get_random_exhausted_face<R: Rng>(mut rng: &mut R, card_def: &CardDef) ->
         .filter(|f| card_def.faces[*f].health == Health::Empty)
         .collect();
 
-    return *faces.choose(&mut rng).unwrap();
+    *faces.choose(&mut rng).unwrap()
 }
 
 pub fn string_to_card_id_result(input: &str) -> Result<CardId, String> {
@@ -58,7 +58,7 @@ pub fn string_to_card_id_result(input: &str) -> Result<CardId, String> {
     if CARDS.get_card_if_exists(card_id as usize).is_some() {
         Ok(card_id)
     } else {
-        return Err("Card Id does not exist".to_owned());
+        Err("Card Id does not exist".to_owned())
     }
 }
 
@@ -81,7 +81,7 @@ pub fn string_to_card_ptr_result(input: &str) -> Result<CardPtr, String> {
     if CARDS.get_card_if_exists(id as usize).is_some() {
         Ok(CardPtr::new_from_id(id, key))
     } else {
-        return Err("Card Id does not exist".to_owned());
+        Err("Card Id does not exist".to_owned())
     }
 }
 
