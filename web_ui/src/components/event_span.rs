@@ -94,14 +94,21 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::SkipAction(card_ptr, wrapped_action) => {
+        Event::SkipAction(card_ptr, wrapped_action, skip_action_reason) => {
+            let reason_text = match skip_action_reason {
+                SkipActionReason::Web => "Web",
+                SkipActionReason::Venom => "Venom",
+                SkipActionReason::NoOption => "Forced",
+                SkipActionReason::Choice => "Choice",
+            };
+
             let action_text = action_simple_name(&wrapped_action);
             view! { cx,
                 <span>
                     <TokenSpan
                         elements=vec![
                             SpanItem::CardPtr(card_ptr),
-                            SpanItem::Text(format!("Skip {action_text}")),
+                            SpanItem::Text(format!("Skip {action_text} ({reason_text})")),
                         ]
                     />
                     // <IconBadge
@@ -420,6 +427,25 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
         }
         Event::PayRowConditionCosts(_, cards) => {
             let mut elems = vec![SpanItem::Text("Pay".to_owned())];
+            for (card_idx, card_ptr) in cards {
+                elems.push(SpanItem::CardPtrAndIndex(card_ptr, card_idx));
+            }
+
+            view! {cx,
+                <span>
+                    <TokenSpan elements=elems />
+                </span>
+            }
+        }
+        Event::UseCardModifiers(cards, amount, wrapped_action) => {
+            let amount_string = match amount {
+                0.. => format!("+{amount}"),
+                _ => format!("{amount}"),
+            };
+            let action_text = action_simple_name(&wrapped_action);
+            let mut elems = vec![SpanItem::Text(format!(
+                "Modify {action_text} {amount_string}"
+            ))];
             for (card_idx, card_ptr) in cards {
                 elems.push(SpanItem::CardPtrAndIndex(card_ptr, card_idx));
             }

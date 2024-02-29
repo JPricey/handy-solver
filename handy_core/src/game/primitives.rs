@@ -19,6 +19,7 @@ pub type ArrayVecPile = ArrayVec<CardPtr, 9>;
 pub type Pile = ArrayVecPile;
 
 pub type PayCostArrType = ArrayVec<(usize, CardPtr), 4>;
+pub type ModifierArrType = ArrayVec<(usize, CardPtr), 4>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Health {
@@ -178,7 +179,7 @@ pub struct Row {
 }
 
 pub type ModifierAmount = i8;
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Modifier {
     pub amount: ModifierAmount,
     pub mandatory: Option<SelfAction>,
@@ -289,6 +290,14 @@ pub enum EndPileMoveType {
     Push,
 }
 
+#[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SkipActionReason {
+    Web,
+    Venom,
+    NoOption,
+    Choice,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Event {
     // Control flow
@@ -297,7 +306,7 @@ pub enum Event {
     SkipHit(HitType),
     BottomCard,
 
-    SkipAction(CardPtr, WrappedAction),
+    SkipAction(CardPtr, WrappedAction, SkipActionReason),
     // StartAction(CardPtr, WrappedAction),
     AttackCard(usize, CardPtr, HitType),
     Damage(usize, CardPtr, HitType, FaceKey),
@@ -340,6 +349,7 @@ pub enum Event {
 
     // Other
     PayRowConditionCosts(ConditionCostType, PayCostArrType),
+    UseCardModifiers(ModifierArrType, ModifierAmount, WrappedAction),
     Manouver(usize, CardPtr),
     Swarm(usize, CardPtr),
     UseActionAssistCard(usize, CardPtr), // card_idx, card_ptr

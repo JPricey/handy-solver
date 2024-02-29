@@ -147,4 +147,21 @@ impl InteractionOptions {
             + self.skip_button.len()
             + self.damage_card_options.len()
     }
+
+    pub fn should_force_selection_options(&self) -> Option<MoveOption> {
+        if self.total_buttons_available() != 1 {
+            return None;
+        }
+        if self.valid_selection_buttons.len() != 1 {
+            return None;
+        }
+
+        // TODO: should be based on if there are other selections available, not event type
+        let single_move_option = self.valid_selection_buttons[0].move_option.clone();
+        if let Event::UseCardModifiers(_, _, _) = single_move_option.event {
+            return None;
+        }
+
+        Some(single_move_option)
+    }
 }

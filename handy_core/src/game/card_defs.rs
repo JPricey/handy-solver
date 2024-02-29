@@ -3685,7 +3685,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Empty)
-                        .modifier_no_mandatory(1)
+                        .modifier_no_mandatory(-1)
                         .add_row(row()
                                 .arrow_any()
                                 .quicken_enemy(1)

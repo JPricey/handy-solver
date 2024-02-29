@@ -151,7 +151,7 @@ fn resolve_player_row<T: EngineGameState>(state: &T, row: &Row, active_idx: usiz
         }
     }
 
-    return active_states;
+    active_states
 }
 
 fn resolve_player_row_post_conditions_no_mandatory<T: EngineGameState>(
@@ -183,10 +183,6 @@ fn get_claws_results<T: EngineGameState>(
     target: Target,
 ) -> Vec<T> {
     let pile = state.get_pile();
-    if is_action_prevented(pile, Features::Venom, active_idx, active_allegiance) {
-        return Vec::new();
-    }
-
     let range_cap = match range {
         Range::Inf => pile.len(),
         Range::Int(amount) => cmp::min(active_idx + amount + 1, pile.len()),
@@ -204,10 +200,6 @@ fn get_spaced_claws_result<T: EngineGameState>(
     target: Target,
 ) -> Vec<T> {
     let pile = state.get_pile();
-    if is_action_prevented(pile, Features::Venom, active_idx, active_allegiance) {
-        return Vec::new();
-    }
-
     let start_idx = match claw_space_type {
         ClawSpaceType::Odd => active_idx + 1,
         ClawSpaceType::Even => active_idx + 2,
@@ -218,13 +210,280 @@ fn get_spaced_claws_result<T: EngineGameState>(
     attack_all_in_iter(state, active_allegiance, iter, target, HitType::Claw)
 }
 
+fn get_modifier_options(pile: &Pile, active_idx: usize) -> Vec<(Vec<usize>, ModifierAmount)> {
+    let mut results = Vec::new();
+
+    for target_idx in 0..pile.len() {
+        if target_idx == active_idx {
+            continue;
+        }
+
+        let active_card_ptr = pile[target_idx];
+        if let Some(modifier) = active_card_ptr.get_active_face().modifier {
+            let pre_results_len = results.len();
+
+            results.push((vec![target_idx], modifier.amount));
+            for result_idx in 0..pre_results_len {
+                let mut new_result_entry = results[result_idx].clone();
+                new_result_entry.0.push(target_idx);
+                new_result_entry.1 += modifier.amount;
+                results.push(new_result_entry);
+            }
+        }
+    }
+
+    results
+}
+
+// Returns empty array if no modifiers are possible
+// Returns array of tuples of (state with modifiers applied, modifier sum) if any modifiers are
+// possible. This array will include the no modifier state
+fn get_post_modifier_states<T: EngineGameState>(
+    state: &T,
+    wrapped_action: &WrappedAction,
+    active_idx: usize,
+) -> Vec<(T, WrappedAction)> {
+    let original_pile = state.get_pile();
+    let modifier_options = get_modifier_options(&original_pile, active_idx);
+    if modifier_options.len() == 0 {
+        return Vec::new();
+    }
+
+    let mut result = Vec::new();
+
+    {
+        let mut no_modifier_state = state.clone();
+        no_modifier_state.mut_append_event(Event::UseCardModifiers(
+            ModifierArrType::new(),
+            0,
+            wrapped_action.clone(),
+        ));
+        result.push((no_modifier_state, wrapped_action.clone()));
+    }
+
+    for modifier_option in modifier_options {
+        let mut new_state = state.clone();
+        for card_idx in &modifier_option.0 {
+            let card_ptr = &mut new_state.get_pile_mut()[*card_idx];
+            if let Some(self_action) = card_ptr.get_active_face().modifier.unwrap().mandatory {
+                perform_card_self_action(self_action, card_ptr);
+            }
+        }
+
+        let new_action = action_with_modified_range(&wrapped_action.action, modifier_option.1);
+        let new_wrapped_action = WrappedAction {
+            action: new_action,
+            target: wrapped_action.target,
+        };
+        let modifier_event = Event::UseCardModifiers(
+            modifier_option
+                .0
+                .iter()
+                .copied()
+                .map(|card_idx| (card_idx, original_pile[card_idx]))
+                .collect(),
+            modifier_option.1,
+            new_wrapped_action.clone(),
+        );
+        new_state.mut_append_event(modifier_event);
+
+        result.push((new_state, new_wrapped_action.clone()));
+    }
+
+    result
+}
+
+fn maybe_skip_action_event_for_spider_feature(
+    pile: &Pile,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    wrapped_action: &WrappedAction,
+) -> Option<Event> {
+    match wrapped_action.action {
+        Action::Pull(_)
+        | Action::Push(_)
+        | Action::Quicken(_)
+        | Action::Delay(_)
+        | Action::Teleport => {
+            if is_action_prevented(pile, Features::Web, active_idx, active_allegiance) {
+                Some(Event::SkipAction(
+                    pile[active_idx],
+                    wrapped_action.clone(),
+                    SkipActionReason::Web,
+                ))
+            } else {
+                None
+            }
+        }
+        Action::Hit(_)
+        | Action::Claws(_)
+        | Action::SpacedClaws(_)
+        | Action::Void
+        | Action::Ablaze
+        | Action::Fireball
+        | Action::Arrow
+        | Action::DoubleArrow
+        | Action::Heal
+        | Action::Revive
+        | Action::Rats
+        | Action::Manouver
+        | Action::Backstab
+        | Action::BackstabTwice
+        | Action::Poison => {
+            if is_action_prevented(pile, Features::Venom, active_idx, active_allegiance) {
+                Some(Event::SkipAction(
+                    pile[active_idx],
+                    wrapped_action.clone(),
+                    SkipActionReason::Venom,
+                ))
+            } else {
+                None
+            }
+        }
+        Action::Death
+        | Action::CallAssist
+        | Action::CallAssistTwice
+        | Action::Inspire
+        | Action::Hypnosis => None,
+    }
+}
+
 fn resolve_player_action<T: EngineGameState>(
+    state: &T,
+    wrapped_action: &WrappedAction,
+    active_idx: usize,
+    target_ids: &TargetIds,
+) -> Vec<T> {
+    if let Some(spider_skip_event) = maybe_skip_action_event_for_spider_feature(
+        state.get_pile(),
+        active_idx,
+        Allegiance::Hero,
+        wrapped_action,
+    ) {
+        vec![state.clone().append_event(spider_skip_event)]
+    } else {
+        let mut results =
+            resolve_player_action_with_modifiers(state, wrapped_action, active_idx, target_ids);
+
+        let skip_action_reason = if results.len() > 0 {
+            SkipActionReason::Choice
+        } else {
+            SkipActionReason::NoOption
+        };
+
+        results.push(state.clone().append_event(Event::SkipAction(
+            state.get_pile()[active_idx],
+            *wrapped_action,
+            skip_action_reason,
+        )));
+
+        results
+    }
+}
+
+fn size_with_modifier(amount: usize, modifier: ModifierAmount) -> usize {
+    cmp::max(0, (amount as ModifierAmount) + modifier) as usize
+}
+
+fn range_with_modifier(range: Range, modifier: ModifierAmount) -> Range {
+    match range {
+        Range::Inf => range,
+        Range::Int(amount) => Range::Int(size_with_modifier(amount, modifier)),
+    }
+}
+
+fn does_support_modifiers(action: &Action) -> bool {
+    match action {
+        Action::Pull(_)
+        | Action::Push(_)
+        | Action::Claws(_)
+        | Action::Hit(_)
+        | Action::Quicken(_)
+        | Action::Delay(_) => true,
+        Action::Death
+        | Action::Void
+        | Action::CallAssist
+        | Action::CallAssistTwice
+        | Action::Inspire
+        | Action::Hypnosis
+        | Action::Ablaze
+        | Action::Fireball
+        | Action::Teleport
+        | Action::Arrow
+        | Action::DoubleArrow
+        | Action::Heal
+        | Action::Revive
+        | Action::Rats
+        | Action::Manouver
+        | Action::Backstab
+        | Action::BackstabTwice
+        | Action::Poison
+        | Action::SpacedClaws(_) => false,
+    }
+}
+
+fn action_with_modified_range(action: &Action, modifier: ModifierAmount) -> Action {
+    match action {
+        Action::Pull(range) => Action::Pull(range_with_modifier(*range, modifier)),
+        Action::Push(range) => Action::Push(range_with_modifier(*range, modifier)),
+        Action::Hit(range) => Action::Hit(range_with_modifier(*range, modifier)),
+        Action::Claws(range) => Action::Claws(range_with_modifier(*range, modifier)),
+        Action::Quicken(amount) => Action::Quicken(size_with_modifier(*amount, modifier)),
+        Action::Delay(amount) => Action::Delay(size_with_modifier(*amount, modifier)),
+        Action::Death
+        | Action::Void
+        | Action::CallAssist
+        | Action::CallAssistTwice
+        | Action::Inspire
+        | Action::Hypnosis
+        | Action::Ablaze
+        | Action::Fireball
+        | Action::Teleport
+        | Action::Arrow
+        | Action::DoubleArrow
+        | Action::Heal
+        | Action::Revive
+        | Action::Rats
+        | Action::Manouver
+        | Action::Backstab
+        | Action::BackstabTwice
+        | Action::Poison
+        | Action::SpacedClaws(_) => action.clone(),
+    }
+}
+
+fn resolve_player_action_with_modifiers<T: EngineGameState>(
+    state: &T,
+    wrapped_action: &WrappedAction,
+    active_idx: usize,
+    target_ids: &TargetIds,
+) -> Vec<T> {
+    if does_support_modifiers(&wrapped_action.action) {
+        let modifier_states = get_post_modifier_states(state, wrapped_action, active_idx);
+        if modifier_states.len() > 0 {
+            let mut results = Vec::new();
+            for (modifier_state, modified_wrapped_action) in modifier_states {
+                results.append(&mut resolve_player_action_unskippable(
+                    &modifier_state,
+                    &modified_wrapped_action,
+                    active_idx,
+                    target_ids,
+                ));
+            }
+
+            return results;
+        }
+    }
+
+    resolve_player_action_unskippable(state, &wrapped_action, active_idx, target_ids)
+}
+
+fn resolve_player_action_unskippable<T: EngineGameState>(
     pre_event_state: &T,
     wrapped_action: &WrappedAction,
     active_idx: usize,
     target_ids: &TargetIds,
 ) -> Vec<T> {
-    let mut results: Vec<T> = vec![];
     let allegiance = Allegiance::Hero;
 
     // let state = pre_event_state.clone().append_event(Event::StartAction(
@@ -234,10 +493,6 @@ fn resolve_player_action<T: EngineGameState>(
 
     let state = pre_event_state.clone();
     let pile = state.get_pile();
-    results.push(pre_event_state.clone().append_event(Event::SkipAction(
-        pre_event_state.get_pile()[active_idx],
-        *wrapped_action,
-    )));
 
     match wrapped_action.action {
         Action::Pull(_)
@@ -249,9 +504,10 @@ fn resolve_player_action<T: EngineGameState>(
         }
         Action::CallAssist => {
             let assist_outcomes = _get_assist_action_outcomes(&state, active_idx, None);
-            for (outcome, _) in assist_outcomes {
-                results.push(outcome)
-            }
+            assist_outcomes
+                .into_iter()
+                .map(|(outcome, _)| outcome)
+                .collect()
         }
         Action::CallAssistTwice => {
             // HACKY: Calling 2 assists in a row comes with the restriction of not being able to
@@ -260,6 +516,7 @@ fn resolve_player_action<T: EngineGameState>(
             // "CallAssistTwice" to represent 2 assists, to make it easier to pass the state
             // between those actions
             let assist_outcomes = _get_assist_action_outcomes(&state, active_idx, None);
+            let mut results: Vec<T> = Vec::new();
             for (outcome, used_assist_id) in assist_outcomes {
                 for (double_assist_outcome, _) in
                     _get_assist_action_outcomes(&outcome, active_idx, Some(used_assist_id))
@@ -268,8 +525,10 @@ fn resolve_player_action<T: EngineGameState>(
                 }
                 results.push(outcome)
             }
+            results
         }
         Action::Inspire => {
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card = pile[target_idx];
                 if is_allegiance_match(
@@ -283,8 +542,10 @@ fn resolve_player_action<T: EngineGameState>(
                     results.append(&mut resolve_card_at_index(&inspire_state, target_idx));
                 }
             }
+            results
         }
         Action::Hypnosis => {
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card = pile[target_idx];
                 if is_allegiance_match(
@@ -305,21 +566,13 @@ fn resolve_player_action<T: EngineGameState>(
                     results.append(&mut resolved_hypnosis_states);
                 }
             }
+            results
         }
         Action::Claws(range) => {
-            results.append(&mut get_claws_results(
-                &state,
-                active_idx,
-                allegiance,
-                range,
-                wrapped_action.target,
-            ));
+            get_claws_results(&state, active_idx, allegiance, range, wrapped_action.target)
         }
         Action::Ablaze => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for i in 0..target_ids.len() {
                 let energy_start_idx = (target_ids[i]) as usize;
                 for j in i + 1..target_ids.len() {
@@ -343,12 +596,10 @@ fn resolve_player_action<T: EngineGameState>(
                     results.append(&mut post_attack_states);
                 }
             }
+            results
         }
         Action::Fireball => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for energy_idx in target_ids {
                 let behind_idx = energy_idx + 1;
 
@@ -383,12 +634,10 @@ fn resolve_player_action<T: EngineGameState>(
 
                 results.append(&mut fireball_results);
             }
+            results
         }
         Action::Teleport => {
-            if is_action_prevented(pile, Features::Web, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for first_idx in active_idx + 1..pile.len() {
                 let first_card = pile[first_idx];
                 if !is_moveable_target(&first_card, allegiance, wrapped_action.target) {
@@ -420,12 +669,10 @@ fn resolve_player_action<T: EngineGameState>(
                     results.push(new_state);
                 }
             }
+            results
         }
         Action::Hit(range) => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             let range_cap = match range {
                 Range::Inf => pile.len(),
                 Range::Int(amount) => cmp::min(pile.len(), active_idx + amount + 1),
@@ -481,11 +728,10 @@ fn resolve_player_action<T: EngineGameState>(
                     HitType::Hit,
                 ));
             }
+            results
         }
         Action::Arrow => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
+            let mut results: Vec<T> = Vec::new();
             let start_idx = cmp::max(active_idx + 1, pile.len() - 3);
 
             for target_idx in (start_idx..pile.len()).rev() {
@@ -508,11 +754,10 @@ fn resolve_player_action<T: EngineGameState>(
                     HitType::Arrow,
                 ));
             }
+            results
         }
         Action::DoubleArrow => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
+            let mut results: Vec<T> = Vec::new();
             let start_idx = cmp::max(active_idx + 1, pile.len() - 3);
 
             let mut arrow_targets = vec![];
@@ -567,11 +812,10 @@ fn resolve_player_action<T: EngineGameState>(
                     }
                 }
             }
+            results
         }
         Action::Quicken(max_amount) => {
-            if is_action_prevented(pile, Features::Web, active_idx, allegiance) {
-                return results;
-            }
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 2..pile.len() {
                 let target_card = pile[target_idx];
                 if !is_moveable_target(&target_card, allegiance, wrapped_action.target) {
@@ -588,11 +832,10 @@ fn resolve_player_action<T: EngineGameState>(
                 );
                 results.append(&mut move_results);
             }
+            results
         }
         Action::Delay(max_amount) => {
-            if is_action_prevented(pile, Features::Web, active_idx, allegiance) {
-                return results;
-            }
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() - 1 {
                 let target_card = pile[target_idx];
                 if !is_moveable_target(&target_card, allegiance, wrapped_action.target) {
@@ -609,12 +852,10 @@ fn resolve_player_action<T: EngineGameState>(
                 );
                 results.append(&mut move_results);
             }
+            results
         }
         Action::Heal => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card = pile[target_idx];
                 if !is_allegiance_match(
@@ -634,12 +875,10 @@ fn resolve_player_action<T: EngineGameState>(
                 let new_event = Event::Heal(target_idx, pile[target_idx]);
                 results.push(new_state.append_event(new_event));
             }
+            results
         }
         Action::Revive => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card = pile[target_idx];
                 if !is_allegiance_match(
@@ -660,12 +899,10 @@ fn resolve_player_action<T: EngineGameState>(
                     results.push(new_state);
                 }
             }
+            results
         }
         Action::Rats => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card = pile[target_idx];
                 let target_face = target_card.get_active_face();
@@ -691,11 +928,10 @@ fn resolve_player_action<T: EngineGameState>(
                     }
                 }
             }
+            results
         }
         Action::Manouver => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card_ptr = pile[target_idx];
                 if !is_allegiance_match(
@@ -717,12 +953,10 @@ fn resolve_player_action<T: EngineGameState>(
                     results.push(new_state);
                 }
             }
+            results
         }
         Action::Backstab => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for i in 0..target_ids.len() {
                 let target_idx = target_ids[i] - 1;
                 if target_idx <= active_idx {
@@ -739,12 +973,10 @@ fn resolve_player_action<T: EngineGameState>(
 
                 results.append(&mut post_hit_states);
             }
+            results
         }
         Action::BackstabTwice => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for i in 0..target_ids.len() {
                 let target_idx_1 = target_ids[i] - 1;
                 if target_idx_1 <= active_idx {
@@ -792,12 +1024,10 @@ fn resolve_player_action<T: EngineGameState>(
                         .push(first_backstab_state.append_event(Event::SkipHit(HitType::Backstab)));
                 }
             }
+            results
         }
         Action::Poison => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
+            let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card_ptr = pile[target_idx];
                 if !is_allegiance_match(
@@ -824,10 +1054,9 @@ fn resolve_player_action<T: EngineGameState>(
                     unblockable_hit_get_all_outcomes(&pre_hit_state, target_idx, HitType::Poison);
                 results.extend(post_hit_states);
             }
+            results
         }
     }
-
-    results
 }
 
 fn _get_assist_action_outcomes<T: EngineGameState>(
@@ -890,13 +1119,11 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
     move_type: MoveType,
     source_allegiance: Allegiance,
 ) -> Vec<T> {
-    assert!(moves_remaining >= 1);
     let target_state = state.clone().append_event(Event::MoveTarget(
         target_idx,
         state.get_pile()[target_idx],
         move_type,
     ));
-
     let mut final_results = Vec::new();
 
     final_results.append(&mut try_prevent_action_with_reaction(
@@ -904,6 +1131,17 @@ fn move_card_by_up_to_amount<T: EngineGameState>(
         target_idx,
         ReactionTrigger::Dodge,
     ));
+
+    if moves_remaining == 0 {
+        final_results.push(target_state.clone().append_event(Event::MoveBy(
+            target_idx,
+            state.get_pile()[target_idx],
+            move_type,
+            0,
+        )));
+
+        return final_results;
+    }
 
     let mut results_agg = Vec::new();
     _move_card_inner(
@@ -1105,8 +1343,14 @@ fn swarm_me_recursive<T: EngineGameState>(
                         active_idx,
                         base_state.get_pile()[active_idx],
                     ));
-                    let new_states =
-                        resolve_enemy_row(&base_state, allegiance, &swarm_row, active_idx, true);
+                    let new_states = resolve_enemy_row(
+                        &base_state,
+                        allegiance,
+                        &swarm_row,
+                        active_idx,
+                        true,
+                        true,
+                    );
                     if new_states.len() == 0 {
                         result_states.push(base_state);
                     } else {
@@ -1119,6 +1363,16 @@ fn swarm_me_recursive<T: EngineGameState>(
     }
 
     Vec::new()
+}
+
+fn any_card_has_modifiers(pile: &Pile) -> bool {
+    for card_ptr in pile {
+        if card_ptr.get_active_face().modifier.is_some() {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn resolve_enemy_turn_no_swarm<T: EngineGameState>(
@@ -1136,20 +1390,32 @@ fn resolve_enemy_turn_no_swarm<T: EngineGameState>(
             continue;
         }
 
-        let state_with_row_idx = state.clone().append_event(Event::PickRow(
+        let state_with_row_event = state.clone().append_event(Event::PickRow(
             row_idx,
             active_idx,
             state.get_pile()[active_idx],
         ));
         let row_outcomes = resolve_enemy_row(
-            &state_with_row_idx,
+            &state_with_row_event,
             allegiance,
             &row,
             active_idx,
             row.is_mandatory,
+            false,
         );
 
         if row_outcomes.len() > 0 {
+            if any_card_has_modifiers(state.get_pile()) {
+                return resolve_enemy_row(
+                    &state_with_row_event,
+                    allegiance,
+                    &row,
+                    active_idx,
+                    true,
+                    true,
+                );
+            }
+
             return row_outcomes;
         }
     }
@@ -1164,6 +1430,7 @@ fn resolve_enemy_row<T: EngineGameState>(
     row: &Row,
     active_idx: usize,
     force_mandatory: bool,
+    allow_modifiers: bool,
 ) -> Vec<T> {
     let pile = state.get_pile();
     if let Some(condition) = row.condition {
@@ -1172,9 +1439,16 @@ fn resolve_enemy_row<T: EngineGameState>(
                 panic!("Unhandled cost condition for enemy turn: {:?}", condition)
             }
             Condition::ExhaustedAllies(required_amount) => {
-                let revive_targets = find_all_revive_targets(pile, allegiance, active_idx + 1);
-
-                if revive_targets.len() < required_amount {
+                let mut revive_target_count = 0;
+                for i in active_idx + 1..pile.len() {
+                    let active_card_ptr = &pile[i];
+                    if active_card_ptr.get_active_face().allegiance == allegiance {
+                        if active_card_ptr.get_active_face().health == Health::Empty {
+                            revive_target_count += 1
+                        }
+                    }
+                }
+                if revive_target_count < required_amount {
                     return vec![];
                 }
             }
@@ -1199,17 +1473,58 @@ fn resolve_enemy_row<T: EngineGameState>(
     for action in &row.actions {
         let mut next_active_states: Vec<T> = vec![];
         for current_state in &active_states {
-            let new_states = resolve_enemy_action(current_state, allegiance, action, active_idx);
-
-            if new_states.len() > 0 {
-                did_any_actions = true;
-                next_active_states.extend(new_states);
+            if let Some(spider_skip_event) = maybe_skip_action_event_for_spider_feature(
+                state.get_pile(),
+                active_idx,
+                allegiance,
+                action,
+            ) {
+                next_active_states.push(current_state.clone().append_event(spider_skip_event));
             } else {
-                next_active_states.push(
-                    current_state
-                        .clone()
-                        .append_event(Event::SkipAction(state.get_pile()[active_idx], *action)),
-                );
+                let mut new_states = Vec::new();
+
+                if allow_modifiers && does_support_modifiers(&action.action) {
+                    let modifier_states =
+                        get_post_modifier_states(current_state, action, active_idx);
+                    for (modifier_state, modified_action) in modifier_states {
+                        let mut modifier_outcomes = resolve_enemy_action(
+                            &modifier_state,
+                            allegiance,
+                            &modified_action,
+                            active_idx,
+                        );
+
+                        if modifier_outcomes.len() == 0 {
+                            new_states.push(modifier_state.append_event(Event::SkipAction(
+                                state.get_pile()[active_idx],
+                                *action,
+                                SkipActionReason::NoOption,
+                            )));
+                        } else {
+                            new_states.append(&mut modifier_outcomes)
+                        }
+                    }
+                }
+
+                if new_states.len() == 0 {
+                    new_states.append(&mut resolve_enemy_action(
+                        current_state,
+                        allegiance,
+                        action,
+                        active_idx,
+                    ));
+                }
+
+                if new_states.len() > 0 {
+                    did_any_actions = true;
+                    next_active_states.extend(new_states);
+                } else {
+                    next_active_states.push(current_state.clone().append_event(Event::SkipAction(
+                        state.get_pile()[active_idx],
+                        *action,
+                        SkipActionReason::NoOption,
+                    )));
+                }
             }
         }
         active_states = next_active_states;
@@ -1264,10 +1579,6 @@ fn resolve_enemy_action<T: EngineGameState>(
             );
         }
         Action::Hit(range) => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
-
             let range_cap = match range {
                 Range::Inf => pile.len(),
                 Range::Int(amount) => cmp::min(pile.len(), active_idx + amount + 1),
@@ -1363,9 +1674,6 @@ fn resolve_enemy_action<T: EngineGameState>(
             results.push(new_state.append_event(Event::Death));
         }
         Action::Pull(range) => {
-            if is_action_prevented(pile, Features::Web, active_idx, allegiance) {
-                return results;
-            }
             let max_range = match range {
                 Range::Inf => pile.len(),
                 Range::Int(r) => cmp::min(active_idx + r + 1, pile.len()),
@@ -1417,9 +1725,6 @@ fn resolve_enemy_action<T: EngineGameState>(
             }
         }
         Action::Push(range) => {
-            if is_action_prevented(pile, Features::Web, active_idx, allegiance) {
-                return results;
-            }
             let max_range = match range {
                 Range::Inf => pile.len() - 1,
                 Range::Int(r) => cmp::min(active_idx + r + 1, pile.len() - 1),
@@ -1473,9 +1778,6 @@ fn resolve_enemy_action<T: EngineGameState>(
             }
         }
         Action::Heal => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
             let maybe_target = find_heal_target(
                 pile,
                 Health::Half,
@@ -1491,9 +1793,6 @@ fn resolve_enemy_action<T: EngineGameState>(
             }
         }
         Action::Revive => {
-            if is_action_prevented(pile, Features::Venom, active_idx, allegiance) {
-                return results;
-            }
             let maybe_target = find_heal_target(
                 pile,
                 Health::Empty,
@@ -1525,7 +1824,7 @@ fn resolve_enemy_action<T: EngineGameState>(
         }
     }
 
-    return results;
+    results
 }
 
 // Applicators
@@ -1718,6 +2017,7 @@ fn damage_card_with_on_hit_row<T: EngineGameState>(
         target_face.allegiance,
         &row,
         target_idx,
+        true,
         true,
     );
 
@@ -2157,21 +2457,6 @@ fn find_heal_target(
     None
 }
 
-fn find_all_revive_targets(pile: &Pile, allegiance: Allegiance, starting_idx: usize) -> Vec<usize> {
-    let mut result = Vec::new();
-
-    for i in usize::from(starting_idx)..pile.len() {
-        let active_card_ptr = &pile[i];
-        if active_card_ptr.get_active_face().allegiance == allegiance {
-            if active_card_ptr.get_active_face().health == Health::Empty {
-                result.push(i);
-            }
-        }
-    }
-
-    result
-}
-
 // Optimization: enum array?
 // Optimization: convert to lookup table?
 fn find_hurt_faces(card: &CardPtr) -> Vec<FaceKey> {
@@ -2239,7 +2524,7 @@ fn exhaust_card(card: &CardPtr) -> Vec<FaceKey> {
         panic!("Could not find exhausted face of card");
     }
 
-    return results;
+    results
 }
 
 fn mut_exhaust_card_dont_give_options(card: &mut CardPtr) {
@@ -2399,8 +2684,14 @@ mod tests {
         // Not showing pull action
         let pile = string_to_pile("6A 1 2 3 4A");
         let row = &pile[0].get_active_face().rows[0];
-        let new_states =
-            resolve_enemy_row(&T::new(pile.clone()), Allegiance::Baddie, row, 0, false);
+        let new_states = resolve_enemy_row(
+            &T::new(pile.clone()),
+            Allegiance::Baddie,
+            row,
+            0,
+            false,
+            true,
+        );
 
         assert_eq!(new_states.len(), 2);
 
@@ -2525,6 +2816,7 @@ mod tests {
                 &state.pile[0].get_active_face().rows[0],
                 0,
                 false,
+                true,
             );
 
             assert_actual_vs_expected_piles(
@@ -2549,6 +2841,7 @@ mod tests {
                 &state.pile[0].get_active_face().rows[0],
                 0,
                 false,
+                true,
             );
 
             assert_actual_vs_expected_piles(
@@ -2570,6 +2863,7 @@ mod tests {
             &state.pile[0].get_active_face().rows[2],
             0,
             false,
+            true,
         );
 
         assert_actual_vs_expected_piles(
@@ -3964,7 +4258,7 @@ mod tests {
         assert!(new_states.len() == 1);
         assert!(new_states[0].events.len() == 1);
         assert!(match new_states[0].events[0] {
-            Event::SkipAction(_, _) => true,
+            Event::SkipAction(_, _, _) => true,
             _ => false,
         });
     }
@@ -4018,5 +4312,53 @@ mod tests {
                 "1A 48A 46D 6D 47A", // Roll over 3, hit
             ],
         );
+    }
+
+    #[test]
+    fn test_get_modifier_options() {
+        {
+            // No modifiers
+            let pile = string_to_pile("1 2 3 4 5");
+            let results = get_modifier_options(&pile, 0);
+            assert_eq!(results.len(), 0);
+        }
+
+        {
+            // With modifiers
+            let pile = string_to_pile("55 56 57");
+            let results = get_modifier_options(&pile, 0);
+            assert_eq!(
+                results,
+                vec![(vec![1], -2), (vec![2], 1), (vec![1, 2], -1),]
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_post_modifier_states() {
+        let action = WrappedAction {
+            target: Target::Any,
+            action: Action::Hit(Range::Int(1)),
+        };
+
+        {
+            // No modifiers
+            let state = T::new(string_to_pile("1 2 3 4 5"));
+            let results = get_post_modifier_states(&state, &action, 0);
+            assert_eq!(results.len(), 0);
+        }
+
+        {
+            // With modifiers
+            let state = T::new(string_to_pile("55 56 57"));
+            let results = get_post_modifier_states(&state, &action, 0);
+
+            assert_eq!(results.len(), 3 + 1);
+            // TODO: order shouldn't matter
+            // 0: noop
+            assert_eq!(results[0].0.pile, state.pile);
+            // 1: 56 only
+            assert_eq!(results[1].0.pile, string_to_pile("55 56B 57"));
+        }
     }
 }

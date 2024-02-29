@@ -45,7 +45,7 @@ fn get_only_damage_card_id(move_options: &Vec<MoveOption>) -> Option<CardId> {
 }
 
 fn placement_pct_for_row_option(row_index: usize) -> WindowUnit {
-    return 0.165 + 0.11 * (row_index as f64);
+    0.165 + 0.11 * (row_index as f64)
 }
 
 pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptions {
@@ -87,6 +87,23 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     "Pick {} Sources",
                     string_condition_cost_type(cost_type)
                 ));
+            }
+            Event::UseCardModifiers(cards, amount, wrapped_action) => {
+                let amount_string = match amount {
+                    0.. => format!("+{amount}"),
+                    _ => format!("{amount}"),
+                };
+                let action_text = action_simple_name(&wrapped_action);
+                new_interaction_options
+                    .selection_options
+                    .push(CompleteSelectionOption::new(
+                        cards.iter().map(|(_, ptr)| ptr.get_card_id()).collect(),
+                        available_move.clone(),
+                        format!("Modify {action_text} {amount_string}"),
+                    ));
+                new_interaction_options
+                    .hints
+                    .insert("Pick Modifiers".to_owned());
             }
             Event::PickRow(row_index, card_index, card_ptr) => {
                 let active_face = card_ptr.get_active_face();
@@ -139,7 +156,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Finish Activation".to_owned());
             }
-            Event::SkipAction(_, wrapped_action) => {
+            Event::SkipAction(_, wrapped_action, _) => {
                 assert!(new_interaction_options.skip_button.len() == 0);
                 new_interaction_options.skip_button.push(SkipButton {
                     move_option: available_move.clone(),
@@ -462,7 +479,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
 
     calculate_selection_options(&mut new_interaction_options);
 
-    return new_interaction_options;
+    new_interaction_options
 }
 
 pub fn calculate_selection_options(interaction_options: &mut InteractionOptions) {
@@ -837,7 +854,7 @@ impl GamePlayerState {
         }
 
         self.set_history(game_history.clone());
-        return self.do_render_pile_update();
+        self.do_render_pile_update()
     }
 
     pub fn apply_option(self, move_option: &MoveOption) {
@@ -883,11 +900,8 @@ impl GamePlayerState {
 
         calculate_selection_options(&mut new_interaction_options);
 
-        if new_interaction_options.valid_selection_buttons.len() == 1
-            && new_interaction_options.total_buttons_available() == 1
-        {
-            let selection_option = &new_interaction_options.valid_selection_buttons[0];
-            self.apply_option(&selection_option.move_option);
+        if let Some(single_move_option) = new_interaction_options.should_force_selection_options() {
+            self.apply_option(&single_move_option);
         } else {
             let mut render_card_map = self.render_card_map_getter.get();
             render_pile_update(

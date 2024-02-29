@@ -85,7 +85,7 @@ pub fn find_next_event_matching_prefix_and_with_final_state(
             }
         }
     }
-    return res.map(|res| res.0);
+    res.map(|res| res.0)
 }
 
 pub fn compact_pile_string(pile: &Pile, sep: &str) -> String {
@@ -104,7 +104,7 @@ pub fn format_event_for_cli(event: &Event) -> String {
         Event::PickRow(row_num, _, card_ptr) => format!("{:?}: Row {}", card_ptr, row_num),
         Event::SkipTurn(_) => "Skip Turn".to_owned(),
         Event::BottomCard => format!("Bottom"),
-        Event::SkipAction(card_ptr, wrapped_action) => format!(
+        Event::SkipAction(card_ptr, wrapped_action, _) => format!(
             "{:?}: Skip {}",
             card_ptr,
             format_wrapped_action(wrapped_action)
