@@ -4,7 +4,8 @@ use handy_core::game::*;
 // use handy_core::utils::string_to_pile;
 use rand::thread_rng;
 
-const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 5_000_000;
+// const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 5_000_000;
+const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 2_000_000;
 
 fn generate_example(hero: Class, monster: Class) {
     let mut rng = thread_rng();
@@ -47,10 +48,10 @@ fn main() {
         loop {
             generate_example(matchup.0, matchup.1);
         }
-    } else {
-        loop {
-            let matchup = find_least_used_matchup(all_matchups.iter());
-            generate_example(matchup.0, matchup.1);
-        }
+    }
+
+    loop {
+        let matchup = find_least_used_matchup(all_matchups.iter());
+        generate_example(matchup.0, matchup.1);
     }
 }

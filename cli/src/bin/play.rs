@@ -3,6 +3,7 @@ use cli::paths::*;
 use handy_core::game::*;
 use handy_core::solver::*;
 use handy_core::utils::*;
+use std::collections::HashSet;
 
 fn format_prefix_result(prefix_result: &PrefixResult) -> String {
     match prefix_result {
@@ -73,6 +74,8 @@ fn card_activation_result_via_all_outcomes(pile: &Pile) -> Pile {
                 model.score_pile(&option.pile)
             );
         }
+        let unique_choices: HashSet<Pile> = options.iter().map(|option| option.pile.clone()).collect();
+        println!("Unique Choices: {}", unique_choices.len());
 
         if options.len() == 1 {
             println!("Making only choice");

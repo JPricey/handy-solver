@@ -1,4 +1,5 @@
 use crate::game::primitives::*;
+use std::collections::HashSet;
 use std::fmt::Debug;
 
 pub trait EngineGameState: Clone + Debug {
@@ -8,6 +9,8 @@ pub trait EngineGameState: Clone + Debug {
     fn get_pile(&self) -> &Pile;
     fn get_pile_mut(&mut self) -> &mut Pile;
     fn combine(first: Self, second: Self) -> Self;
+
+    fn dedupe(states: Vec<Self>) -> Vec<Self>;
 }
 
 // GameStateNoEventLog
@@ -37,6 +40,16 @@ impl EngineGameState for GameStateNoEventLog {
 
     fn combine(_first: Self, second: Self) -> Self {
         second
+    }
+
+    fn dedupe(mut states: Vec<Self>) -> Vec<Self> {
+        if states.len() < 50 {
+            states
+        } else {
+            let set = states.drain(..).collect::<HashSet<_>>();
+            states.extend(set.into_iter());
+            states
+        }
     }
 }
 
@@ -79,6 +92,10 @@ impl EngineGameState for GameStateWithEventLog {
             events: first.events,
         }
     }
+
+    fn dedupe(states: Vec<Self>) -> Vec<Self> {
+        states
+    }
 }
 
 // GameStateWithPileTrackedEventLog
@@ -119,5 +136,9 @@ impl EngineGameState for GameStateWithPileTrackedEventLog {
             pile: second.pile,
             events: first.events,
         }
+    }
+
+    fn dedupe(states: Vec<Self>) -> Vec<Self> {
+        states
     }
 }

@@ -28,10 +28,10 @@ pub fn write_examples_to_file(
                 }
             }
             return;
-        } else {
-            eprintln!("Couldn't open file. Sleeping and trying again");
-            thread::sleep(time::Duration::from_millis(100));
         }
+
+        eprintln!("Couldn't open file. Sleeping and trying again");
+        thread::sleep(time::Duration::from_millis(100));
     }
 }
 
@@ -42,7 +42,7 @@ fn file_size_for_matchup(matchup: Matchup) -> u64 {
         return 0;
     };
 
-    return file.metadata().map_or(0, |m| m.len());
+    file.metadata().map_or(0, |m| m.len())
 }
 
 pub fn find_least_used_matchup<'a>(matchups: impl Iterator<Item = &'a Matchup>) -> Matchup {

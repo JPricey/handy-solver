@@ -210,16 +210,29 @@ fn get_spaced_claws_result<T: EngineGameState>(
     attack_all_in_iter(state, active_allegiance, iter, target, HitType::Claw)
 }
 
-fn get_modifier_options(pile: &Pile, active_idx: usize) -> Vec<(Vec<usize>, ModifierAmount)> {
+fn get_modifier_options(
+    pile: &Pile,
+    active_idx: usize,
+    modifier_range_type: ModifierRangeType,
+) -> Vec<(Vec<usize>, ModifierAmount)> {
     let mut results = Vec::new();
+    if modifier_range_type == ModifierRangeType::None {
+        return results;
+    }
 
-    for target_idx in 0..pile.len() {
-        if target_idx == active_idx {
-            continue;
-        }
+    // TODO: instead of only below active_idx, should allow anyone that isn't active
+    for target_idx in (active_idx + 1)..pile.len() {
+        // if target_idx == active_idx {
+        //     continue;
+        // }
 
         let active_card_ptr = pile[target_idx];
         if let Some(modifier) = active_card_ptr.get_active_face().modifier {
+            // Don't bother with modifiers on infinity if the modifier has no effect anyway
+            if modifier_range_type == ModifierRangeType::Infinity && modifier.mandatory.is_none() {
+                continue;
+            }
+
             let pre_results_len = results.len();
 
             results.push((vec![target_idx], modifier.amount));
@@ -242,9 +255,10 @@ fn get_post_modifier_states<T: EngineGameState>(
     state: &T,
     wrapped_action: &WrappedAction,
     active_idx: usize,
+    modifier_range_type: ModifierRangeType,
 ) -> Vec<(T, WrappedAction)> {
     let original_pile = state.get_pile();
-    let modifier_options = get_modifier_options(&original_pile, active_idx);
+    let modifier_options = get_modifier_options(&original_pile, active_idx, modifier_range_type);
     if modifier_options.len() == 0 {
         return Vec::new();
     }
@@ -392,14 +406,22 @@ fn range_with_modifier(range: Range, modifier: ModifierAmount) -> Range {
     }
 }
 
-fn does_support_modifiers(action: &Action) -> bool {
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ModifierRangeType {
+    Discrete,
+    Infinity,
+    None,
+}
+
+fn modifier_range_type_for_action(action: &Action) -> ModifierRangeType {
     match action {
-        Action::Pull(_)
-        | Action::Push(_)
-        | Action::Claws(_)
-        | Action::Hit(_)
-        | Action::Quicken(_)
-        | Action::Delay(_) => true,
+        Action::Pull(range) | Action::Push(range) | Action::Claws(range) | Action::Hit(range) => {
+            match range {
+                Range::Inf => ModifierRangeType::Infinity,
+                Range::Int(_) => ModifierRangeType::Discrete,
+            }
+        }
+        Action::Quicken(_) | Action::Delay(_) => ModifierRangeType::Discrete,
         Action::Death
         | Action::Void
         | Action::CallAssist
@@ -418,7 +440,7 @@ fn does_support_modifiers(action: &Action) -> bool {
         | Action::Backstab
         | Action::BackstabTwice
         | Action::Poison
-        | Action::SpacedClaws(_) => false,
+        | Action::SpacedClaws(_) => ModifierRangeType::None,
     }
 }
 
@@ -458,21 +480,21 @@ fn resolve_player_action_with_modifiers<T: EngineGameState>(
     active_idx: usize,
     target_ids: &TargetIds,
 ) -> Vec<T> {
-    if does_support_modifiers(&wrapped_action.action) {
-        let modifier_states = get_post_modifier_states(state, wrapped_action, active_idx);
-        if modifier_states.len() > 0 {
-            let mut results = Vec::new();
-            for (modifier_state, modified_wrapped_action) in modifier_states {
-                results.append(&mut resolve_player_action_unskippable(
-                    &modifier_state,
-                    &modified_wrapped_action,
-                    active_idx,
-                    target_ids,
-                ));
-            }
-
-            return results;
+    let modifier_range_type = modifier_range_type_for_action(&wrapped_action.action);
+    let modifier_states =
+        get_post_modifier_states(state, wrapped_action, active_idx, modifier_range_type);
+    if modifier_states.len() > 0 {
+        let mut results = Vec::new();
+        for (modifier_state, modified_wrapped_action) in modifier_states {
+            results.append(&mut resolve_player_action_unskippable(
+                &modifier_state,
+                &modified_wrapped_action,
+                active_idx,
+                target_ids,
+            ));
         }
+
+        return results;
     }
 
     resolve_player_action_unskippable(state, &wrapped_action, active_idx, target_ids)
@@ -1306,7 +1328,9 @@ fn resolve_enemy_turn<T: EngineGameState>(
     allegiance: Allegiance,
     active_idx: usize,
 ) -> Vec<T> {
-    let swarm_states = swarm_me_recursive(pile, allegiance, active_idx + 1);
+    let mut swarm_states = swarm_me_recursive(pile, allegiance, active_idx + 1);
+    swarm_states = T::dedupe(swarm_states);
+
     if swarm_states.len() > 0 {
         let mut results = vec![];
         for swarm_state in swarm_states {
@@ -1333,6 +1357,7 @@ fn swarm_me_recursive<T: EngineGameState>(
         if active_card.get_active_face().allegiance == allegiance {
             if let Some(swarm_row) = &active_face.swarm {
                 let mut child_states = swarm_me_recursive(state, allegiance, active_idx + 1);
+                child_states = T::dedupe(child_states);
                 if child_states.len() == 0 {
                     child_states = vec![state.clone()];
                 }
@@ -1471,7 +1496,9 @@ fn resolve_enemy_row<T: EngineGameState>(
     let mut did_any_actions = false;
 
     for action in &row.actions {
+        active_states = T::dedupe(active_states);
         let mut next_active_states: Vec<T> = vec![];
+        let modifier_range_type = modifier_range_type_for_action(&action.action);
         for current_state in &active_states {
             if let Some(spider_skip_event) = maybe_skip_action_event_for_spider_feature(
                 state.get_pile(),
@@ -1483,9 +1510,13 @@ fn resolve_enemy_row<T: EngineGameState>(
             } else {
                 let mut new_states = Vec::new();
 
-                if allow_modifiers && does_support_modifiers(&action.action) {
-                    let modifier_states =
-                        get_post_modifier_states(current_state, action, active_idx);
+                if allow_modifiers && modifier_range_type != ModifierRangeType::None {
+                    let modifier_states = get_post_modifier_states(
+                        current_state,
+                        action,
+                        active_idx,
+                        modifier_range_type,
+                    );
                     for (modifier_state, modified_action) in modifier_states {
                         let mut modifier_outcomes = resolve_enemy_action(
                             &modifier_state,
@@ -4319,14 +4350,14 @@ mod tests {
         {
             // No modifiers
             let pile = string_to_pile("1 2 3 4 5");
-            let results = get_modifier_options(&pile, 0);
+            let results = get_modifier_options(&pile, 0, ModifierRangeType::Discrete);
             assert_eq!(results.len(), 0);
         }
 
         {
             // With modifiers
             let pile = string_to_pile("55 56 57");
-            let results = get_modifier_options(&pile, 0);
+            let results = get_modifier_options(&pile, 0, ModifierRangeType::Discrete);
             assert_eq!(
                 results,
                 vec![(vec![1], -2), (vec![2], 1), (vec![1, 2], -1),]
@@ -4344,14 +4375,14 @@ mod tests {
         {
             // No modifiers
             let state = T::new(string_to_pile("1 2 3 4 5"));
-            let results = get_post_modifier_states(&state, &action, 0);
+            let results = get_post_modifier_states(&state, &action, 0, ModifierRangeType::Discrete);
             assert_eq!(results.len(), 0);
         }
 
         {
             // With modifiers
             let state = T::new(string_to_pile("55 56 57"));
-            let results = get_post_modifier_states(&state, &action, 0);
+            let results = get_post_modifier_states(&state, &action, 0, ModifierRangeType::Discrete);
 
             assert_eq!(results.len(), 3 + 1);
             // TODO: order shouldn't matter

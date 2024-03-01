@@ -29,13 +29,12 @@ pub fn run_a_star_solver(
                 println!("Stopping Solver: {:?}", reason);
                 if let Some(best_win) = a_star_solver.best_win {
                     return a_star_solver.unroll_state(best_win);
-                } else {
-                    return vec![];
                 }
+                return vec![];
             }
-            AStarIterResult::NewBest(tiny_pile) => {
+            AStarIterResult::NewBest(_tiny_pile) => {
                 println!("New best solution: {}", a_star_solver.max_depth);
-                a_star_solver.print_solution_from_tiny(&tiny_pile);
+                // a_star_solver.print_solution_from_tiny(&tiny_pile);
             }
             AStarIterResult::Continue(_) => {
                 if let Some(def_max_iter) = max_iters {
@@ -47,7 +46,7 @@ pub fn run_a_star_solver(
                         a_star_solver.reset_queue_and_fscore();
                     }
                 }
-                if count > 100_000 {
+                if count > 10_000 {
                     println!(
                         "Iteration: {:?}, queue_size: {}, seen_size: {}, f_score: {}, best_len: {} max_fscore: {}",
                         a_star_solver.total_iters,

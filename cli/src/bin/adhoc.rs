@@ -1,8 +1,11 @@
+#![allow(dead_code)]
 use cli::*;
 use handy_core::game::*;
 use handy_core::solver::model::Model;
+use handy_core::utils::string_to_pile;
 use serde;
 use serde_jsonlines::json_lines;
+use std::collections::HashSet;
 use std::fmt::Debug;
 // use csv::Writer;
 // use inc_stats;
@@ -80,7 +83,7 @@ fn do_compare(hero: Class, enemy: Class) {
     println!("Avg cmp: {:.4} | {:.4}", etot1 / denom, etot2 / denom);
 }
 
-fn main() {
+fn script_compare() {
     let heros = vec![
         // others
         Class::Cursed,
@@ -101,4 +104,22 @@ fn main() {
             do_compare(*hero, *enemy);
         }
     }
+}
+
+fn state_amount_test() {
+    let pile = string_to_pile("26A25C24A27B57A58A56A55A59A");
+    let state = GameStateNoEventLog::new(pile);
+    // let state = GameStateWithEventLog::new(pile);
+    let outcomes = resolve_top_card(&state);
+    println!("Total outcomes: {}", outcomes.len());
+    let unique_outcomes = outcomes
+        .into_iter()
+        .map(|s| s.pile)
+        .collect::<HashSet<_>>()
+        .len();
+    println!("Unique outcomes: {unique_outcomes}");
+}
+
+fn main() {
+    state_amount_test()
 }
