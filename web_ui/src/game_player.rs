@@ -28,7 +28,7 @@ fn get_combined_interaction_buttons(
 
     a.extend(b);
 
-    return a;
+    a
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -384,7 +384,7 @@ pub fn GamePlayer(
         }
 
         let hints = interaction_getter.get().hints;
-        return hints.into_iter().collect::<Vec<_>>().join(" or ");
+        hints.into_iter().collect::<Vec<_>>().join(" or ")
     };
 
     let end_game_text = move || {

@@ -537,7 +537,7 @@ fn place_within_inclusive(
         return small_amount;
     }
     let delta = big_amount - small_amount;
-    return small_amount + delta * (1.0 - (index as WindowUnit / max as WindowUnit));
+    small_amount + delta * (1.0 - (index as WindowUnit / max as WindowUnit))
 }
 
 pub fn get_card_position(
@@ -612,7 +612,7 @@ pub fn render_pile_update(
         render_card.is_clickable.set(is_clickable);
     }
 
-    return max_applied_duration;
+    max_applied_duration
 }
 
 pub fn is_state_longer_event_prefix(
@@ -630,7 +630,7 @@ pub fn is_state_longer_event_prefix(
         }
     }
 
-    return true;
+    true
 }
 
 pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bool) {
@@ -656,7 +656,7 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bo
 
     is_definite_win = is_definite_win && results.len() > 0;
 
-    return (results, is_definite_win);
+    (results, is_definite_win)
 }
 
 pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
