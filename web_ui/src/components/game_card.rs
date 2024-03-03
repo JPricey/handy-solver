@@ -76,9 +76,10 @@ pub fn InPlayGameCard(
     view! { cx,
         <div
             id=card_div_id
-            style:position = "absolute"
-            style:top={move || wrap_px(placer_getter.get().scale(render_card.animated_point.get().y))}
-            style:left={move || wrap_px(placer_getter.get().scale(render_card.animated_point.get().x))}
+            style:position="absolute"
+            style:top=move || wrap_px(placer_getter.get().scale(render_card.animated_point.get().y))
+            style:left=move || wrap_px(placer_getter.get().scale(render_card.animated_point.get().x))
+            style:z-index=move || render_card.z_index.get()
         >
             <GameCard
                 card_id=render_card.card_id
@@ -133,7 +134,7 @@ pub fn GameCard(
                     -1
                 };
 
-                return format!("scaleX({scale_x}) rotateX({x}rad) rotateY({y}rad) rotateZ({z}rad)")
+                format!("scaleX({scale_x}) rotateX({x}rad) rotateY({y}rad) rotateZ({z}rad)")
             }
         >
             <img

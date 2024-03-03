@@ -721,6 +721,13 @@ fn get_init_render_pile(cx: Scope, init_pile: &Pile) -> RenderCardMap {
                 tween_default,
             );
 
+            let is_important = create_rw_signal(cx, false);
+            let z_index = create_memo(cx, move |_| {
+                let important_offset = if is_important.get() { 100.0 } else { 0.0 };
+
+                ((important_offset - animated_position_in_pile.get() + 100.0) * 100.0) as i32
+            });
+
             let render_card = RenderCard {
                 card_id: card.get_card_id(),
                 active_face,
@@ -733,6 +740,8 @@ fn get_init_render_pile(cx: Scope, init_pile: &Pile) -> RenderCardMap {
 
                 position_in_pile,
                 animated_position_in_pile,
+                is_important,
+                z_index: z_index.into(),
 
                 is_clickable: create_rw_signal(cx, false),
             };
@@ -785,6 +794,18 @@ impl GamePlayerState {
         }
     }
 
+    fn set_interaction_options(self, new_interaction_options: InteractionOptions) {
+        let render_card_map = self.render_card_map_getter.get_untracked();
+        for render_card in render_card_map.values() {
+            render_card.is_important.set(
+                new_interaction_options
+                    .important_cards
+                    .contains(&render_card.card_id),
+            );
+        }
+        self.interaction_setter.set(new_interaction_options);
+    }
+
     pub fn set_init_pile(self, pile: Pile) {
         let initial_frame = get_frame_from_root_pile(pile.clone());
         let init_state = GameHistory {
@@ -826,8 +847,8 @@ impl GamePlayerState {
             &game_frame.current_pile,
             self.card_zone_width_px.get_untracked(),
         );
-        self.interaction_setter.set(new_interaction_options);
-        return result;
+        self.set_interaction_options(new_interaction_options);
+        result
     }
 
     pub fn apply_single_option(self, move_option: &MoveOption) -> Duration {
@@ -916,7 +937,7 @@ impl GamePlayerState {
                     .current_pile,
                 self.card_zone_width_px.get_untracked(),
             );
-            self.interaction_setter.set(new_interaction_options);
+            self.set_interaction_options(new_interaction_options);
         }
     }
 }

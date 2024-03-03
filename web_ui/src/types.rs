@@ -35,6 +35,9 @@ pub struct RenderCard {
     pub position_in_pile: RwSignal<(WindowUnit, Duration)>,
     pub animated_position_in_pile: Signal<WindowUnit>,
 
+    pub is_important: RwSignal<bool>,
+    pub z_index: Signal<i32>,
+
     pub is_clickable: RwSignal<bool>,
 }
 

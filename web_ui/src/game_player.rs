@@ -313,22 +313,7 @@ pub fn GamePlayer(
 
     let render_cards_getter = move || {
         let mut result: Vec<RenderCard> = render_card_map_getter.get().values().copied().collect();
-        result.sort_by(|a, b| {
-            let important_cmp = interaction_getter.with(|i| {
-                i.important_cards
-                    .contains(&a.card_id)
-                    .cmp(&i.important_cards.contains(&b.card_id))
-            });
-
-            if !important_cmp.is_eq() {
-                return important_cmp;
-            }
-
-            b.animated_position_in_pile
-                .get()
-                .partial_cmp(&a.animated_position_in_pile.get())
-                .unwrap()
-        });
+        result.sort_by_key(|card| card.z_index.get());
         result
     };
 
@@ -336,15 +321,15 @@ pub fn GamePlayer(
         let hovered_cards = hovered_cards_getter.get();
         let render_card_map = render_card_map_getter.get();
 
-        let min_card_id: Option<CardId> = hovered_cards
+        let maybe_highest_card: Option<CardId> = hovered_cards
             .iter()
-            .min_by_key(|card_id: &&CardId| {
+            .max_by_key(|card_id: &&CardId| {
                 let render_card = render_card_map.get(card_id).unwrap();
-                (render_card.animated_position_in_pile.get() * 100.0).round() as i64
+                render_card.z_index.get()
             })
             .copied();
 
-        min_card_id.map(|card_id| {
+        maybe_highest_card.map(|card_id| {
             (
                 card_id,
                 render_card_map.get(&card_id).unwrap().active_face.get(),
@@ -612,79 +597,85 @@ pub fn GamePlayer(
                     </div>
                 </div>
 
-                // Cards
-                <For each=render_cards_getter key=|e| e.card_id view=move |cx, render_card| {
-                    let get_row_options= move || {
-                            if is_animating.get() {
-                                return Vec::new();
-                            }
-
-                            interaction_getter.with(|interactions| {
-                                interactions.row_options.iter().filter(|option| {
-                                    option.card_id == render_card.card_id
-                                }).cloned().collect::<Vec<RenderRowOption>>()
-                            }
-                        )
-                    };
-
-                    view! { cx,
-                        <InPlayGameCard
-                            render_card=render_card
-                            is_animating={is_animating.into()}
-                            on:click = move |_| {
-                                let maybe_click_result = interaction_getter.get().clickable_cards.get(&render_card.card_id).cloned();
-                                if let Some(click_result) = maybe_click_result {
-                                    match click_result {
-                                        ClickableCardReason::Move(move_option) => {
-                                            game_state.apply_option(&move_option);
-                                        }
-                                        ClickableCardReason::Select => {
-                                            game_state.select_card(render_card.card_id);
-                                        }
-                                    }
+                <div
+                    id="card-container"
+                    style:position="absolute"
+                    style:z-index=0
+                >
+                    // Cards
+                    <For each=render_cards_getter key=|e| e.card_id view=move |cx, render_card| {
+                        let get_row_options= move || {
+                                if is_animating.get() {
+                                    return Vec::new();
                                 }
-                            }
-                        >
-                            <div
-                                style:width="100%"
-                                style:height="100%"
-                                style:transform=move || {
-                                    match render_card.active_face.get() {
-                                        FaceKey::A | FaceKey::C => None,
-                                        FaceKey::B | FaceKey::D => Some("rotate(180deg)"),
+
+                                interaction_getter.with(|interactions| {
+                                    interactions.row_options.iter().filter(|option| {
+                                        option.card_id == render_card.card_id
+                                    }).cloned().collect::<Vec<RenderRowOption>>()
+                                }
+                            )
+                        };
+
+                        view! { cx,
+                            <InPlayGameCard
+                                render_card=render_card
+                                is_animating={is_animating.into()}
+                                on:click = move |_| {
+                                    let maybe_click_result = interaction_getter.get().clickable_cards.get(&render_card.card_id).cloned();
+                                    if let Some(click_result) = maybe_click_result {
+                                        match click_result {
+                                            ClickableCardReason::Move(move_option) => {
+                                                game_state.apply_option(&move_option);
+                                            }
+                                            ClickableCardReason::Select => {
+                                                game_state.select_card(render_card.card_id);
+                                            }
+                                        }
                                     }
                                 }
                             >
-                                <For each=get_row_options key=|e: &RenderRowOption| (e.row_index, e.move_option.clone()) view=move |cx, row_option| {
-                                    view! { cx,
-                                        <div
-                                            style:position="absolute"
-                                            style:top={move || wrap_px(placer_getter.get().scale(RENDER_CARD_SIZE.1 * row_option.placement_pct))}
-                                            style:width={move || wrap_px(placer_getter.get().scale(*ROW_OPTION_WIDTH_PX))}
-                                            style:height={move || wrap_px(placer_getter.get().scale(*ROW_OPTION_HEIGHT_PX))}
-                                            on:click= move |_| { game_state.apply_option(&row_option.move_option) }
-                                        >
-                                            <button
-                                                class="clickable-option-overlay"
-                                                style:position="absolute"
-                                                style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}
-                                                style:border-width={move || wrap_px(placer_getter.get().scale(SELECTABLE_BUTTON_WIDTH_PX))}
-                                            />
+                                <div
+                                    style:width="100%"
+                                    style:height="100%"
+                                    style:transform=move || {
+                                        match render_card.active_face.get() {
+                                            FaceKey::A | FaceKey::C => None,
+                                            FaceKey::B | FaceKey::D => Some("rotate(180deg)"),
+                                        }
+                                    }
+                                >
+                                    <For each=get_row_options key=|e: &RenderRowOption| (e.row_index, e.move_option.clone()) view=move |cx, row_option| {
+                                        view! { cx,
                                             <div
                                                 style:position="absolute"
-                                                style:top="49%"
-                                                style:left="5.2%"
-                                                style:transform="translateY(-50%)"
+                                                style:top={move || wrap_px(placer_getter.get().scale(RENDER_CARD_SIZE.1 * row_option.placement_pct))}
+                                                style:width={move || wrap_px(placer_getter.get().scale(*ROW_OPTION_WIDTH_PX))}
+                                                style:height={move || wrap_px(placer_getter.get().scale(*ROW_OPTION_HEIGHT_PX))}
+                                                on:click= move |_| { game_state.apply_option(&row_option.move_option) }
                                             >
-                                                <RowIndexBadge number=Signal::derive(cx, move || row_option.row_index + 1) scale=1.0/>
+                                                <button
+                                                    class="clickable-option-overlay"
+                                                    style:position="absolute"
+                                                    style:border-radius={move || wrap_px(placer_getter.get().scale(BUTTON_BORDER_RADIUS_PX))}
+                                                    style:border-width={move || wrap_px(placer_getter.get().scale(SELECTABLE_BUTTON_WIDTH_PX))}
+                                                />
+                                                <div
+                                                    style:position="absolute"
+                                                    style:top="49%"
+                                                    style:left="5.2%"
+                                                    style:transform="translateY(-50%)"
+                                                >
+                                                    <RowIndexBadge number=Signal::derive(cx, move || row_option.row_index + 1) scale=1.0/>
+                                                </div>
                                             </div>
-                                        </div>
-                                    }
-                                }/>
-                            </div>
-                        </InPlayGameCard>
-                    }
-                }/>
+                                        }
+                                    }/>
+                                </div>
+                            </InPlayGameCard>
+                        }
+                    }/>
+                </div>
 
             // End game popup
             <Show

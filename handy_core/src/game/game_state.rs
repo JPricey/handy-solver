@@ -43,7 +43,7 @@ impl EngineGameState for GameStateNoEventLog {
     }
 
     fn dedupe(mut states: Vec<Self>) -> Vec<Self> {
-        if states.len() < 50 {
+        if states.len() < 10 {
             states
         } else {
             let set = states.drain(..).collect::<HashSet<_>>();
