@@ -149,6 +149,8 @@ fn main() {
     let mut score;
     let num_examples = all_examples_vec.len();
     let mut rng = thread_rng();
+    let mut first = true;
+
     loop {
         if num_examples > BATCH_SIZE {
             (model, score) = train(
@@ -159,6 +161,10 @@ fn main() {
             );
         } else {
             (model, score) = train(&model, all_examples_vec.iter(), num_examples, learning_rate);
+        }
+        if first {
+            first = false;
+            println!("Init score: {matchup:?} {score}");
         }
         i += 1;
         if i > 100 {

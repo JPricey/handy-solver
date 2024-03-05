@@ -507,9 +507,9 @@ pub fn calculate_selection_options(interaction_options: &mut InteractionOptions)
             &complete_selection_option.selected_cards - &interaction_options.selected_cards;
         // If choosable cards for this option is a superset of selected cards, add the
         // remaining cards as selectable options
-        if remaining_options.len()
-            == complete_selection_option.selected_cards.len()
-                - interaction_options.selected_cards.len()
+        if remaining_options.len() as i64
+            == complete_selection_option.selected_cards.len() as i64
+                - interaction_options.selected_cards.len() as i64
         {
             for option in remaining_options {
                 add_clickable_card_option(option)
