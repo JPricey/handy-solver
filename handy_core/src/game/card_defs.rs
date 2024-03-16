@@ -735,7 +735,10 @@ impl CardDefs {
                         ,
                     FaceKey::D => side(Health::Half)
                         .add_row(row()
-                            .hit_any(4)
+                            .delay_any(3)
+                            .hit_any(2)
+                            .hit_any(2)
+                            .rotate()
                         )
                         .add_row(row()
                             .quicken_any(2)
@@ -776,6 +779,7 @@ impl CardDefs {
                         ,
                     FaceKey::D => side(Health::Half)
                         .add_row(row()
+                            .heal_any()
                             .heal_any()
                             .rotate()
                         )
@@ -852,6 +856,7 @@ impl CardDefs {
                             .hit_any(4)
                         )
                         .add_row(row()
+                            .quicken_any(1)
                             .quicken_any(1)
                         )
                         ,
