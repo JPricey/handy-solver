@@ -2144,6 +2144,11 @@ fn can_card_be_damaged<T: EngineGameState>(state: &T, target_idx: usize) -> bool
     let pile = state.get_pile();
     let target_card = pile[target_idx];
     let target_face = target_card.get_active_face();
+
+    if target_face.features.intersects(Features::Invulnerable) {
+        return false;
+    }
+
     if !target_face.features.intersects(Features::Wisp) {
         return true;
     }

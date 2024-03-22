@@ -7,7 +7,7 @@ use leptos::*;
 
 fn format_cost(cost: &Option<SelfAction>) -> String {
     match cost {
-        None => " (None)".to_owned(),
+        None => " (Free)".to_owned(),
         Some(action) => format!(" ({})", action),
     }
 }

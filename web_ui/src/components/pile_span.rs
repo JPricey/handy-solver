@@ -19,11 +19,10 @@ pub fn PileSpan(cx: Scope, pile: Pile) -> impl IntoView {
                          };
                         return view! { cx, <span>
                             <CardIdPill card_ptr=*card_ptr />
-                            <div
+                            <span
                                 style:display="inline-block"
                                 style:width={move || wrap_px(placer_getter.get().scale(width))}
-                            >
-                            </div>
+                            />
                         </span> }
                     })
                     .collect_view(cx)

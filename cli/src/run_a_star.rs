@@ -46,7 +46,7 @@ pub fn run_a_star_solver(
                         a_star_solver.reset_queue_and_fscore();
                     }
                 }
-                if count > 10_000 {
+                if count > 100_000 {
                     println!(
                         "Iteration: {:?}, queue_size: {}, seen_size: {}, f_score: {}, best_len: {} max_fscore: {}",
                         a_star_solver.total_iters,
