@@ -335,8 +335,9 @@ fn maybe_skip_action_event_for_spider_feature(
         | Action::Void
         | Action::Ablaze
         | Action::Fireball
+        | Action::FireballTwice
         | Action::Arrow
-        | Action::DoubleArrow
+        | Action::ArrowTwice
         | Action::Heal
         | Action::Revive
         | Action::Rats
@@ -430,9 +431,10 @@ fn modifier_range_type_for_action(action: &Action) -> ModifierRangeType {
         | Action::Hypnosis
         | Action::Ablaze
         | Action::Fireball
+        | Action::FireballTwice
         | Action::Teleport
         | Action::Arrow
-        | Action::DoubleArrow
+        | Action::ArrowTwice
         | Action::Heal
         | Action::Revive
         | Action::Rats
@@ -460,9 +462,10 @@ fn action_with_modified_range(action: &Action, modifier: ModifierAmount) -> Acti
         | Action::Hypnosis
         | Action::Ablaze
         | Action::Fireball
+        | Action::FireballTwice
         | Action::Teleport
         | Action::Arrow
-        | Action::DoubleArrow
+        | Action::ArrowTwice
         | Action::Heal
         | Action::Revive
         | Action::Rats
@@ -622,39 +625,32 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
         }
         Action::Fireball => {
             let mut results: Vec<T> = Vec::new();
-            for energy_idx in target_ids {
-                let behind_idx = energy_idx + 1;
+            for target_idx in target_ids {
+                results.append(&mut _get_fireball_outcomes(&state, active_idx, *target_idx));
+            }
+            results
+        }
+        Action::FireballTwice => {
+            let mut results: Vec<T> = Vec::new();
+            for target_idx_1 in target_ids {
+                let outcomes_1 = _get_fireball_outcomes(&state, active_idx, *target_idx_1);
+                for first_fireball_state in outcomes_1 {
+                    for target_idx_2 in target_ids {
+                        if target_idx_2 >= target_idx_1 {
+                            continue;
+                        }
 
-                let pre_attack_state = state
-                    .clone()
-                    .append_event(Event::FireballTarget(*energy_idx, pile[*energy_idx]));
-
-                let mut fireball_results = if behind_idx < pile.len() {
-                    let first_hit_outcomes = attack_card_get_all_outcomes(
-                        &pre_attack_state,
-                        behind_idx,
-                        HitType::Fireball,
-                    );
-
-                    if first_hit_outcomes.len() > 0 {
-                        first_hit_outcomes
-                    } else {
-                        vec![pre_attack_state]
+                        results.append(&mut _get_fireball_outcomes(
+                            &first_fireball_state,
+                            active_idx,
+                            *target_idx_2,
+                        ));
                     }
-                } else {
-                    vec![pre_attack_state]
-                };
 
-                if *energy_idx > active_idx + 1 {
-                    let infront_attack_idx = energy_idx - 1;
-                    fireball_results = attack_idx_in_all_states_ignore_no_outcomes_for_any_state(
-                        &fireball_results,
-                        infront_attack_idx,
-                        HitType::Fireball,
-                    );
+                    // Only use 1 fireball
+                    results
+                        .push(first_fireball_state.append_event(Event::SkipHit(HitType::Fireball)));
                 }
-
-                results.append(&mut fireball_results);
             }
             results
         }
@@ -778,13 +774,13 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
             }
             results
         }
-        Action::DoubleArrow => {
+        Action::ArrowTwice => {
             let mut results: Vec<T> = Vec::new();
             let start_idx = cmp::max(active_idx + 1, pile.len() - 3);
 
             let mut arrow_targets = vec![];
 
-            for target_idx in (start_idx..pile.len()).rev() {
+            for target_idx in start_idx..pile.len() {
                 let target_card_ptr = pile[target_idx];
                 if is_allegiance_match(
                     allegiance,
@@ -807,10 +803,7 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
                     for first_arrow_state in
                         attack_card_get_all_outcomes(&base_state, target_idx_1, HitType::Arrow)
                     {
-                        for j in 0..arrow_targets.len() {
-                            if i == j {
-                                continue;
-                            }
+                        for j in 0..i {
                             let target_idx_2 = arrow_targets[j];
                             let base_state_2 =
                                 first_arrow_state.clone().append_event(Event::AttackCard(
@@ -1018,12 +1011,11 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
 
                 for first_backstab_state in post_hit_states_1 {
                     for j in 0..target_ids.len() {
-                        if i == j {
-                            continue;
-                        }
-
                         let target_idx_2 = target_ids[j] - 1;
                         if target_idx_2 <= active_idx {
+                            continue;
+                        }
+                        if target_idx_2 >= target_idx_1 {
                             continue;
                         }
 
@@ -1079,6 +1071,43 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
             results
         }
     }
+}
+
+fn _get_fireball_outcomes<T: EngineGameState>(
+    state: &T,
+    active_idx: usize,
+    target_idx: usize,
+) -> Vec<T> {
+    let pile = state.get_pile();
+    let behind_idx = target_idx + 1;
+
+    let pre_attack_state = state
+        .clone()
+        .append_event(Event::FireballTarget(target_idx, pile[target_idx]));
+
+    let mut fireball_results = if behind_idx < pile.len() {
+        let first_hit_outcomes =
+            attack_card_get_all_outcomes(&pre_attack_state, behind_idx, HitType::Fireball);
+
+        if first_hit_outcomes.len() > 0 {
+            first_hit_outcomes
+        } else {
+            vec![pre_attack_state]
+        }
+    } else {
+        vec![pre_attack_state]
+    };
+
+    if target_idx > active_idx + 1 {
+        let infront_attack_idx = target_idx - 1;
+        fireball_results = attack_idx_in_all_states_ignore_no_outcomes_for_any_state(
+            &fireball_results,
+            infront_attack_idx,
+            HitType::Fireball,
+        );
+    }
+
+    fireball_results
 }
 
 fn _get_assist_action_outcomes<T: EngineGameState>(
@@ -1590,11 +1619,12 @@ fn resolve_enemy_action<T: EngineGameState>(
 
     match wrapped_action.action {
         Action::Arrow
-        | Action::DoubleArrow
+        | Action::ArrowTwice
         | Action::Manouver
         | Action::Quicken(_)
         | Action::Delay(_)
         | Action::Fireball
+        | Action::FireballTwice
         | Action::Ablaze
         | Action::Teleport
         | Action::CallAssist
@@ -2853,9 +2883,9 @@ mod tests {
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "6B, 11D, 14B", // Dodge the pull
-                    "6B, 14B, 11D", // Dodge the attack
-                    "6B, 14C, 11D", // Get hit
+                    "6A, 11D, 14B", // Dodge the pull
+                    "6A, 14B, 11D", // Dodge the attack
+                    "6A, 14C, 11D", // Get hit
                 ],
             );
         }
@@ -2865,7 +2895,7 @@ mod tests {
     fn test_bug11() {
         {
             // Werewolf was able to pull & push heavy monsters
-            let state = T::new(string_to_pile("32C 9A 30A 8A 7A"));
+            let state = T::new(string_to_pile("32C 0A 30A 0A 7A"));
             let new_states = resolve_enemy_row(
                 &state,
                 Allegiance::Werewolf,
@@ -2878,7 +2908,7 @@ mod tests {
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "32D 8C 9D 30A 7A", // Dodge the pull
+                    "32D 0C 0B 30A 7A", // 7 doesn't get pulled
                 ],
             );
         }
@@ -2920,7 +2950,7 @@ mod tests {
 
     #[test]
     fn test_player_hit_basic() {
-        let pile = string_to_pile("4C 1A 8A 9A");
+        let pile = string_to_pile("4C 1A 0B 0B");
         let new_states = resolve_player_action(
             &T::new(pile),
             &WrappedAction {
@@ -2934,10 +2964,10 @@ mod tests {
         assert_actual_vs_expected_piles(
             &new_states,
             vec![
-                "4C 1A 8A 9A", // Skip
-                "4C 1D 8A 9A", // Hit 1
-                "4C 1A 8D 9A", // Hit 8
-                "4C 1A 8A 9D", // Hit 9
+                "4C 1A 0B 0B", // Skip
+                "4C 1D 0B 0B", // Hit 1
+                "4C 1A 0C 0B", // Hit 0a
+                "4C 1A 0B 0C", // Hit 0b
             ],
         );
     }
@@ -2945,7 +2975,7 @@ mod tests {
     #[test]
     fn test_player_hit_enemy_blocker() {
         {
-            let pile = string_to_pile("4C 1A 8A 6B 9A");
+            let pile = string_to_pile("4C 1A 0B 0A 0B");
             let new_states = resolve_player_action(
                 &T::new(pile),
                 &WrappedAction {
@@ -2959,9 +2989,9 @@ mod tests {
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "4C 1A 8A 6B 9A", // Skip
-                    "4C 1D 8A 6B 9A", // Hit 1
-                    "4C 1A 8A 6A 9A", // 6 Blocks
+                    "4C 1A 0B 0A 0B", // Skip
+                    "4C 1D 0B 0A 0B", // Hit 1
+                    "4C 1A 0B 0B 0B", // Middle blocks
                 ],
             );
         }
@@ -2970,7 +3000,7 @@ mod tests {
     #[test]
     fn test_player_hit_enemy_many_blockers() {
         {
-            let pile = string_to_pile("4C 6B 9B 8A");
+            let pile = string_to_pile("4C 0A 0A 0B");
             let new_states = resolve_player_action(
                 &T::new(pile),
                 &WrappedAction {
@@ -2984,8 +3014,8 @@ mod tests {
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "4C 6B 9B 8A", // Skip
-                    "4C 6B 9A 8A", // 9 Blocks
+                    "4C 0A 0A 0B", // Skip
+                    "4C 0A 0B 0B", // 9 Blocks
                                    // Can only hit furthest back blocker
                 ],
             );
@@ -2995,7 +3025,7 @@ mod tests {
     #[test]
     fn test_player_hit_player_blocker() {
         {
-            let pile = string_to_pile("4C 1A 2B 8A 6B");
+            let pile = string_to_pile("4C 1A 2B 0B 0A");
             let new_states = resolve_player_action(
                 &T::new(pile),
                 &WrappedAction {
@@ -3009,11 +3039,11 @@ mod tests {
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "4C 1A 2B 8A 6B", // Skip
-                    "4C 1D 2B 8A 6B", // Hit 1
-                    "4C 1A 2A 8A 6B", // 2 Blocks
-                    "4C 1A 2D 8A 6B", // Hit 2
-                    "4C 1A 2B 8A 6A", // 6 Blocks
+                    "4C 1A 2B 0B 0A", // Skip
+                    "4C 1D 2B 0B 0A", // Hit 1
+                    "4C 1A 2A 0B 0A", // 2 Blocks
+                    "4C 1A 2D 0B 0A", // Hit 2
+                    "4C 1A 2B 0B 0B", // Last blocks
                 ],
             );
         }
@@ -3522,7 +3552,7 @@ mod tests {
     #[test]
     fn test_quicken_trap() {
         // 10C and 14C have traps. Only enemy is at the end
-        let starting_pile = string_to_pile("11A 10C 14C 6B");
+        let starting_pile = string_to_pile("11A 10C 14C 0A");
 
         let new_states = resolve_player_action(
             &T::new(starting_pile),
@@ -3536,9 +3566,9 @@ mod tests {
 
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([
-            string_to_pile("11A 10C 14C 6B"), // Skip
-            string_to_pile("11A 10C 6A 14C"), // Move over first trap
-            string_to_pile("11A 6D 10C 14C"), // Move over second trap
+            string_to_pile("11A 10C 14C 0A"), // Skip
+            string_to_pile("11A 10C 0B 14C"), // Move over first trap
+            string_to_pile("11A 0C 10C 14C"), // Move over second trap
         ]);
         assert_eq!(futures, expected_futures);
     }
@@ -3568,7 +3598,7 @@ mod tests {
 
     #[test]
     fn test_delay_trap() {
-        let starting_pile = string_to_pile("11A 6B 10C 14C");
+        let starting_pile = string_to_pile("11A 0A 10C 14C");
 
         let new_states = resolve_player_action(
             &T::new(starting_pile),
@@ -3582,9 +3612,9 @@ mod tests {
 
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([
-            string_to_pile("11A 6B 10C 14C "), // Skip
-            string_to_pile("11A 10C 6A 14C"),  // Move over first trap
-            string_to_pile("11A 10C 14C 6D"),  // Move over second trap
+            string_to_pile("11A 0A 10C 14C "), // Skip
+            string_to_pile("11A 10C 0B 14C"),  // Move over first trap
+            string_to_pile("11A 10C 14C 0C"),  // Move over second trap
         ]);
         assert_eq!(futures, expected_futures);
     }
@@ -3592,7 +3622,7 @@ mod tests {
     #[test]
     fn test_quicken_trap_into_weight() {
         // 6D is heavy, so we won't move it over the second trap once it takes damage
-        let starting_pile = string_to_pile("11A 10C 14C 6A");
+        let starting_pile = string_to_pile("11A 10C 14C 6B");
 
         let new_states = resolve_player_action(
             &T::new(starting_pile),
@@ -3604,13 +3634,14 @@ mod tests {
             &NO_TARGETS,
         );
 
-        let futures = states_to_pile_set(&new_states);
-        let expected_futures = HashSet::from([
-            string_to_pile("11A 10C 14C 6A"), // Skip
-            string_to_pile("11A 10C 6D 14C"), // Move over first trap
-                                              // We won't move over the second trap,
-        ]);
-        assert_eq!(futures, expected_futures);
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                "11A 10C 14C 6B", // Skip
+                "11A 10C 6D 14C", // Move over first trap
+                                  // We won't move over the second trap,
+            ],
+        );
     }
 
     #[test]
@@ -3905,7 +3936,7 @@ mod tests {
 
     #[test]
     fn test_delay_trap_into_weight() {
-        let starting_pile = string_to_pile("11A 6A 10C 14C");
+        let starting_pile = string_to_pile("11A 6B 10C 14C");
 
         let new_states = resolve_player_action(
             &T::new(starting_pile),
@@ -3919,7 +3950,7 @@ mod tests {
 
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([
-            string_to_pile("11A 6A 10C 14C "), // Skip
+            string_to_pile("11A 6B 10C 14C "), // Skip
             string_to_pile("11A 10C 6D 14C"),  // Move over first trap
         ]);
         assert_eq!(futures, expected_futures);
@@ -4117,20 +4148,20 @@ mod tests {
 
     #[test]
     fn test_ablaze() {
-        let pile = string_to_pile("20A 23A 6A 7A 19A 22A");
+        let pile = string_to_pile("20A 23A 0A 0A 19A 22A");
         let new_states =
             resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
 
         assert_actual_vs_expected_piles(
             &new_states,
             vec![
-                "20A 23B 6D 7D 19B 22A", // ablaze 23, 19 and hit
-                "20A 23B 6A 7A 19B 22A", // ablaze 23, 19 and skip
+                "20A 23B 0B 0B 19B 22A", // ablaze 23, 19 and hit
+                "20A 23B 0A 0A 19B 22A", // ablaze 23, 19 and skip
                 //
-                "20A 23B 6D 7D 19B 22B", // ablaze 23, 22 and hit
-                "20A 23B 6A 7A 19A 22B", // ablaze 23, 22 and skip
+                "20A 23B 0B 0B 19B 22B", // ablaze 23, 22 and hit
+                "20A 23B 0A 0A 19A 22B", // ablaze 23, 22 and skip
                 //
-                "20A 23A 6A 7A 19B 22B", // ablaze 19, 22
+                "20A 23A 0A 0A 19B 22B", // ablaze 19, 22
             ],
         );
     }
@@ -4138,32 +4169,32 @@ mod tests {
     #[test]
     fn test_fireball() {
         {
-            let pile = string_to_pile("21A 19D 6A 23A 9A");
+            let pile = string_to_pile("21A 19D 0A 23A 0A");
             let new_states =
                 resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
 
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "21B 19C 6A 23B 9A", // Pay but don't attack
-                    "21B 19C 6D 23B 9A", // Attack with 19
-                    "21B 19C 6D 23B 9D", // Attack with 23
+                    "21B 19C 0A 23B 0A", // Pay but don't attack
+                    "21B 19C 0B 23B 0A", // Attack with 19
+                    "21B 19C 0B 23B 0B", // Attack with 23
                 ],
             );
         }
 
         {
             // Check bounds
-            let pile = string_to_pile("21A 19D 6A 9A 23A");
+            let pile = string_to_pile("21A 19D 0A 0A 23A");
             let new_states =
                 resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
 
             assert_actual_vs_expected_piles(
                 &new_states,
                 vec![
-                    "21B 19C 6A 9A 23B ", // Pay but don't attack
-                    "21B 19C 6D 9A 23B ", // Attack with 19
-                    "21B 19C 6A 9D 23B ", // Attack with 23
+                    "21B 19C 0A 0A 23B ", // Pay but don't attack
+                    "21B 19C 0B 0A 23B ", // Attack with 19
+                    "21B 19C 0A 0B 23B ", // Attack with 23
                 ],
             );
         }
@@ -4296,7 +4327,7 @@ mod tests {
 
     #[test]
     fn test_roll_delay() {
-        let pile = string_to_pile("47B 48A 46D 6A");
+        let pile = string_to_pile("47B 48A 46D 0A");
 
         let new_states =
             move_card_by_up_to_amount(&T::new(pile), 0, 3, MoveType::Delay, Allegiance::Hero);
@@ -4304,22 +4335,22 @@ mod tests {
         assert_actual_vs_expected_piles(
             &new_states,
             vec![
-                "48A 47B 46D 6A", // Move by 1
-                "48A 46D 47B 6A", // Move by 2
-                "48A 46D 6A 47B", // Move by 3
-                "48B 47A 46D 6A", // Roll over 1, dodges
-                "48C 47A 46D 6A", // Roll over 1, hit => C
-                "48D 47A 46D 6A", // Roll over 1, hit => D
-                "48A 46C 47A 6A", // Roll over 2, dodges
-                "48A 46D 47A 6A", // Roll over 2, doesn't dodge
-                "48A 46D 6D 47A", // Roll over 3, hit
+                "48A 47B 46D 0A", // Move by 1
+                "48A 46D 47B 0A", // Move by 2
+                "48A 46D 0A 47B", // Move by 3
+                "48B 47A 46D 0A", // Roll over 1, dodges
+                "48C 47A 46D 0A", // Roll over 1, hit => C
+                "48D 47A 46D 0A", // Roll over 1, hit => D
+                "48A 46C 47A 0A", // Roll over 2, dodges
+                "48A 46D 47A 0A", // Roll over 2, doesn't dodge
+                "48A 46D 0B 47A", // Roll over 3, hit
             ],
         );
     }
 
     #[test]
     fn test_roll_push() {
-        let pile = string_to_pile("1 47B 48A 46D 6A");
+        let pile = string_to_pile("1A 47B 48A 46D 0A");
         let mut new_states = Vec::new();
         move_card_to_end(
             &mut T::new(pile),
@@ -4334,13 +4365,13 @@ mod tests {
             &new_states,
             vec![
                 // Cant choose to move by 1 or 2 for a full push
-                "1A 48A 46D 6A 47B", // Move by 3
-                "1A 48B 47A 46D 6A", // Roll over 1, dodges
-                "1A 48C 47A 46D 6A", // Roll over 1, hit => C
-                "1A 48D 47A 46D 6A", // Roll over 1, hit => D
-                "1A 48A 46C 47A 6A", // Roll over 2, dodges
-                "1A 48A 46D 47A 6A", // Roll over 2, doesn't dodge
-                "1A 48A 46D 6D 47A", // Roll over 3, hit
+                "1A 48A 46D 0A 47B", // Move by 3
+                "1A 48B 47A 46D 0A", // Roll over 1, dodges
+                "1A 48C 47A 46D 0A", // Roll over 1, hit => C
+                "1A 48D 47A 46D 0A", // Roll over 1, hit => D
+                "1A 48A 46C 47A 0A", // Roll over 2, dodges
+                "1A 48A 46D 47A 0A", // Roll over 2, doesn't dodge
+                "1A 48A 46D 0B 47A", // Roll over 3, hit
             ],
         );
     }

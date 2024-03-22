@@ -2,6 +2,7 @@ use handy_core::game::*;
 
 pub fn main_colour_for_class(class: Class) -> &'static str {
     match class {
+        Class::Dummy => "#000000",
         Class::Warrior => "#008A97",
         Class::Huntress => "#00813A",
         Class::Pyro => "#F08319",

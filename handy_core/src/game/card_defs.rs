@@ -12,6 +12,7 @@ lazy_static! {
     pub static ref ROW_CLAW_ODD_ENEMIES: Row = row().claw_odd_enemies();
     pub static ref ROW_CLAW_EVEN_ENEMIES: Row = row().claw_even_enemies();
     pub static ref ROW_PUSH_ENEMY_INF_PUSH_ENEMY_INF: Row = row().push_enemy_inf().push_enemy_inf();
+    pub static ref ROW_PUSH_ENEMY_INF_PULL_ALLY_INF: Row = row().push_enemy_inf().pull_ally_inf();
     pub static ref ROW_CLAW_ENEMY_4: Row = row().claw_enemy(4);
     pub static ref ROW_HEAL_ALLY: Row = row().heal_ally();
     pub static ref ROW_HEAL_ALLY_CLAW_ENEMY_3: Row = row().heal_ally().claw_enemy(3);
@@ -123,7 +124,7 @@ impl Row {
 
     fn double_arrow_any(mut self) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::DoubleArrow,
+            action: Action::ArrowTwice,
             target: Target::Any,
         });
         self
@@ -388,6 +389,14 @@ impl Row {
     fn fireball(mut self) -> Self {
         self.actions.push(WrappedAction {
             action: Action::Fireball,
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn fireball_twice(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::FireballTwice,
             target: Target::Any,
         });
         self
@@ -703,6 +712,19 @@ impl CardDefs {
         };
 
         {
+            let dummy = CharBuilder::new(Class::Dummy, Allegiance::Baddie);
+            card_defs.register_card(dummy.card(
+                0,
+                enum_map! {
+                    FaceKey::A => side(Health::Full).block_to_rotate(),
+                    FaceKey::B => side(Health::Full),
+                    FaceKey::C => side(Health::Half),
+                    FaceKey::D => side(Health::Empty),
+                },
+            ));
+        }
+
+        {
             let warrior = CharBuilder::new(Class::Warrior, Allegiance::Hero);
             card_defs.register_card(warrior.card(
                 1,
@@ -920,18 +942,18 @@ impl CardDefs {
                 6,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
+                        .block_to_rotate()
                         .add_row(row()
                             .pull_enemy(5)
                             .hit_enemy(1)
-                            .rotate()
                         )
                         ,
                     FaceKey::B => side(Health::Full)
                         .add_row(row()
                             .hit_enemy(4)
                             .push_enemy(3)
+                            .rotate()
                         )
-                        .block_to_rotate()
                         ,
                     FaceKey::C => side(Health::Empty)
                         .add_row(row()
@@ -990,6 +1012,7 @@ impl CardDefs {
                 8,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
+                        .block_to_rotate()
                         .add_row(row()
                             .hit_enemy(4)
                             .rotate()
@@ -1447,7 +1470,8 @@ impl CardDefs {
                 18,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
-                        .feature(Features::Weight)
+                        .feature(Features::Invulnerable)
+                        .block_perm()
                         .add_row(row()
                             .add_condition(Condition::ExhaustedAllies(2))
                             .revive_ally()
@@ -1459,7 +1483,6 @@ impl CardDefs {
                             .hit_enemy_inf()
                             .push_enemy(5)
                         )
-                        .block_perm()
                         ,
                     FaceKey::B => side(Health::Full)
                         .feature(Features::Weight)
@@ -1793,8 +1816,7 @@ impl CardDefs {
                         .energy()
                         .add_row(row()
                                  .energy_cost(3)
-                                 .fireball()
-                                 .fireball()
+                                 .fireball_twice()
                         )
                         .add_row(row()
                                  .energy_cost(2)
@@ -2839,17 +2861,13 @@ impl CardDefs {
                                 .hit_any(1)
                         )
                         .add_assist(row()
-                                .quicken_ally(2)
+                                .quicken_ally(1)
                         )
                         .add_row(row()
-                                 .quicken_ally(2)
                                  .flip()
                                  )
                         ,
                     FaceKey::B => side(Health::Empty)
-                        .add_assist(row()
-                                .hit_any(1)
-                        )
                         .add_assist(row()
                                 .quicken_ally(1)
                         )
@@ -2860,24 +2878,23 @@ impl CardDefs {
                     FaceKey::C => side(Health::Empty)
                         .provide_assist_block_flip()
                         .add_assist(row()
-                                .claw_enemy(3)
+                                .claw_enemy(2)
                                 .flip()
                         )
                         .add_assist(row()
-                                .hit_any(2)
+                                .hit_any(1)
                         )
                         .add_assist(row()
-                                .teleport_ally()
+                                .quicken_ally(1)
                         )
                         .add_row(row()
-                                 .quicken_ally(3)
                                  .rotate()
                                  )
                         ,
                     FaceKey::D => side(Health::Empty)
                         .provide_assist_block_rotate()
                         .add_assist(row()
-                                .claw_enemy(4)
+                                .claw_enemy(3)
                                 .rotate()
                         )
                         .add_assist(row()
@@ -2885,10 +2902,10 @@ impl CardDefs {
                                 .rotate()
                         )
                         .add_assist(row()
-                                .hit_any(3)
+                                .hit_any(2)
                         )
                         .add_row(row()
-                                 .teleport_each()
+                                 .teleport_ally()
                         )
                         ,
                 },
@@ -2904,10 +2921,9 @@ impl CardDefs {
                                 .rotate()
                         )
                         .add_assist(row()
-                                .delay_enemy(2)
+                                .delay_enemy(1)
                         )
                         .add_row(row()
-                                 .delay_enemy(2)
                                  .flip()
                                  )
                         ,
@@ -2930,10 +2946,9 @@ impl CardDefs {
                                 .flip()
                         )
                         .add_assist(row()
-                                .teleport_enemy()
+                                .delay_enemy(1)
                         )
                         .add_row(row()
-                                 .delay_enemy(3)
                                  .rotate()
                                  )
                         ,
@@ -2950,10 +2965,10 @@ impl CardDefs {
                         )
                         .add_assist(row()
                                 .teleport_enemy()
+                                .rotate()
                         )
                         .add_row(row()
-                                 .delay_enemy(2)
-                                 .quicken_ally(2)
+                                 .delay_enemy(1)
                         )
                         ,
                 },
@@ -2969,11 +2984,10 @@ impl CardDefs {
                         .on_hit_reaction(&ROW_PUSH_ENEMY_INF_PUSH_ENEMY_INF)
                         .add_row(row()
                                  .hit_ally(2)
-                                 .pull_ally(6)
+                                 .heal_ally()
                                  )
                         .add_row(row()
-                                 .hit_ally_inf()
-                                 .heal_ally()
+                                 .revive_ally()
                                  )
                         ,
                     FaceKey::B => side(Health::Empty)
@@ -2982,7 +2996,7 @@ impl CardDefs {
                                  )
                         .add_row(row()
                                  .hit_ally(3)
-                                 .pull_ally(5)
+                                 .heal_ally()
                                  )
                         .add_row(row()
                                  .revive_ally()
@@ -2990,14 +3004,14 @@ impl CardDefs {
                         ,
                     FaceKey::C => side(Health::Half)
                         .feature(Features::Weight)
-                        .on_hit_reaction(&ROW_PUSH_ALLY_INF_PULL_ALLY_INF)
+                        .on_hit_reaction(&ROW_PUSH_ENEMY_INF_PULL_ALLY_INF)
                         .add_row(row()
                                  .heal_ally()
+                                 .claw_enemy(2)
                                  )
                         .add_row(row()
                                  .push_enemy(3)
-                                 .hit_enemy(3)
-                                 .push_enemy(2)
+                                 .hit_enemy(4)
                                  )
                         ,
                     FaceKey::D => side(Health::Half)
@@ -3104,6 +3118,7 @@ impl CardDefs {
                                  .revive_ally()
                                  )
                         .add_row(row()
+                                 .heal_ally()
                                  .hit_ally(4)
                                  .pull_ally(5)
                                  )
@@ -3121,6 +3136,7 @@ impl CardDefs {
                         .feature(Features::Weight)
                         .on_hit_reaction(&ROW_REVIVE_ALLY)
                         .add_row(row()
+                                 .push_enemy(2)
                                  .push_enemy(2)
                                  )
                         ,
@@ -3603,7 +3619,6 @@ impl CardDefs {
                         .modifier_rotate(-2)
                         .add_row(row()
                                 .arrow_any()
-                                .quicken_enemy(2)
                         )
                         .add_row(row()
                                 .teleport_enemy()
@@ -3621,7 +3636,6 @@ impl CardDefs {
                                 .rotate()
                         )
                         .add_row(row()
-                                .delay_enemy(2)
                                 .quicken_ally(2)
                         )
                         ,
@@ -3648,7 +3662,6 @@ impl CardDefs {
                                 .teleport_enemy()
                         )
                         .add_row(row()
-                                .delay_enemy(2)
                                 .manouver()
                         )
                         ,
@@ -3670,7 +3683,6 @@ impl CardDefs {
                         )
                         .add_row(row()
                                 .manouver()
-                                .quicken_any(1)
                         )
                         ,
                     FaceKey::B => side(Health::Full)
@@ -3709,7 +3721,7 @@ impl CardDefs {
                                 .rats()
                         )
                         .add_row(row()
-                                .teleport_each()
+                                .teleport_enemy()
                         )
                         ,
                 },
@@ -3725,7 +3737,7 @@ impl CardDefs {
                                 .quicken_enemy(1)
                         )
                         .add_row(row()
-                                .teleport_each()
+                                .teleport_enemy()
                                 .rotate()
                         )
                         ,
@@ -3736,7 +3748,6 @@ impl CardDefs {
                                 .teleport_enemy()
                         )
                         .add_row(row()
-                                .quicken_ally(1)
                                 .quicken_ally(1)
                         )
                         ,
@@ -3761,7 +3772,7 @@ impl CardDefs {
                         )
                         .add_row(row()
                                 .hit_any(0)
-                                .teleport_each()
+                                .teleport_enemy()
                         )
                         ,
                 },
@@ -3778,10 +3789,9 @@ impl CardDefs {
                         )
                         .add_row(row()
                                 .rats()
-                                .delay_ally(2)
+                                .delay_ally(1)
                         )
                         .add_row(row()
-                                .quicken_enemy(1)
                                 .quicken_enemy(1)
                                 .manouver()
                         )
@@ -3795,7 +3805,6 @@ impl CardDefs {
                         )
                         .add_row(row()
                                 .delay_ally(1)
-                                .delay_enemy(1)
                                 .manouver()
                         )
                         ,
@@ -3844,12 +3853,14 @@ impl CardDefs {
                     FaceKey::C => side(Health::Half)
                         .add_row(row()
                                 .claw_enemy(2)
+                                .is_mandatory()
                         )
                         ,
                     FaceKey::D => side(Health::Half)
                         .add_row(row()
                                 .hit_enemy(2)
                                 .hit_enemy(2)
+                                .is_mandatory()
                         )
                         ,
                 },

@@ -2,6 +2,7 @@ use handy_core::game::*;
 
 pub fn class_to_character_name(class: Class) -> &'static str {
     match class {
+        Class::Dummy => "Dummy",
         Class::Warrior => "Ragnar",
         Class::Huntress => "Kisah",
         Class::Pyro => "Leo",
@@ -21,6 +22,7 @@ pub fn class_to_character_name(class: Class) -> &'static str {
 
 pub fn class_to_full_class_name(class: Class) -> &'static str {
     match class {
+        Class::Dummy => "Dummy",
         Class::Warrior => "Warrior",
         Class::Huntress => "Huntress",
         Class::Pyro => "Pyromancer",
