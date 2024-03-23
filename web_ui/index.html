@@ -2,15 +2,16 @@
 <html lang="en">
   <head>
     <title>Handy Brawl</title>
-    <link rel="icon" type="image/x-icon" href="static/images/icon.png">
+    <link rel="icon" type="image/x-icon" href="static/images/icon.png" />
 
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link data-trunk rel="css" href="style.css" />
 
     <link data-trunk rel="copy-dir" href="static/" />
-    <link data-trunk rel="copy-file" href="manifest.json">
-    <link rel="stylesheet" href="static/styles.css"/>
-    <link rel="manifest" href="manifest.json">
+    <link data-trunk rel="copy-file" href="manifest.json" />
+    <link rel="manifest" href="manifest.json" />
 
     <link
       data-trunk
@@ -27,18 +28,20 @@
       data-type="worker"
     />
     <script>
-        window.onload = () => {
-            'use strict';
+      window.onload = () => {
+        "use strict";
 
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker
-                    .register('./service_worker.js').then(() => {
-                        // console.log('loaded service worker');
-                    }).catch((err) => {
-                        console.log('failed to load service worker', err);
-                    });
-            }
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker
+            .register("./service_worker.js")
+            .then(() => {
+              // console.log('loaded service worker');
+            })
+            .catch((err) => {
+              console.log("failed to load service worker", err);
+            });
         }
+      };
     </script>
   </head>
   <body></body>
