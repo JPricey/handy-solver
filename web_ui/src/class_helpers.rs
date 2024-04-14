@@ -35,7 +35,7 @@ pub fn class_to_full_class_name(class: Class) -> &'static str {
         Class::Demon => "Blood Demon",
         Class::Flora => "Sentient Flora",
         Class::Wall => "Wall (BETA)",
-        Class::Piper => "Pied Piper (WIP)",
+        Class::Piper => "Pied Piper (BETA)",
         Class::Wisp => "Wisp (ALPHA)",
     }
 }
