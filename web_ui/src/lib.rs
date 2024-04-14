@@ -14,3 +14,4 @@ pub mod panels;
 pub mod screens;
 pub mod solver;
 pub mod types;
+pub mod versioning;

@@ -2,6 +2,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::contexts::*;
 use crate::types::*;
+use crate::versioning::add_version_to_path;
 use glam::{DQuat, DVec3, EulerRot};
 use handy_core::game::*;
 use lazy_static::lazy_static;
@@ -27,11 +28,11 @@ fn card_side_to_str(card_side: CardSide) -> &'static str {
 }
 
 fn get_card_url(card_id: CardId, card_side: CardSide) -> String {
-    format!(
+    return add_version_to_path(&format!(
         "static/cards/{}{}.webp",
         card_id,
         card_side_to_str(card_side)
-    )
+    ));
 }
 
 fn is_quat_up(quat: &DQuat) -> bool {

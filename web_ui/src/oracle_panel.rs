@@ -1,6 +1,7 @@
 use crate::components::*;
 use crate::solver::*;
 use crate::types::*;
+use crate::versioning::add_version_to_path;
 use closure::closure;
 use futures::SinkExt;
 use futures::StreamExt;
@@ -18,7 +19,7 @@ fn get_full_path(suffix: &str) -> String {
     let base_uri = document().document_uri().unwrap();
     let base_url = Url::parse(&base_uri).unwrap().join(suffix);
     let result = base_url.unwrap().to_string();
-    return result;
+    return add_version_to_path(&result);
 }
 
 fn model_url(matchup: Matchup) -> String {

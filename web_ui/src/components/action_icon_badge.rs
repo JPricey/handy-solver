@@ -2,6 +2,7 @@ use crate::colours::*;
 use crate::components::*;
 use crate::contexts::*;
 use crate::types::*;
+use crate::versioning::add_version_to_path;
 use handy_core::game::Class;
 use handy_core::game::Target;
 use handy_core::game::WrappedAction;
@@ -10,7 +11,7 @@ use leptos::*;
 const ICONS_DIR: &str = "static/action_icons/";
 
 fn get_full_icon_path(icon_spec: &IconSpec) -> String {
-    format!("{ICONS_DIR}{}", icon_spec.filename)
+    return add_version_to_path(&format!("{ICONS_DIR}{}", icon_spec.filename));
 }
 
 pub enum ActionIconBackgroundColor {
