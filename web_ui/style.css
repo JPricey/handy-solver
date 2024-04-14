@@ -38,14 +38,14 @@ body {
   font-family: Carlito;
   font-style: normal;
   font-weight: 400;
-  src: url("../static/fonts/carlito-v3-latin-regular.woff2") format("woff2");
+  src: url("static/fonts/carlito-v3-latin-regular.woff2") format("woff2");
 }
 @font-face {
   font-display: swap;
   font-family: Carlito;
   font-style: normal;
   font-weight: 700;
-  src: url("../static/fonts/carlito-v3-latin-700.woff2") format("woff2");
+  src: url("static/fonts/carlito-v3-latin-700.woff2") format("woff2");
 }
 
 * {
