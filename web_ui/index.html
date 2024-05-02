@@ -35,11 +35,13 @@
           navigator.serviceWorker
             .register("./service_worker.js")
             .then(() => {
-              // console.log('loaded service worker');
+              console.log('loaded service worker');
             })
             .catch((err) => {
               console.log("failed to load service worker", err);
             });
+        } else {
+            console.log("no service worker")
         }
       };
     </script>
