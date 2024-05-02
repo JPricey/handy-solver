@@ -1,9 +1,11 @@
 #!/bin/bash
 
+# Must be kept up to date with versioning.rs
+VERSION=2
 cat >$TRUNK_STAGING_DIR/service_worker.js << EOL
 var cacheName = 'handy-solver';
 var filesToCache = [
-$(cd $TRUNK_STAGING_DIR && find . -type f | xargs -I@ echo "'@',")
+$(cd $TRUNK_STAGING_DIR && find . -type f | xargs -I@ printf "'@',\n'@?v=$VERSION',\n")
 ];
 
 
