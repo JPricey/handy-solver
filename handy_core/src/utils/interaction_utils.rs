@@ -224,8 +224,8 @@ pub fn format_event_for_cli(event: &Event) -> String {
                 .join(" ");
             format!("{cards}: Energy")
         }
-        Event::Manouver(card_idx, card_ptr) => {
-            format!("{:?}@{}: Manouver", card_ptr, card_idx)
+        Event::Maneuver(card_idx, card_ptr) => {
+            format!("{:?}@{}: Maneuver", card_ptr, card_idx)
         }
         Event::Swarm(card_idx, card_ptr) => {
             format!("{:?}@{}: Swarm", card_ptr, card_idx)
@@ -276,7 +276,7 @@ pub fn action_simple_name(wrapped_action: &WrappedAction) -> String {
         Action::Hit(_) => "Hit".to_owned(),
         Action::Inspire => "Inspire".to_owned(),
         Action::Heal => "Heal".to_owned(),
-        Action::Manouver => "Manouver".to_owned(),
+        Action::Maneuver => "Maneuver".to_owned(),
         Action::Revive => "Revive".to_owned(),
         Action::Claws(_) => "Claw".to_owned(),
         Action::Backstab => "Backstab".to_owned(),

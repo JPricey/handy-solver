@@ -1,6 +1,4 @@
 use crate::components::*;
-use crate::types::*;
-use closure::closure;
 use handy_core::game::*;
 use handy_core::utils::*;
 use leptos::*;
@@ -9,38 +7,6 @@ fn format_cost(cost: &Option<SelfAction>) -> String {
     match cost {
         None => " (Free)".to_owned(),
         Some(action) => format!(" ({})", action),
-    }
-}
-
-#[component]
-pub fn FrameSpan(cx: Scope, frame: GameFrame) -> impl IntoView {
-    let current_pile = frame.current_pile.clone();
-
-    view! { cx,
-        {
-            closure!(clone current_pile, || {
-                let maybe_last_event = frame.event_history.last().clone();
-                if let Some(last_event) = maybe_last_event {
-                    view! {cx, <span><EventSpan event=last_event.clone() /></span> }
-                } else {
-                    view! {cx,
-                        <span
-                            style:display="flex"
-                        >
-                            <span
-                                style:flex="1"
-                            >
-                                <CardIdPill card_ptr=current_pile[0].clone() />
-                                Go
-                            </span>
-
-                            <PileSpan pile=current_pile.clone() />
-                        </span>
-
-                    }
-                }
-            })
-        }
     }
 }
 
@@ -102,7 +68,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                     <TokenSpan
                         elements=vec![
                             SpanItem::CardPtr(card_ptr),
-                            SpanItem::Text(format!("Start Action {action_text}")),
+                            SpanItem::Text(format!("Start action {action_text}")),
                         ]
                     />
                 </span>
@@ -385,12 +351,12 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
-        Event::Manouver(card_idx, card_ptr) => {
+        Event::Maneuver(card_idx, card_ptr) => {
             view! { cx,
                 <span>
                     <TokenSpan
                         elements=vec![
-                            SpanItem::Text("Manouver".to_owned()),
+                            SpanItem::Text("Maneuver".to_owned()),
                             SpanItem::CardPtrAndIndex(card_ptr, card_idx),
                         ]
                     />

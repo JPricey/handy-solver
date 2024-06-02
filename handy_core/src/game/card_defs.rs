@@ -108,7 +108,7 @@ impl Row {
 
     fn manouver(mut self) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Manouver,
+            action: Action::Maneuver,
             target: Target::Ally,
         });
         self

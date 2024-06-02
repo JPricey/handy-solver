@@ -94,7 +94,7 @@ pub enum Action {
     Hit(Range),
     Inspire,
     Heal,
-    Manouver,
+    Maneuver,
     Revive,
     Claws(Range),
 }
@@ -358,7 +358,7 @@ pub enum Event {
     // Other
     PayRowConditionCosts(ConditionCostType, PayCostArrType),
     UseCardModifiers(ModifierArrType, ModifierAmount, WrappedAction),
-    Manouver(usize, CardPtr),
+    Maneuver(usize, CardPtr),
     Swarm(usize, CardPtr),
     UseActionAssistCard(usize, CardPtr), // card_idx, card_ptr
     UseActionAssistRow(usize, CardPtr, usize), // card_idx, card_ptr, row

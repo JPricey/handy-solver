@@ -341,7 +341,7 @@ fn maybe_skip_action_event_for_spider_feature(
         | Action::Heal
         | Action::Revive
         | Action::Rats
-        | Action::Manouver
+        | Action::Maneuver
         | Action::Backstab
         | Action::BackstabTwice
         | Action::Poison => {
@@ -438,7 +438,7 @@ fn modifier_range_type_for_action(action: &Action) -> ModifierRangeType {
         | Action::Heal
         | Action::Revive
         | Action::Rats
-        | Action::Manouver
+        | Action::Maneuver
         | Action::Backstab
         | Action::BackstabTwice
         | Action::Poison
@@ -469,7 +469,7 @@ fn action_with_modified_range(action: &Action, modifier: ModifierAmount) -> Acti
         | Action::Heal
         | Action::Revive
         | Action::Rats
-        | Action::Manouver
+        | Action::Maneuver
         | Action::Backstab
         | Action::BackstabTwice
         | Action::Poison
@@ -943,7 +943,7 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
             }
             results
         }
-        Action::Manouver => {
+        Action::Maneuver => {
             let mut results: Vec<T> = Vec::new();
             for target_idx in active_idx + 1..pile.len() {
                 let target_card_ptr = pile[target_idx];
@@ -961,7 +961,7 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
                 if target_card_ptr.get_card_def().faces[rotated_key].health <= target_health {
                     let mut new_state = state.clone();
                     new_state.get_pile_mut()[target_idx].key = rotated_key;
-                    new_state.mut_append_event(Event::Manouver(target_idx, target_card_ptr));
+                    new_state.mut_append_event(Event::Maneuver(target_idx, target_card_ptr));
 
                     results.push(new_state);
                 }
@@ -1618,7 +1618,7 @@ fn resolve_enemy_action<T: EngineGameState>(
     match wrapped_action.action {
         Action::Arrow
         | Action::ArrowTwice
-        | Action::Manouver
+        | Action::Maneuver
         | Action::Quicken(_)
         | Action::Delay(_)
         | Action::Fireball
@@ -4282,13 +4282,13 @@ mod tests {
     }
 
     #[test]
-    fn test_manouver() {
+    fn test_maneuver() {
         let pile = string_to_pile("11B 13A 10D 12D");
 
         let new_states = resolve_player_action(
             &T::new(pile),
             &WrappedAction {
-                action: Action::Manouver,
+                action: Action::Maneuver,
                 target: Target::Ally,
             },
             0,

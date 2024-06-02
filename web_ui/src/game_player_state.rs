@@ -275,14 +275,14 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Trigger Hurt Response".to_owned());
             }
-            Event::Manouver(_, card_ptr) => {
+            Event::Maneuver(_, card_ptr) => {
                 add_clickable_card_option(
                     card_ptr.get_card_id(),
                     ClickableCardReason::Move(available_move.clone()),
                 );
                 new_interaction_options
                     .hints
-                    .insert("Target Manouver".to_owned());
+                    .insert("Target Maneuver".to_owned());
             }
             Event::Mandatory(_, self_action) => {
                 let text = format!("Mandatory {:?}", self_action);
