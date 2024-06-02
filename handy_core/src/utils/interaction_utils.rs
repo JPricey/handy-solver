@@ -118,7 +118,7 @@ pub fn find_next_events_matching_prefix(
 }
 
 pub fn find_next_event_matching_prefix_and_with_final_state(
-    states: &Vec<GameStateWithEventLog>,
+    states: &Vec<GameStateWithPileTrackedEventLog>,
     prefix: &Vec<Event>,
     final_pile: &Pile,
 ) -> Option<Event> {
@@ -132,13 +132,16 @@ pub fn find_next_event_matching_prefix_and_with_final_state(
         if state.events.len() <= prefix.len() {
             continue;
         }
-        let state_events_prefix: Vec<Event> =
-            state.events[0..prefix.len()].iter().cloned().collect();
+        let maybe_next_events = get_next_available_events_past_prefix_allowing_skips(prefix, &state.clone().into());
+        let Some((_, following_events)) = maybe_next_events else {
+            continue;
+        };
+        let Some(next_event) = following_events.last() else {
+            continue;
+        };
 
-        if prefix == &state_events_prefix {
-            if res.as_ref().map_or(true, |r| state.events.len() < r.1) {
-                res = Some((state.events[prefix.len()].clone(), state.events.len()));
-            }
+        if res.as_ref().map_or(true, |r| state.events.len() < r.1) {
+            res = Some((next_event.clone(), state.events.len()));
         }
     }
     res.map(|res| res.0)
@@ -330,13 +333,11 @@ mod tests {
                 .collect::<Vec<_>>();
 
             // Sees 1 step forward events
-            assert!(next_options_events.contains(&vec![
-                Event::SkipAction(
-                    start_pile[0],
-                    WrappedAction::new(Action::Hit(Range::Int(4)), Target::Any),
-                    SkipActionReason::Choice,
-                ),
-            ]));
+            assert!(next_options_events.contains(&vec![Event::SkipAction(
+                start_pile[0],
+                WrappedAction::new(Action::Hit(Range::Int(4)), Target::Any),
+                SkipActionReason::Choice,
+            ),]));
 
             // Sees attack events, and moves forward
             assert!(next_options_events.contains(&vec![

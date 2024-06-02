@@ -660,6 +660,7 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
         root_pile: pile.clone(),
         current_pile: pile.clone(),
         event_history: Vec::new(),
+        events_since_last_fame_this_activation: Vec::new(),
         available_moves,
         resolution,
         is_definite_win,
@@ -676,6 +677,7 @@ pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> Gam
     GameFrame {
         root_pile: last_frame.root_pile.clone(),
         event_history: new_event_history,
+        events_since_last_fame_this_activation: option.events.clone(),
         current_pile: option.next_pile.clone(),
         available_moves,
         resolution: WinType::Unresolved,

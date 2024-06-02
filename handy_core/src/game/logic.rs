@@ -1727,7 +1727,7 @@ fn resolve_enemy_action<T: EngineGameState>(
             let mut new_state = state.clone();
             for card in new_state.get_pile_mut().iter_mut() {
                 if card.get_active_face().allegiance == Allegiance::Hero {
-                    mut_exhaust_card_dont_give_options(card);
+                    mut_exhaust_card_without_giving_options(card);
                 }
             }
             results.push(new_state.append_event(Event::Death));
@@ -2591,7 +2591,7 @@ fn exhaust_card(card: &CardPtr) -> Vec<FaceKey> {
     results
 }
 
-fn mut_exhaust_card_dont_give_options(card: &mut CardPtr) {
+fn mut_exhaust_card_without_giving_options(card: &mut CardPtr) {
     if card.get_active_face().health == Health::Empty {
         return;
     }

@@ -256,7 +256,7 @@ pub fn OraclePanel(
         };
 
         let current_frame = current_frame.get();
-        let states = resolve_top_card(&GameStateWithEventLog::new(current_frame.root_pile));
+        let states = resolve_top_card(&GameStateWithPileTrackedEventLog::new(current_frame.root_pile));
 
         find_next_event_matching_prefix_and_with_final_state(
             &states,

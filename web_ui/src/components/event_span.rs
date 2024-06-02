@@ -68,7 +68,7 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                     <TokenSpan
                         elements=vec![
                             SpanItem::CardPtr(card_ptr),
-                            SpanItem::Text(format!("Start action {action_text}")),
+                            SpanItem::Text(format!("Action: {action_text}")),
                         ]
                     />
                 </span>

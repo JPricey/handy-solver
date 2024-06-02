@@ -132,6 +132,7 @@ pub struct GameFrame {
     pub root_pile: Pile,
     pub current_pile: Pile,
     pub event_history: Vec<Event>,
+    pub events_since_last_fame_this_activation: Vec<Event>,
     pub available_moves: Vec<MoveOption>,
     pub resolution: WinType,
     pub is_definite_win: bool,

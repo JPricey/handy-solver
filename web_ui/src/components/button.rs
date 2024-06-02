@@ -27,8 +27,8 @@ pub fn Button(
         let background_color = background.get();
         match Rgb::from_hex_str(&background_color) {
             Ok(hex_color) => {
-                let ligher = hex_color.lighten(-20.0);
-                Some(ligher.to_css_string())
+                let lighter = hex_color.lighten(-20.0);
+                Some(lighter.to_css_string())
             }
             Err(err) => {
                 log!("Failed to parse color {}: {:?}", background_color, err);
