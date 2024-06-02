@@ -94,6 +94,22 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                 </span>
             }
         }
+
+        Event::StartAction(card_ptr, wrapped_action) => {
+            let action_text = action_simple_name(&wrapped_action);
+            view! { cx,
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::CardPtr(card_ptr),
+                            SpanItem::Text(format!("Start Action {action_text}")),
+                        ]
+                    />
+                </span>
+            }
+
+        }
+
         Event::SkipAction(card_ptr, wrapped_action, skip_action_reason) => {
             let reason_text = match skip_action_reason {
                 SkipActionReason::Web => "Web",

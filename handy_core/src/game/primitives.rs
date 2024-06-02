@@ -105,6 +105,12 @@ pub struct WrappedAction {
     pub target: Target,
 }
 
+impl WrappedAction {
+    pub fn new(action: Action, target: Target) -> Self {
+        Self { action, target }
+    }
+}
+
 #[derive(strum_macros::Display, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelfAction {
     Rotate,
@@ -309,7 +315,7 @@ pub enum Event {
     BottomCard,
 
     SkipAction(CardPtr, WrappedAction, SkipActionReason),
-    // StartAction(CardPtr, WrappedAction),
+    StartAction(CardPtr, WrappedAction),
     AttackCard(usize, CardPtr, HitType),
     Damage(usize, CardPtr, HitType, FaceKey),
     WhiffHit(usize, CardPtr, HitType),

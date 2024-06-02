@@ -10,6 +10,38 @@ use leptos_use::*;
 const BACK_SECTION_HEIGHT: WindowUnit = 40.0;
 
 #[component]
+pub fn FrameSpan(cx: Scope, frame: GameFrame) -> impl IntoView {
+    let current_pile = frame.current_pile.clone();
+
+    view! { cx,
+        {
+            closure!(clone current_pile, || {
+                let maybe_last_event = frame.event_history.last().clone();
+                if let Some(last_event) = maybe_last_event {
+                    view! {cx, <span><EventSpan event=last_event.clone() /></span> }
+                } else {
+                    view! {cx,
+                        <span
+                            style:display="flex"
+                        >
+                            <span
+                                style:flex="1"
+                            >
+                                <CardIdPill card_ptr=current_pile[0].clone() />
+                                Go
+                            </span>
+
+                            <PileSpan pile=current_pile.clone() />
+                        </span>
+
+                    }
+                }
+            })
+        }
+    }
+}
+
+#[component]
 pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
     view! { cx,
@@ -82,47 +114,14 @@ pub fn HistoryPanel(
 
     view! { cx,
         <div
-            // History Panel
             style:width="100%"
-            // style:height={move || wrap_px(placer_getter.get().scale(height))}
         >
-            /*
-            <div
-                style:width="100%"
-                style:display="flex"
-                style:flex-direction="row"
-                style:justify-content="center"
-                style:align-content="center"
-                style:margin-top={move || wrap_px(placer_getter.get().scale(3.0))}
-            >
-                <Button
-                    width=(width - 4.0)
-                    height=24.0
-                    background=Signal::derive(cx, || UNDO_BUTTON_COLOUR.to_owned())
-                    disabled=Signal::derive(cx, move || {
-                        game_history_getter.with(|history| history.all_frames.len() <= 1)
-                    })
-                    on:click=move |_| do_undo()
-                >
-                    Undo (U)
-                </Button>
-            </div>
-
-            <div
-                style:width="100%"
-                style:height={move || wrap_px(placer_getter.get().scale(2.0))}
-                style:border-bottom="solid"
-                style:border-width={move || wrap_px(placer_getter.get().scale(1.0))}
-            />
-            */
-
             <div
                 class="select-text"
                 node_ref=scroll_el
                 style:overflow="auto"
                 style:height={move || wrap_px(placer_getter.get().scale(height - BACK_SECTION_HEIGHT))}
             >
-                // History Slider
                 <For each=move || game_history_getter.get().all_frames
                     key=move |e| e.clone()
                     view=closure!(|cx, frame| {

@@ -112,8 +112,19 @@ impl Mul<f64> for Point2D {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MoveOption {
-    pub event: Event,
+    pub events: Vec<Event>,
     pub next_pile: Pile,
+}
+
+impl MoveOption {
+    pub fn new(events: Vec<Event>, next_pile: Pile) -> Self {
+        Self { events, next_pile }
+    }
+
+    /// Returns the event that will be used to decide affordances for this action
+    pub fn get_primary_event(&self) -> &Event {
+        self.events.last().unwrap()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

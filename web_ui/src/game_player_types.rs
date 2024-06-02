@@ -158,7 +158,7 @@ impl InteractionOptions {
 
         // TODO: should be based on if there are other selections available, not event type
         let single_move_option = self.valid_selection_buttons[0].move_option.clone();
-        if let Event::UseCardModifiers(_, _, _) = single_move_option.event {
+        if let Event::UseCardModifiers(_, _, _) = single_move_option.get_primary_event() {
             return None;
         }
 

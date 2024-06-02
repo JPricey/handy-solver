@@ -48,10 +48,6 @@ body {
   src: url("static/fonts/carlito-v3-latin-700.woff2") format("woff2");
 }
 
-* {
-    tabindex=-1
-}
-
 /* Buttons */
 
 

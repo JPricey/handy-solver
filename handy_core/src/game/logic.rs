@@ -511,12 +511,10 @@ fn resolve_player_action_unskippable<T: EngineGameState>(
 ) -> Vec<T> {
     let allegiance = Allegiance::Hero;
 
-    // let state = pre_event_state.clone().append_event(Event::StartAction(
-    //     pre_event_state.get_pile()[active_idx],
-    //     *wrapped_action,
-    // ));
-
-    let state = pre_event_state.clone();
+    let state = pre_event_state.clone().append_event(Event::StartAction(
+        pre_event_state.get_pile()[active_idx],
+        *wrapped_action,
+    ));
     let pile = state.get_pile();
 
     match wrapped_action.action {
@@ -1609,11 +1607,11 @@ fn resolve_enemy_action<T: EngineGameState>(
     wrapped_action: &WrappedAction,
     active_idx: usize,
 ) -> Vec<T> {
-    // let state = state_no_event.clone().append_event(Event::StartAction(
-    //     state_no_event.get_pile()[active_idx],
-    //     *wrapped_action,
-    // ));
-    let state = state_no_event.clone();
+    let state = state_no_event.clone().append_event(Event::StartAction(
+        state_no_event.get_pile()[active_idx],
+        *wrapped_action,
+    ));
+
     let pile = state.get_pile();
     let mut results: Vec<T> = vec![];
 
@@ -2693,7 +2691,7 @@ mod tests {
 
     #[test]
     fn test_bug2() {
-        // 2A is not rotating after perfoming its row0 attack
+        // 2A is not rotating after performing its row0 attack
         let pile = string_to_pile("2A 9D");
         let new_states =
             resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
@@ -3150,7 +3148,7 @@ mod tests {
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([
             string_to_pile("30A 24A 27B 29A"), // Skip, or inspire 27B
-            string_to_pile("30A 24A 27B 29B"), // Werewolf doens't block so 24A doesn't
+            string_to_pile("30A 24A 27B 29B"), // Werewolf doesn't block so 24A doesn't
             // activate
             string_to_pile("30A 24B 27B 29B"), // Werewolf blocks so 24 activates and
                                                // rotates

@@ -27,7 +27,7 @@ fn get_only_damage_card_id(move_options: &Vec<MoveOption>) -> Option<CardId> {
     let mut result = None;
 
     for option in move_options {
-        match option.event {
+        match option.get_primary_event() {
             Event::Damage(_, card_ptr, _, _) => {
                 if let Some(id) = result {
                     if id != card_ptr.get_card_id() {
@@ -60,7 +60,7 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
         };
 
     for available_move in &game_frame.available_moves {
-        match &available_move.event {
+        match &available_move.get_primary_event() {
             Event::Teleport(_, card1, _, card2) => {
                 new_interaction_options
                     .selection_options
@@ -165,6 +165,15 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 new_interaction_options
                     .hints
                     .insert("Skip This Action".to_owned());
+            }
+            Event::StartAction(_, wrapped_action) => {
+                new_interaction_options.interaction_buttons.push(InteractionButton {
+                    move_option: available_move.clone(),
+                    text: format!("Start {}", action_simple_name(&wrapped_action)),
+                });
+                new_interaction_options
+                    .hints
+                    .insert("Pick Action".to_owned());
             }
             Event::SkipHit(hit_type) => {
                 assert!(new_interaction_options.skip_button.len() == 0);
@@ -615,46 +624,26 @@ pub fn render_pile_update(
     max_applied_duration
 }
 
-pub fn is_state_longer_event_prefix(
-    prefix: &Vec<Event>,
-    state: &GameStateWithPileTrackedEventLog,
-) -> bool {
-    let events = &state.events;
-    if events.len() < prefix.len() {
-        return false;
-    }
-
-    for i in 0..prefix.len() {
-        if prefix[i] != events[i].1 {
-            return false;
-        }
-    }
-
-    true
-}
-
 pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bool) {
     let states = resolve_top_card(&GameStateWithPileTrackedEventLog::new(pile.clone()));
     let mut is_definite_win = true;
 
     let mut results: Vec<MoveOption> = vec![];
     for state in states {
-        if is_state_longer_event_prefix(prefix, &state) {
-            let (new_pile, new_event) = state.events[prefix.len()].clone();
-            let move_option = MoveOption {
-                next_pile: new_pile,
-                event: new_event,
-            };
+        if let Some((new_pile, next_events)) = get_next_available_events_past_prefix_allowing_skips(prefix, &state) {
+            let move_option = MoveOption::new(next_events, new_pile);
             if !results.contains(&move_option) {
                 results.push(move_option);
             }
-            if is_game_winner(&state.pile) != WinType::Win {
+            if is_definite_win && is_game_winner(&state.pile) != WinType::Win {
                 is_definite_win = false;
             }
         }
     }
 
     is_definite_win = is_definite_win && results.len() > 0;
+
+    assert!(results.len() > 0, "Could not find any next move options");
 
     (results, is_definite_win)
 }
@@ -678,14 +667,15 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
 }
 
 pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> GameFrame {
-    let mut new_history = last_frame.event_history.clone();
-    new_history.push(option.event.clone());
+    let mut new_event_history = last_frame.event_history.clone();
+    new_event_history.extend(option.events.clone());
+    log!("Adding new options: {:?}. New full history: {:?}", &option.events, &new_event_history);
 
-    let (available_moves, is_definite_win) = find_next_moves(&last_frame.root_pile, &new_history);
+    let (available_moves, is_definite_win) = find_next_moves(&last_frame.root_pile, &new_event_history);
 
     GameFrame {
         root_pile: last_frame.root_pile.clone(),
-        event_history: new_history,
+        event_history: new_event_history,
         current_pile: option.next_pile.clone(),
         available_moves,
         resolution: WinType::Unresolved,
@@ -864,7 +854,7 @@ impl GamePlayerState {
             return self.do_render_pile_update();
         }
 
-        if move_option.event == Event::BottomCard {
+        if move_option.get_primary_event() == &Event::BottomCard {
             game_history
                 .all_frames
                 .push(get_frame_from_root_pile(move_option.next_pile.clone()));
