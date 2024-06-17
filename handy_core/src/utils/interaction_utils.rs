@@ -132,7 +132,8 @@ pub fn find_next_event_matching_prefix_and_with_final_state(
         if state.events.len() <= prefix.len() {
             continue;
         }
-        let maybe_next_events = get_next_available_events_past_prefix_allowing_skips(prefix, &state.clone().into());
+        let maybe_next_events =
+            get_next_available_events_past_prefix_allowing_skips(prefix, &state.clone().into());
         let Some((_, following_events)) = maybe_next_events else {
             continue;
         };

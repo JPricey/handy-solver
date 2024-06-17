@@ -5,8 +5,8 @@ use crate::utils::*;
 use priq::PriorityQueue;
 use std::collections::BTreeMap;
 // use std::collections::HashMap;
-use std::fmt::Debug;
 use crate::game::pile_utils::is_game_winner;
+use std::fmt::Debug;
 
 // BTree is slower, but memory is more compact, and resize events are gradual
 // type SeenMap = HashMap<TinyPile, SolverState>;

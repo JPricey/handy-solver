@@ -107,12 +107,7 @@ pub fn get_modifier_options(
         return results;
     }
 
-    // TODO: instead of only below active_idx, should allow anyone that isn't active
     for target_idx in (active_idx + 1)..pile.len() {
-        // if target_idx == active_idx {
-        //     continue;
-        // }
-
         let active_card_ptr = pile[target_idx];
         if let Some(modifier) = active_card_ptr.get_active_face().modifier {
             // Don't bother with modifiers on infinity if the modifier has no effect anyway
@@ -133,4 +128,31 @@ pub fn get_modifier_options(
     }
 
     results
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::string_to_pile;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_get_modifier_options() {
+        {
+            // No modifiers
+            let pile = string_to_pile("1 2 3 4 5");
+            let results = get_modifier_options(&pile, 0, ModifierRangeType::Discrete);
+            assert_eq!(results.len(), 0);
+        }
+
+        {
+            // With modifiers
+            let pile = string_to_pile("55 56 57");
+            let results = get_modifier_options(&pile, 0, ModifierRangeType::Discrete);
+            assert_eq!(
+                results,
+                vec![(vec![1], -2), (vec![2], 1), (vec![1, 2], -1),]
+            );
+        }
+    }
 }

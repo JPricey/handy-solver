@@ -74,7 +74,8 @@ fn card_activation_result_via_all_outcomes(pile: &Pile) -> Pile {
                 model.score_pile(&option.pile)
             );
         }
-        let unique_choices: HashSet<Pile> = options.iter().map(|option| option.pile.clone()).collect();
+        let unique_choices: HashSet<Pile> =
+            options.iter().map(|option| option.pile.clone()).collect();
         println!("Unique Choices: {}", unique_choices.len());
 
         if options.len() == 1 {

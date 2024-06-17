@@ -73,7 +73,6 @@ pub fn EventSpan(cx: Scope, event: Event) -> impl IntoView {
                     />
                 </span>
             }
-
         }
 
         Event::SkipAction(card_ptr, wrapped_action, skip_action_reason) => {

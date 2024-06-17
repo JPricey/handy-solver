@@ -167,10 +167,12 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .insert("Skip This Action".to_owned());
             }
             Event::StartAction(_, wrapped_action) => {
-                new_interaction_options.interaction_buttons.push(InteractionButton {
-                    move_option: available_move.clone(),
-                    text: format!("Start {}", action_simple_name(&wrapped_action)),
-                });
+                new_interaction_options
+                    .interaction_buttons
+                    .push(InteractionButton {
+                        move_option: available_move.clone(),
+                        text: format!("Start {}", action_simple_name(&wrapped_action)),
+                    });
                 new_interaction_options
                     .hints
                     .insert("Pick Action".to_owned());
@@ -630,7 +632,9 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bo
 
     let mut results: Vec<MoveOption> = vec![];
     for state in states {
-        if let Some((new_pile, next_events)) = get_next_available_events_past_prefix_allowing_skips(prefix, &state) {
+        if let Some((new_pile, next_events)) =
+            get_next_available_events_past_prefix_allowing_skips(prefix, &state)
+        {
             let move_option = MoveOption::new(next_events, new_pile);
             if !results.contains(&move_option) {
                 results.push(move_option);
@@ -670,9 +674,14 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
 pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> GameFrame {
     let mut new_event_history = last_frame.event_history.clone();
     new_event_history.extend(option.events.clone());
-    log!("Adding new options: {:?}. New full history: {:?}", &option.events, &new_event_history);
+    log!(
+        "Adding new options: {:?}. New full history: {:?}",
+        &option.events,
+        &new_event_history
+    );
 
-    let (available_moves, is_definite_win) = find_next_moves(&last_frame.root_pile, &new_event_history);
+    let (available_moves, is_definite_win) =
+        find_next_moves(&last_frame.root_pile, &new_event_history);
 
     GameFrame {
         root_pile: last_frame.root_pile.clone(),

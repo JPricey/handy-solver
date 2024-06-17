@@ -5,9 +5,8 @@ All helpers are on immutable piles or cards.
 
 use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::primitives::{
-    Action, Allegiance, Event, FaceKey, Features, Health, Pile, Reaction,
-    ReactionTrigger, SkipActionReason, Target, WinType,
-    WrappedAction, ConditionCostType,
+    Action, Allegiance, ConditionCostType, Event, FaceKey, Features, Health, Pile, Reaction,
+    ReactionTrigger, SkipActionReason, Target, WinType, WrappedAction,
 };
 use strum::IntoEnumIterator;
 
@@ -297,5 +296,26 @@ pub fn maybe_skip_action_event_for_spider_feature(
         | Action::CallAssistTwice
         | Action::Inspire
         | Action::Hypnosis => None,
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::string_to_pile;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_game_over() {
+        {
+            let pile = string_to_pile("6D 3C 2C 5D 8C 1C 4D 7C 9C");
+            assert_eq!(is_game_winner(&pile), WinType::Lose);
+        }
+
+        {
+            let pile = string_to_pile("6C 3C 2C 5D 8C 1C 4D 7C 9C");
+            assert_eq!(is_game_winner(&pile), WinType::Win);
+        }
     }
 }
