@@ -5,7 +5,7 @@ use handy_core::solver::model::Model;
 use handy_core::utils::string_to_pile;
 use serde;
 use serde_jsonlines::json_lines;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 // use csv::Writer;
 // use inc_stats;
@@ -108,16 +108,31 @@ fn script_compare() {
 
 fn state_amount_test() {
     let pile = string_to_pile("26A25C24A27B57A58A56A55A59A");
-    let state = GameStateNoEventLog::new(pile);
     // let state = GameStateWithEventLog::new(pile);
-    let outcomes = resolve_top_card(&state);
-    println!("Total outcomes: {}", outcomes.len());
-    let unique_outcomes = outcomes
-        .into_iter()
-        .map(|s| s.pile)
-        .collect::<HashSet<_>>()
-        .len();
-    println!("Unique outcomes: {unique_outcomes}");
+    {
+        let state = GameStateNoEventLog::new(pile.clone());
+        let outcomes = resolve_top_card(&state);
+        println!("Total outcomes: {}", outcomes.len());
+        let unique_outcomes = outcomes
+            .into_iter()
+            .map(|s| s.pile)
+            .collect::<HashSet<_>>()
+            .len();
+        println!("Unique outcomes: {unique_outcomes}");
+    }
+
+
+    {
+        let state = GameStateWithPileTrackedEventLog::new(pile.clone());
+        let outcomes = resolve_top_card_starting_with_prefix_dedupe_excess(&state, &Vec::new());
+        println!("Total outcomes: {}", outcomes.len());
+        let unique_outcomes = outcomes
+            .into_iter()
+            .map(|s| s.pile)
+            .collect::<HashSet<_>>()
+            .len();
+        println!("Unique outcomes: {unique_outcomes}");
+    }
 }
 
 fn main() {

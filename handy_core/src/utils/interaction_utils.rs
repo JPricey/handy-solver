@@ -70,18 +70,23 @@ pub fn prefix_result_to_pile(prefix_result: &PrefixResult) -> Pile {
 }
 
 pub fn find_final_piles_matching_prefix(root_pile: &Pile, prefix: &Vec<Event>) -> Vec<Pile> {
-    let init_state = GameStateWithEventLog::new(root_pile.clone());
-    let new_states = resolve_top_card(&init_state);
+    let init_state = GameStateWithPileTrackedEventLog::new(root_pile.clone());
+    let new_states = resolve_top_card_starting_with_prefix_dedupe_excess(&init_state, &prefix);
     let mut results: Vec<Pile> = Vec::new();
 
     for state in new_states {
         if state.events.len() < prefix.len() {
             continue;
         }
-        let state_events_prefix: Vec<Event> =
-            state.events[0..prefix.len()].iter().cloned().collect();
+        let mut is_match = true;
+        for i in 0..prefix.len() {
+            if prefix[i] != state.events[i].1 {
+                is_match = false;
+                break;
+            }
+        }
 
-        if prefix == &state_events_prefix {
+        if is_match {
             results.push(state.pile.clone());
         }
     }

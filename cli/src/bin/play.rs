@@ -15,13 +15,13 @@ fn format_prefix_result(prefix_result: &PrefixResult) -> String {
 }
 
 fn card_activation_result_via_choices(pile: &Pile) -> Pile {
-    let state = GameStateWithPileTrackedEventLog::new(pile.clone());
-    let future_states = resolve_top_card(&state);
-
     let mut current_pile = pile.clone();
     let mut current_events: Vec<Event> = vec![];
 
     loop {
+        let state = GameStateWithPileTrackedEventLog::new(pile.clone());
+        let future_states =
+            resolve_top_card_starting_with_prefix_dedupe_excess(&state, &current_events);
         let event_options = find_next_events_matching_prefix(&future_states, &current_events);
 
         loop {
@@ -111,5 +111,5 @@ pub fn start_cli_game(mut active_pile: Pile, is_interactive_mode: bool) {
 
 fn main() {
     let start_pile = get_starting_pile();
-    start_cli_game(start_pile.into(), false);
+    start_cli_game(start_pile.into(), true);
 }

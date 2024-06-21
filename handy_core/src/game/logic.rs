@@ -26,26 +26,83 @@ use super::pile_utils::{
     is_allegiance_match, is_moveable_target, maybe_skip_action_event_for_spider_feature,
 };
 use super::piper_helpers::{get_modifier_options, ModifierRangeType};
+use super::{GameStateWithPileTrackedEventLog, Pile};
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 
 pub const NO_TARGETS: TargetIds = vec![];
 
-fn get_identity_fn<T: EngineGameState>() -> fn(Vec<T>) -> Vec<T> {
-    |x| x
-}
-
 pub fn resolve_top_card<T: EngineGameState>(state: &T) -> Vec<T> {
-    let reducer_fn = |states| {
-        T::dedupe(states)
-    };
+    let reducer_fn = Box::new(|states| T::dedupe(states));
     GameStateEvaluator::new(reducer_fn).resolve_top_card(state)
 }
 
-struct GameStateEvaluator<T: EngineGameState> {
-    reducer_fn: fn(Vec<T>) -> Vec<T>,
+pub fn resolve_top_card_starting_with_prefix_dedupe_excess(
+    state: &GameStateWithPileTrackedEventLog,
+    _prefix: &Vec<Event>,
+) -> Vec<GameStateWithPileTrackedEventLog> {
+    resolve_top_card(state)
+}
+
+pub fn resolve_top_card_starting_with_prefix_dedupe_excess_wip(
+    state: &GameStateWithPileTrackedEventLog,
+    prefix: &Vec<Event>,
+) -> Vec<GameStateWithPileTrackedEventLog> {
+    let prefix = prefix.clone();
+    let state = state.clone();
+    let reducer_fn = Box::new(move |states: Vec<GameStateWithPileTrackedEventLog>| {
+        if states.len() < 10 {
+            return states;
+        }
+
+        let mut results = Vec::new();
+
+        let mut result_hash: HashMap<(Pile, Option<Event>), GameStateWithPileTrackedEventLog> =
+            HashMap::new();
+        for state in states {
+            let mut is_match = true;
+            for i in 0..std::cmp::min(prefix.len(), state.events.len()) {
+                if prefix[i] != state.events[i].1 {
+                    is_match = true;
+                    break;
+                }
+            }
+            if !is_match {
+                continue;
+            }
+
+            if state.events.len() <= prefix.len() {
+                results.push(state);
+                continue;
+            }
+
+            let next_event = state.events.get(prefix.len()).map(|x| x.1.clone());
+            let map_key = (state.get_pile().clone(), next_event);
+
+            match result_hash.entry(map_key) {
+                Entry::Vacant(entry) => {
+                    entry.insert(state);
+                }
+                Entry::Occupied(mut entry) => {
+                    if state.events.len() < entry.get().events.len() {
+                        entry.insert(state);
+                    }
+                }
+            }
+        }
+
+        results.extend(result_hash.into_values());
+        results
+    });
+    GameStateEvaluator::new(reducer_fn).resolve_top_card(&state)
+}
+
+pub struct GameStateEvaluator<T: EngineGameState> {
+    reducer_fn: Box<dyn Fn(Vec<T>) -> Vec<T>>,
 }
 
 impl<T: EngineGameState> GameStateEvaluator<T> {
-    pub fn new(reducer_fn: fn(Vec<T>) -> Vec<T>) -> Self {
+    pub fn new(reducer_fn: Box<dyn Fn(Vec<T>) -> Vec<T>>) -> Self {
         Self { reducer_fn }
     }
 
@@ -2335,6 +2392,10 @@ mod tests {
         result
     }
 
+    fn get_identity_fn<T: EngineGameState>() -> Box<dyn Fn(Vec<T>) -> Vec<T>> {
+        Box::new(|x| x)
+    }
+
     fn assert_actual_vs_expected_piles(actual_results: &Vec<T>, expected_strings: Vec<&str>) {
         let actual_piles: HashSet<Pile> = states_to_pile_set(&actual_results);
         let expected_piles: HashSet<Pile> =
@@ -2379,8 +2440,11 @@ mod tests {
     fn test_bug2() {
         // 2A is not rotating after performing its row0 attack
         let pile = string_to_pile("2A 9D");
-        let new_states =
-            GameStateEvaluator::new(get_identity_fn()).resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_row(
+            &T::new(pile.clone()),
+            &pile[0].get_active_face().rows[0],
+            0,
+        );
         assert_actual_vs_expected_piles(
             &new_states,
             vec![
@@ -2814,7 +2878,11 @@ mod tests {
     #[test]
     fn test_werewolf_spider() {
         let starting_pile = string_to_pile("28C 26A");
-        let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_turn(&T::new(starting_pile), Allegiance::Werewolf, 0);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_turn(
+            &T::new(starting_pile),
+            Allegiance::Werewolf,
+            0,
+        );
         // Werewolf can't perform the attack
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([string_to_pile("28C 26A")]);
@@ -2850,57 +2918,81 @@ mod tests {
     fn test_attacks() {
         {
             // Basic healthy -> hurt
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("1A")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("1A")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["1D"]);
         }
 
         {
             // hurt -> exhausted
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("1D")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("1D")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["1C"]);
         }
 
         {
             // exhausted -> no options
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("1C")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("1C")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec![]);
         }
 
         {
             // can shield or not
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("5A")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("5A")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["5B", "5C"]);
         }
 
         {
             // If reaction is forced, we can only block
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("7B")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("7B")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["7A"]);
         }
 
         {
             // Can be hurt 2 ways
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("33B")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("33B")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["33C", "33D"]);
         }
 
         {
             // Can be hurt 2 ways. Even with forced reactions
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("45A")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("45A")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["45C", "45D"]);
         }
 
         {
             // The exhausted card has a reaction trigger, apply it.
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("33C")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("33C")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(&outcomes, vec!["33D"]);
         }
     }
@@ -2909,8 +3001,11 @@ mod tests {
     fn test_beastmaster_gets_attacked() {
         {
             // beastmaster can pull in an assist to block
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("37A 40A")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("37A 40A")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(
                 &outcomes,
                 vec![
@@ -2922,8 +3017,11 @@ mod tests {
 
         {
             // pull in assist dodge too
-            let outcomes =
-                GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("37A 41A")), 0, HitType::Hit);
+            let outcomes = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+                &T::new(string_to_pile("37A 41A")),
+                0,
+                HitType::Hit,
+            );
             assert_actual_vs_expected_piles(
                 &outcomes,
                 vec![
@@ -3653,7 +3751,11 @@ mod tests {
     fn test_swarm() {
         let starting_pile = string_to_pile("27B 26B 25A 1A");
 
-        let new_states = GameStateEvaluator::new(get_identity_fn()).swarm_me_recursive(&T::new(starting_pile), Allegiance::Baddie, 1);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).swarm_me_recursive(
+            &T::new(starting_pile),
+            Allegiance::Baddie,
+            1,
+        );
 
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([
@@ -3667,7 +3769,11 @@ mod tests {
         // 24C swarm is to heal, but it has no targets
         // 27A should attack 1A anyway
         let starting_pile = string_to_pile("26A 24C 27A 1A");
-        let new_states = GameStateEvaluator::new(get_identity_fn()).swarm_me_recursive(&T::new(starting_pile), Allegiance::Baddie, 1);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).swarm_me_recursive(
+            &T::new(starting_pile),
+            Allegiance::Baddie,
+            1,
+        );
 
         let futures = states_to_pile_set(&new_states);
         let expected_futures = HashSet::from([string_to_pile("26A 24C 27A 1D")]);
@@ -3842,8 +3948,11 @@ mod tests {
     #[test]
     fn test_ablaze() {
         let pile = string_to_pile("20A 23A 0A 0A 19A 22A");
-        let new_states =
-            GameStateEvaluator::new(get_identity_fn()).resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_row(
+            &T::new(pile.clone()),
+            &pile[0].get_active_face().rows[0],
+            0,
+        );
 
         assert_actual_vs_expected_piles(
             &new_states,
@@ -3863,8 +3972,11 @@ mod tests {
     fn test_fireball() {
         {
             let pile = string_to_pile("21A 19D 0A 23A 0A");
-            let new_states =
-                GameStateEvaluator::new(get_identity_fn()).resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
+            let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_row(
+                &T::new(pile.clone()),
+                &pile[0].get_active_face().rows[0],
+                0,
+            );
 
             assert_actual_vs_expected_piles(
                 &new_states,
@@ -3879,8 +3991,11 @@ mod tests {
         {
             // Check bounds
             let pile = string_to_pile("21A 19D 0A 0A 23A");
-            let new_states =
-                GameStateEvaluator::new(get_identity_fn()).resolve_player_row(&T::new(pile.clone()), &pile[0].get_active_face().rows[0], 0);
+            let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_row(
+                &T::new(pile.clone()),
+                &pile[0].get_active_face().rows[0],
+                0,
+            );
 
             assert_actual_vs_expected_piles(
                 &new_states,
@@ -3965,8 +4080,11 @@ mod tests {
 
     #[test]
     fn test_verdant_hit() {
-        let new_states =
-            GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(&T::new(string_to_pile("43D 1 4 2 5 3")), 0, HitType::Hit);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).attack_card_get_all_outcomes(
+            &T::new(string_to_pile("43D 1 4 2 5 3")),
+            0,
+            HitType::Hit,
+        );
 
         assert_actual_vs_expected_piles(&new_states, vec!["43B 1D 4 2D 5 3D"]);
     }
@@ -4022,8 +4140,13 @@ mod tests {
     fn test_roll_delay() {
         let pile = string_to_pile("47B 48A 46D 0A");
 
-        let new_states =
-            GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(&T::new(pile), 0, 3, MoveType::Delay, Allegiance::Hero);
+        let new_states = GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(
+            &T::new(pile),
+            0,
+            3,
+            MoveType::Delay,
+            Allegiance::Hero,
+        );
 
         assert_actual_vs_expected_piles(
             &new_states,
@@ -4068,7 +4191,6 @@ mod tests {
             ],
         );
     }
-
 
     #[test]
     fn test_get_post_modifier_states() {

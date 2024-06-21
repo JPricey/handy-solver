@@ -627,7 +627,10 @@ pub fn render_pile_update(
 }
 
 pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bool) {
-    let states = resolve_top_card(&GameStateWithPileTrackedEventLog::new(pile.clone()));
+    let states = resolve_top_card_starting_with_prefix_dedupe_excess(
+        &GameStateWithPileTrackedEventLog::new(pile.clone()),
+        prefix,
+    );
     let mut is_definite_win = true;
 
     let mut results: Vec<MoveOption> = vec![];

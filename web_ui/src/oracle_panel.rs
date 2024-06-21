@@ -256,9 +256,10 @@ pub fn OraclePanel(
         };
 
         let current_frame = current_frame.get();
-        let states = resolve_top_card(&GameStateWithPileTrackedEventLog::new(
-            current_frame.root_pile,
-        ));
+        let states = resolve_top_card_starting_with_prefix_dedupe_excess(
+            &GameStateWithPileTrackedEventLog::new(current_frame.root_pile),
+            &current_frame.event_history
+        );
 
         find_next_event_matching_prefix_and_with_final_state(
             &states,
