@@ -20,6 +20,7 @@ pub type Pile = ArrayVecPile;
 
 pub type PayCostArrType = ArrayVec<(usize, CardPtr), 4>;
 pub type ModifierArrType = ArrayVec<(usize, CardPtr), 4>;
+pub type RangeType = usize;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Health {
@@ -38,7 +39,8 @@ pub enum Target {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Range {
     Inf,
-    Int(usize),
+    Int(RangeType),
+    Stance(StanceType),
 }
 
 #[derive(
@@ -77,8 +79,8 @@ pub enum Action {
     // Player Only
     Arrow,
     ArrowTwice,
-    Quicken(usize),
-    Delay(usize),
+    Quicken(Range),
+    Delay(Range),
     Fireball,
     FireballTwice,
     Ablaze,
@@ -124,10 +126,17 @@ pub enum ConditionCostType {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum StanceType {
+    Open,
+    Fist,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Condition {
     Cost(ConditionCostType, ConditionCountType),
     Rage(ConditionCountType),
     Troupe(TroupeType),
+    Stance(StanceType, ConditionCountType),
     ExhaustedAllies(usize),
 }
 
@@ -157,7 +166,7 @@ pub struct RequestAssistReaction {
 pub type WhenHitType = &'static Row;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Reaction {
-    Standard(StandardReaction),
+    Standard(Option<Condition>, StandardReaction),
     Assist(RequestAssistReaction),
     WhenHit(WhenHitType),
     Roll,
@@ -165,16 +174,18 @@ pub enum Reaction {
 
 bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct Features: u8 {
-        const NoFeature     = 0b00000000;
-        const Weight        = 0b00000001;
-        const Trap          = 0b00000010;
-        const Web           = 0b00000100;
-        const Venom         = 0b00001000;
-        const Energy        = 0b00010000;
-        const Wall          = 0b00100000;
-        const Invulnerable  = 0b01000000;
-        const Wisp          = 0b10000000;
+    pub struct Features: u16 {
+        const NoFeature     = 0b0000000000;
+        const Weight        = 0b0000000001;
+        const Trap          = 0b0000000010;
+        const Web           = 0b0000000100;
+        const Venom         = 0b0000001000;
+        const Energy        = 0b0000010000;
+        const Wall          = 0b0000100000;
+        const Invulnerable  = 0b0001000000;
+        const Open          = 0b0010000000;
+        const Fist          = 0b0100000000;
+        const Wisp          = 0b1000000000;
     }
 }
 
@@ -233,13 +244,14 @@ pub enum FaceKey {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, strum_macros::EnumString)]
 #[strum(serialize_all = "snake_case")]
 pub enum Class {
+    Dummy,
     Warrior,
     Huntress,
     Pyro,
     Cursed,
     Beastmaster,
     Assassin,
-    Dummy,
+    Monk,
     Ogre,
     Vampire,
     Spider,

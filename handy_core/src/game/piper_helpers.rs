@@ -24,6 +24,8 @@ pub fn range_with_modifier(range: Range, modifier: ModifierAmount) -> Range {
     match range {
         Range::Inf => range,
         Range::Int(amount) => Range::Int(size_with_modifier(amount, modifier)),
+        // TODO: incorporate modifiers for stances?
+        Range::Stance(stance_type) => Range::Stance(stance_type), 
     }
 }
 
@@ -36,13 +38,16 @@ pub enum ModifierRangeType {
 
 pub fn modifier_range_type_for_action(action: &Action) -> ModifierRangeType {
     match action {
-        Action::Pull(range) | Action::Push(range) | Action::Claws(range) | Action::Hit(range) => {
-            match range {
-                Range::Inf => ModifierRangeType::Infinity,
-                Range::Int(_) => ModifierRangeType::Discrete,
-            }
-        }
-        Action::Quicken(_) | Action::Delay(_) => ModifierRangeType::Discrete,
+        Action::Pull(range)
+        | Action::Push(range)
+        | Action::Claws(range)
+        | Action::Hit(range)
+        | Action::Quicken(range)
+        | Action::Delay(range) => match range {
+            Range::Inf => ModifierRangeType::Infinity,
+            Range::Int(_) => ModifierRangeType::Discrete,
+            Range::Stance(_) => ModifierRangeType::Discrete,
+        },
         Action::Death
         | Action::Void
         | Action::CallAssist
@@ -72,8 +77,8 @@ pub fn action_with_modified_range(action: &Action, modifier: ModifierAmount) -> 
         Action::Push(range) => Action::Push(range_with_modifier(*range, modifier)),
         Action::Hit(range) => Action::Hit(range_with_modifier(*range, modifier)),
         Action::Claws(range) => Action::Claws(range_with_modifier(*range, modifier)),
-        Action::Quicken(amount) => Action::Quicken(size_with_modifier(*amount, modifier)),
-        Action::Delay(amount) => Action::Delay(size_with_modifier(*amount, modifier)),
+        Action::Quicken(range) => Action::Quicken(range_with_modifier(*range, modifier)),
+        Action::Delay(range) => Action::Delay(range_with_modifier(*range, modifier)),
         Action::Death
         | Action::Void
         | Action::CallAssist

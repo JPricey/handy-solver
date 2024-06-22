@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashSet};
 use vectorize_derive::*;
 
-pub const HEROS: [Class; 7] = [
+pub const HEROS: [Class; 8] = [
     Class::Warrior,
     Class::Huntress,
     Class::Pyro,
@@ -16,6 +16,7 @@ pub const HEROS: [Class; 7] = [
     Class::Beastmaster,
     Class::Assassin,
     Class::Piper,
+    Class::Monk,
 ];
 
 pub const BADDIES: [Class; 7] = [

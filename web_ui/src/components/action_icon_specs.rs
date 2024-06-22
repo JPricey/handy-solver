@@ -15,8 +15,8 @@ pub enum IconType {
 pub fn action_to_icon_type_and_range(action: Action) -> (IconType, Option<Range>) {
     match action {
         Action::Hit(range) => (IconType::Hit, Some(range)),
-        Action::Delay(range) => (IconType::Delay, Some(Range::Int(range))),
-        Action::Quicken(range) => (IconType::Quicken, Some(Range::Int(range))),
+        Action::Delay(range) => (IconType::Delay, Some(range)),
+        Action::Quicken(range) => (IconType::Quicken, Some(range)),
         Action::Arrow => (IconType::Arrow, None),
         Action::Ablaze => (IconType::Ablaze, None),
         Action::Fireball => (IconType::Fireball, None),

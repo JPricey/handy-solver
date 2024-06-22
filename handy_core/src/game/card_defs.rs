@@ -116,6 +116,11 @@ impl Row {
         self
     }
 
+    fn stance_condition(mut self, stance: StanceType, count: ConditionCountType) -> Self {
+        self.condition = Some(Condition::Stance(stance, count));
+        self
+    }
+
     fn energy_cost(mut self, cost: ConditionCountType) -> Self {
         self.condition = Some(Condition::Cost(ConditionCostType::Energy, cost));
         self
@@ -165,7 +170,7 @@ impl Row {
 
     fn delay_ally(mut self, amount: usize) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Delay(amount),
+            action: Action::Delay(Range::Int(amount)),
             target: Target::Ally,
         });
         self
@@ -173,7 +178,7 @@ impl Row {
 
     fn delay_any(mut self, range: usize) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Delay(range),
+            action: Action::Delay(Range::Int(range)),
             target: Target::Any,
         });
         self
@@ -181,7 +186,7 @@ impl Row {
 
     fn delay_enemy(mut self, range: usize) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Delay(range),
+            action: Action::Delay(Range::Int(range)),
             target: Target::Enemy,
         });
         self
@@ -189,7 +194,23 @@ impl Row {
 
     fn quicken_any(mut self, range: usize) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Quicken(range),
+            action: Action::Quicken(Range::Int(range)),
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn quicken_fist_any(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Quicken(Range::Stance(StanceType::Fist)),
+            target: Target::Any,
+        });
+        self
+    }
+
+    fn delay_open_any(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Delay(Range::Stance(StanceType::Open)),
             target: Target::Any,
         });
         self
@@ -197,7 +218,7 @@ impl Row {
 
     fn quicken_enemy(mut self, range: usize) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Quicken(range),
+            action: Action::Quicken(Range::Int(range)),
             target: Target::Enemy,
         });
         self
@@ -205,7 +226,7 @@ impl Row {
 
     fn quicken_ally(mut self, range: usize) -> Self {
         self.actions.push(WrappedAction {
-            action: Action::Quicken(range),
+            action: Action::Quicken(Range::Int(range)),
             target: Target::Ally,
         });
         self
@@ -239,6 +260,14 @@ impl Row {
         self.actions.push(WrappedAction {
             action: Action::Hit(Range::Inf),
             target: Target::Ally,
+        });
+        self
+    }
+
+    fn hit_fist_any(mut self) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Hit(Range::Stance(StanceType::Fist)),
+            target: Target::Any,
         });
         self
     }
@@ -398,6 +427,14 @@ impl Row {
     fn claw_enemy_inf(mut self) -> Self {
         self.actions.push(WrappedAction {
             action: Action::Claws(Range::Inf),
+            target: Target::Enemy,
+        });
+        self
+    }
+
+    fn claw_enemy_stance(mut self, stance: StanceType) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Claws(Range::Stance(stance)),
             target: Target::Enemy,
         });
         self
@@ -566,31 +603,53 @@ impl FaceDef {
     }
 
     fn block_to_rotate(self) -> Self {
-        self.reaction(Reaction::Standard(StandardReaction {
-            trigger: ReactionTrigger::Block,
-            outcome: Some(SelfAction::Rotate),
-        }))
+        self.reaction(Reaction::Standard(
+            None,
+            StandardReaction {
+                trigger: ReactionTrigger::Block,
+                outcome: Some(SelfAction::Rotate),
+            },
+        ))
+    }
+
+    fn block_to_rotate_open_condition(self) -> Self {
+        self.reaction(Reaction::Standard(
+            Some(Condition::Stance(StanceType::Open, 3)),
+            StandardReaction {
+                trigger: ReactionTrigger::Block,
+                outcome: Some(SelfAction::Rotate),
+            },
+        ))
     }
 
     fn block_to_flip(self) -> Self {
-        self.reaction(Reaction::Standard(StandardReaction {
-            trigger: ReactionTrigger::Block,
-            outcome: Some(SelfAction::Flip),
-        }))
+        self.reaction(Reaction::Standard(
+            None,
+            StandardReaction {
+                trigger: ReactionTrigger::Block,
+                outcome: Some(SelfAction::Flip),
+            },
+        ))
     }
 
     fn block_perm(self) -> Self {
-        self.reaction(Reaction::Standard(StandardReaction {
-            trigger: ReactionTrigger::Block,
-            outcome: None,
-        }))
+        self.reaction(Reaction::Standard(
+            None,
+            StandardReaction {
+                trigger: ReactionTrigger::Block,
+                outcome: None,
+            },
+        ))
     }
 
     fn dodge_to_rotate(self) -> Self {
-        self.reaction(Reaction::Standard(StandardReaction {
-            trigger: ReactionTrigger::Dodge,
-            outcome: Some(SelfAction::Rotate),
-        }))
+        self.reaction(Reaction::Standard(
+            None,
+            StandardReaction {
+                trigger: ReactionTrigger::Dodge,
+                outcome: Some(SelfAction::Rotate),
+            },
+        ))
     }
 
     fn call_assist_to_turn(self) -> Self {
@@ -4182,6 +4241,313 @@ impl CardDefs {
                         .add_row(row()
                                  .troupe_condition(TroupeType::Club)
                                  .inspire_ally()
+                        )
+                        ,
+                },
+            ));
+        }
+
+        {
+            let monk = CharBuilder::new(Class::Monk, Allegiance::Hero);
+            card_defs.register_card(monk.card(
+                64,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        // TODO: blocking w condition
+                        .feature(Features::Open)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Open, 3)
+                                 .heal_ally()
+                                 .quicken_fist_any()
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .delay_open_any()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .manouver()
+                                .manouver()
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 2)
+                                 .claw_enemy(2)
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .delay_open_any()
+                        )
+                        .add_row(row()
+                                .quicken_fist_any()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .quicken_fist_any()
+                        )
+                        .add_row(row()
+                                .delay_open_any()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .feature(Features::Open)
+                        .add_row(row()
+                                 .quicken_fist_any()
+                                 .hit_fist_any()
+                                 .rotate()
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .delay_open_any()
+                        )
+                        .add_row(row()
+                                 .quicken_fist_any()
+                                .manouver()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(monk.card(
+                65,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::Open)
+                        .block_to_rotate()
+                        .add_row(row()
+                                 .delay_open_any()
+                                 .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .quicken_fist_any()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 3)
+                                 .claw_enemy(3)
+                        )
+                        .add_row(row()
+                                .claw_enemy_stance(StanceType::Fist)
+                                .flip()
+                        )
+                        .add_row(row()
+                                .quicken_fist_any()
+                                .quicken_fist_any()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .hit_fist_any()
+                                 .manouver()
+                        )
+                        .add_row(row()
+                                .teleport_enemy()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .feature(Features::Open)
+                        .add_row(row()
+                                 .claw_enemy_stance(StanceType::Fist)
+                                 .rotate()
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                        )
+                        .add_row(row()
+                                 .delay_open_any()
+                                .manouver()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(monk.card(
+                66,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::Open)
+                        .block_to_rotate()
+                        .add_row(row()
+                                 .stance_condition(StanceType::Open, 3)
+                                 .heal_ally()
+                                 .delay_open_any()
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .manouver()
+                        )
+                        .add_row(row()
+                                .teleport_ally()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 3)
+                                 .claw_enemy(2)
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .teleport_enemy()
+                        )
+                        .add_row(row()
+                                .delay_open_any()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .feature(Features::Open)
+                        .add_row(row()
+                                 .manouver()
+                                 .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .teleport_ally()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Half)
+                        .feature(Features::Open)
+                        .add_row(row()
+                                 .hit_fist_any()
+                                 .hit_fist_any()
+                                 .rotate()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .teleport_ally()
+                        )
+                        .add_row(row()
+                                .teleport_enemy()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(monk.card(
+                67,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 3)
+                                 .claw_enemy(2)
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .manouver()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .delay_open_any()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .feature(Features::Open)
+                        .block_to_rotate_open_condition()
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 3)
+                                 .delay_open_any()
+                                 .rotate()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .delay_open_any()
+                                .quicken_fist_any()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .feature(Features::Open)
+                        .block_to_rotate_open_condition()
+                        .add_row(row()
+                                 .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .delay_open_any()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .quicken_fist_any()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(monk.card(
+                68,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::Fist)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 3)
+                                 .claw_enemy(3)
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .quicken_fist_any()
+                                .manouver()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .feature(Features::Open)
+                        .block_to_rotate_open_condition()
+                        .add_row(row()
+                                 .stance_condition(StanceType::Open, 3)
+                                 .quicken_fist_any()
+                                 .rotate()
+                        )
+                        .add_row(row()
+                                .delay_open_any()
+                                .hit_fist_any()
+                        )
+                        .add_row(row()
+                                .manouver()
+                                .quicken_fist_any()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty)
+                        .feature(Features::Open)
+                        .add_row(row()
+                                 .stance_condition(StanceType::Fist, 2)
+                                 .claw_enemy(2)
+                        )
+                        .add_row(row()
+                                .delay_open_any()
+                                .quicken_fist_any()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::Fist)
+                        .block_to_rotate_open_condition()
+                        .add_row(row()
+                                 .stance_condition(StanceType::Open, 3)
+                                 .heal_ally()
+                                 .manouver()
+                        )
+                        .add_row(row()
+                                .hit_fist_any()
+                                .delay_open_any()
                         )
                         ,
                 },

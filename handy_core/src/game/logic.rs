@@ -1,14 +1,19 @@
 use crate::game::card_ptr::CardPtrT;
 use crate::game::game_state::EngineGameState;
-use crate::game::pile_utils::rotate_key;
+use crate::game::pile_utils::{
+    can_card_be_damaged, exhaust_card, find_heal_target, find_hurt_faces, get_cost_predicate,
+    get_integer_range, get_next_troupe, get_range_cap, get_stance_count, is_allegiance_match,
+    is_boolean_condition_met, is_moveable_target, maybe_skip_action_event_for_spider_feature,
+    rotate_key,
+};
 use crate::game::piper_helpers::{
     action_with_modified_range, any_card_has_modifiers, modifier_range_type_for_action,
 };
 use crate::game::primitives::{
     Action, Allegiance, CardId, ClawSpaceType, Condition, EndPileMoveType, Event, FaceKey,
     Features, Health, HitType, ModifierArrType, MoveType, PayCostArrType, ProvideAssistReaction,
-    Range, Reaction, ReactionTrigger, Row, SelfAction, SkipActionReason, StandardReaction, Target,
-    TargetId, TargetIds, WrappedAction,
+    Range, RangeType, Reaction, ReactionTrigger, Row, SelfAction, SkipActionReason,
+    StandardReaction, Target, TargetId, TargetIds, WrappedAction,
 };
 use arrayvec::ArrayVec;
 
@@ -20,11 +25,6 @@ use strum::IntoEnumIterator;
 use super::card_modifiers::perform_card_self_action;
 use super::pile_modifiers::{
     bottom_top_card, mut_exhaust_card_without_giving_options, perform_mandatory_action,
-};
-use super::pile_utils::{
-    can_card_be_damaged, exhaust_card, find_heal_target, find_hurt_faces, get_cost_predicate,
-    get_next_troupe, is_allegiance_match, is_moveable_target,
-    maybe_skip_action_event_for_spider_feature,
 };
 use super::piper_helpers::{get_modifier_options, ModifierRangeType};
 use super::{GameStateWithPileTrackedEventLog, Pile};
@@ -194,6 +194,21 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     state_agg.append(&mut new_states);
                 }
                 state_agg
+            }
+            Some(Condition::Stance(stance_type, count)) => {
+                if get_stance_count(&pile, active_idx, Allegiance::Hero, stance_type)
+                    >= RangeType::from(count)
+                {
+                    self.resolve_player_row_post_conditions_no_mandatory(
+                        state,
+                        row,
+                        active_idx,
+                        &NO_TARGETS,
+                        true,
+                    )
+                } else {
+                    Vec::new()
+                }
             }
             Some(Condition::ExhaustedAllies(_) | Condition::Rage(_) | Condition::Troupe(_)) => {
                 panic!("Unhandled condition for player turn {:?}", row.condition)
@@ -565,11 +580,8 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             }
             Action::Hit(range) => {
                 let mut results: Vec<T> = Vec::new();
-                let range_cap = match range {
-                    Range::Inf => pile.len(),
-                    Range::Int(amount) => cmp::min(pile.len(), active_idx + amount + 1),
-                };
                 let pile = state.get_pile();
+                let range_cap = get_range_cap(&pile, active_idx, allegiance, range);
 
                 let mut attack_candidates: EnumMap<Allegiance, bool> = EnumMap::default();
 
@@ -709,7 +721,8 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 }
                 results
             }
-            Action::Quicken(max_amount) => {
+            Action::Quicken(range) => {
+                let max_amount = get_integer_range(&pile, active_idx, allegiance, range);
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 2..pile.len() {
                     let target_card = pile[target_idx];
@@ -729,7 +742,8 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 }
                 results
             }
-            Action::Delay(max_amount) => {
+            Action::Delay(range) => {
+                let max_amount = get_integer_range(&pile, active_idx, allegiance, range);
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() - 1 {
                     let target_card = pile[target_idx];
@@ -1087,7 +1101,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let pile = state.get_pile();
         if let Some(condition) = row.condition {
             match condition {
-                Condition::Cost(_, _) => {
+                Condition::Cost(_, _) | Condition::Stance(_, _) => {
                     panic!("Unhandled cost condition for enemy turn: {:?}", condition)
                 }
                 Condition::ExhaustedAllies(required_amount) => {
@@ -1249,10 +1263,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 );
             }
             Action::Hit(range) => {
-                let range_cap = match range {
-                    Range::Inf => pile.len(),
-                    Range::Int(amount) => cmp::min(pile.len(), active_idx + amount + 1),
-                };
+                let range_cap = get_range_cap(&pile, active_idx, allegiance, range);
 
                 for target_idx in active_idx + 1..range_cap {
                     let target_card = pile[target_idx];
@@ -1351,6 +1362,9 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let max_range = match range {
                     Range::Inf => pile.len(),
                     Range::Int(r) => cmp::min(active_idx + r + 1, pile.len()),
+                    Range::Stance(_) => {
+                        panic!("Skipping unimplemented stance range for push action")
+                    }
                 };
 
                 for target_idx in (active_idx + 2..max_range).rev() {
@@ -1409,6 +1423,9 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let max_range = match range {
                     Range::Inf => pile.len() - 1,
                     Range::Int(r) => cmp::min(active_idx + r + 1, pile.len() - 1),
+                    Range::Stance(_) => {
+                        panic!("Skipping unimplemented stance range for push action")
+                    }
                 };
 
                 for target_idx in active_idx + 1..max_range {
@@ -1625,8 +1642,23 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         if let Some(reaction) = target_face.reaction {
             match reaction {
                 Reaction::Roll => Vec::new(),
-                Reaction::Standard(standard_reaction) => {
-                    vec![self.get_standard_reaction_result(state, target_idx, standard_reaction)]
+                Reaction::Standard(condition, standard_reaction) => {
+                    if condition.map_or(true, |c| {
+                        is_boolean_condition_met(
+                            pile,
+                            target_idx,
+                            pile[target_idx].get_active_face().allegiance,
+                            c,
+                        )
+                    }) {
+                        vec![self.get_standard_reaction_result(
+                            state,
+                            target_idx,
+                            standard_reaction,
+                        )]
+                    } else {
+                        Vec::new()
+                    }
                 }
                 Reaction::Assist(assist_reaction) => {
                     let mut results = Vec::new();
@@ -2060,10 +2092,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         target: Target,
     ) -> Vec<T> {
         let pile = state.get_pile();
-        let range_cap = match range {
-            Range::Inf => pile.len(),
-            Range::Int(amount) => cmp::min(active_idx + amount + 1, pile.len()),
-        };
+        let range_cap = get_range_cap(&pile, active_idx, active_allegiance, range);
 
         let iter = (active_idx + 1..range_cap).rev();
         self.attack_all_in_iter(state, active_allegiance, iter, target, HitType::Claw)
@@ -2144,13 +2173,23 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 Reaction::Roll => {
                     // Do nothing
                 }
-                Reaction::Standard(standard_reaction) => {
+                Reaction::Standard(condition, standard_reaction) => {
                     if standard_reaction.trigger == trigger {
-                        return vec![self.get_standard_reaction_result(
-                            state,
-                            target_idx,
-                            standard_reaction,
-                        )];
+                        if condition.map_or(true, |c| {
+                            let pile = state.get_pile();
+                            is_boolean_condition_met(
+                                pile,
+                                target_idx,
+                                pile[target_idx].get_active_face().allegiance,
+                                c,
+                            )
+                        }) {
+                            return vec![self.get_standard_reaction_result(
+                                state,
+                                target_idx,
+                                standard_reaction,
+                            )];
+                        }
                     }
                 }
                 Reaction::Assist(request_assist) => {
@@ -2178,7 +2217,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 Reaction::WhenHit(_) => (), // Don't
             }
         }
-        vec![]
+        Vec::new()
     }
 
     pub fn get_reaction_assist_results(

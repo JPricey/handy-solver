@@ -9,6 +9,7 @@ pub fn main_colour_for_class(class: Class) -> &'static str {
         Class::Cursed => "#EDE387",
         Class::Beastmaster => "#4E3F30",
         Class::Assassin => "#CA4E96",
+        Class::Monk => "#EF9C66",
         Class::Ogre => "#7B4627",
         Class::Vampire => "#4D897C",
         Class::Spider => "#746991",

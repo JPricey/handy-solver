@@ -5,8 +5,9 @@ All helpers are on immutable piles or cards.
 
 use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::primitives::{
-    Action, Allegiance, ConditionCostType, Event, FaceKey, Features, Health, Pile, Reaction,
-    ReactionTrigger, SkipActionReason, Target, TroupeType, WinType, WrappedAction,
+    Action, Allegiance, Condition, ConditionCostType, Event, FaceKey, Features, Health, Pile,
+    Range, RangeType, Reaction, ReactionTrigger, SkipActionReason, StanceType, Target, TroupeType,
+    WinType, WrappedAction,
 };
 use strum::IntoEnumIterator;
 
@@ -53,7 +54,7 @@ pub fn does_card_have_energy(card_ptr: &CardPtr) -> bool {
 
 pub fn does_card_have_dodge(card_ptr: &CardPtr) -> bool {
     if let Some(reaction) = card_ptr.get_active_face().reaction {
-        if let Reaction::Standard(standard_reaction) = reaction {
+        if let Reaction::Standard(_, standard_reaction) = reaction {
             if standard_reaction.trigger == ReactionTrigger::Dodge {
                 return true;
             }
@@ -299,7 +300,11 @@ pub fn maybe_skip_action_event_for_spider_feature(
     }
 }
 
-pub fn get_next_troupe(pile: &Pile, active_idx: usize, active_allegiance: Allegiance) -> Option<TroupeType> {
+pub fn get_next_troupe(
+    pile: &Pile,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+) -> Option<TroupeType> {
     for i in active_idx + 1..pile.len() {
         let other_card = pile[i];
         if other_card.get_active_face().allegiance == active_allegiance {
@@ -308,6 +313,66 @@ pub fn get_next_troupe(pile: &Pile, active_idx: usize, active_allegiance: Allegi
     }
 
     None
+}
+
+pub fn get_stance_count(
+    pile: &Pile,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    stance_type: StanceType,
+) -> RangeType {
+    let mut total = 0;
+    for i in active_idx + 1..pile.len() {
+        let active_face = pile[i].get_active_face();
+        if active_face.allegiance == active_allegiance {
+            let is_match = match stance_type {
+                StanceType::Open => active_face.features.intersects(Features::Open),
+                StanceType::Fist => active_face.features.intersects(Features::Fist),
+            };
+            if is_match {
+                total += 1;
+            }
+        }
+    }
+    total
+}
+
+pub fn get_integer_range(
+    pile: &Pile,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    range: Range,
+) -> RangeType {
+    match range {
+        Range::Int(x) => x,
+        Range::Inf => pile.len(),
+        Range::Stance(stance) => get_stance_count(pile, active_idx, active_allegiance, stance),
+    }
+}
+
+pub fn get_range_cap(
+    pile: &Pile,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    range: Range,
+) -> RangeType {
+    let int_range = get_integer_range(pile, active_idx, active_allegiance, range);
+    std::cmp::min(pile.len(), active_idx + int_range + 1)
+}
+
+pub fn is_boolean_condition_met(
+    pile: &Pile,
+    active_idx: usize,
+    active_allegiance: Allegiance,
+    condition: Condition,
+) -> bool {
+    match condition {
+        Condition::Stance(stance_type, count) => {
+            get_stance_count(pile, active_idx, active_allegiance, stance_type)
+                >= RangeType::from(count)
+        }
+        _ => panic!("unimplemeneted boolean condition {:?}", condition),
+    }
 }
 
 #[cfg(test)]
