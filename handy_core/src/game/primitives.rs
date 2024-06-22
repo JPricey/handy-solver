@@ -127,6 +127,7 @@ pub enum ConditionCostType {
 pub enum Condition {
     Cost(ConditionCostType, ConditionCountType),
     Rage(ConditionCountType),
+    Troupe(TroupeType),
     ExhaustedAllies(usize),
 }
 
@@ -246,7 +247,16 @@ pub enum Class {
     Flora,
     Wall,
     Piper,
+    Troupe,
     Wisp,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum TroupeType {
+    Spade,
+    Club,
+    Diamond,
+    Heart,
 }
 
 #[derive(Debug)]
@@ -255,6 +265,7 @@ pub struct CardDef {
     pub class: Class,
     pub faces: EnumMap<FaceKey, FaceDef>,
     pub is_back_start: bool,
+    pub troupe_type: Option<TroupeType>,
 }
 
 impl PartialEq for CardDef {

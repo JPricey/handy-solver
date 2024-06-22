@@ -18,13 +18,14 @@ pub const HEROS: [Class; 7] = [
     Class::Piper,
 ];
 
-pub const BADDIES: [Class; 6] = [
+pub const BADDIES: [Class; 7] = [
     Class::Ogre,
     Class::Vampire,
     Class::Spider,
     Class::Demon,
     Class::Flora,
     Class::Wall,
+    Class::Troupe,
     // Class::Wisp,
 ];
 

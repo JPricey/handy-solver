@@ -23,7 +23,8 @@ use super::pile_modifiers::{
 };
 use super::pile_utils::{
     can_card_be_damaged, exhaust_card, find_heal_target, find_hurt_faces, get_cost_predicate,
-    is_allegiance_match, is_moveable_target, maybe_skip_action_event_for_spider_feature,
+    get_next_troupe, is_allegiance_match, is_moveable_target,
+    maybe_skip_action_event_for_spider_feature,
 };
 use super::piper_helpers::{get_modifier_options, ModifierRangeType};
 use super::{GameStateWithPileTrackedEventLog, Pile};
@@ -194,7 +195,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 }
                 state_agg
             }
-            Some(Condition::ExhaustedAllies(_) | Condition::Rage(_)) => {
+            Some(Condition::ExhaustedAllies(_) | Condition::Rage(_) | Condition::Troupe(_)) => {
                 panic!("Unhandled condition for player turn {:?}", row.condition)
             }
             None => self.resolve_player_row_post_conditions_no_mandatory(
@@ -1100,7 +1101,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                         }
                     }
                     if revive_target_count < required_amount {
-                        return vec![];
+                        return Vec::new();
                     }
                 }
                 Condition::Rage(required_amount) => {
@@ -1112,7 +1113,13 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                         }
                     }
                     if total_rage < required_amount {
-                        return vec![];
+                        return Vec::new();
+                    }
+                }
+                Condition::Troupe(troupe_type) => {
+                    let next_troupe = get_next_troupe(&pile, active_idx, allegiance);
+                    if next_troupe != Some(troupe_type) {
+                        return Vec::new();
                     }
                 }
             }

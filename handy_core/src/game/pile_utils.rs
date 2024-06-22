@@ -6,7 +6,7 @@ All helpers are on immutable piles or cards.
 use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::primitives::{
     Action, Allegiance, ConditionCostType, Event, FaceKey, Features, Health, Pile, Reaction,
-    ReactionTrigger, SkipActionReason, Target, WinType, WrappedAction,
+    ReactionTrigger, SkipActionReason, Target, TroupeType, WinType, WrappedAction,
 };
 use strum::IntoEnumIterator;
 
@@ -299,6 +299,16 @@ pub fn maybe_skip_action_event_for_spider_feature(
     }
 }
 
+pub fn get_next_troupe(pile: &Pile, active_idx: usize, active_allegiance: Allegiance) -> Option<TroupeType> {
+    for i in active_idx + 1..pile.len() {
+        let other_card = pile[i];
+        if other_card.get_active_face().allegiance == active_allegiance {
+            return other_card.get_card_def().troupe_type;
+        }
+    }
+
+    None
+}
 
 #[cfg(test)]
 mod tests {
