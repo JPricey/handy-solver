@@ -219,7 +219,7 @@ pub fn can_card_be_damaged(pile: &Pile, target_idx: usize) -> bool {
         return false;
     }
 
-    if !target_face.features.intersects(Features::Wisp) {
+    if !target_face.features.intersects(Features::United) {
         return true;
     }
 

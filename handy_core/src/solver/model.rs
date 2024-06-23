@@ -19,7 +19,7 @@ pub const HEROS: [Class; 8] = [
     Class::Monk,
 ];
 
-pub const BADDIES: [Class; 7] = [
+pub const BADDIES: [Class; 8] = [
     Class::Ogre,
     Class::Vampire,
     Class::Spider,
@@ -27,7 +27,7 @@ pub const BADDIES: [Class; 7] = [
     Class::Flora,
     Class::Wall,
     Class::Troupe,
-    // Class::Wisp,
+    Class::Ooze,
 ];
 
 pub type Matchup = (Class, Class);

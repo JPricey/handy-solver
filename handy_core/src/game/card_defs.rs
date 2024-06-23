@@ -612,9 +612,9 @@ impl FaceDef {
         ))
     }
 
-    fn block_to_rotate_open_condition(self) -> Self {
+    fn block_to_rotate_open_condition(self, count: ConditionCountType) -> Self {
         self.reaction(Reaction::Standard(
-            Some(Condition::Stance(StanceType::Open, 3)),
+            Some(Condition::Stance(StanceType::Open, count)),
             StandardReaction {
                 trigger: ReactionTrigger::Block,
                 outcome: Some(SelfAction::Rotate),
@@ -698,8 +698,12 @@ impl FaceDef {
         self
     }
 
-    fn roll(self) -> Self {
-        self.reaction(Reaction::Roll)
+    fn roll_to_rotate(self) -> Self {
+        self.reaction(Reaction::Roll(Some(SelfAction::Rotate)))
+    }
+
+    fn roll_perm(self) -> Self {
+        self.reaction(Reaction::Roll(None))
     }
 
     fn add_row(mut self, row: Row) -> Self {
@@ -3278,7 +3282,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Empty)
-                        .roll()
+                        .roll_to_rotate()
                         .add_row(row()
                                 .dodge_cost(2)
                                 .poison_any()
@@ -3328,7 +3332,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::B => side(Health::Half)
-                        .roll()
+                        .roll_to_rotate()
                         .add_row(row()
                                 .dodge_cost(2)
                                 .poison_any()
@@ -3424,7 +3428,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::D => side(Health::Empty)
-                        .roll()
+                        .roll_to_rotate()
                         .add_row(row()
                                 .dodge_cost(4)
                                 .revive_any()
@@ -3446,7 +3450,7 @@ impl CardDefs {
                 49,
                 enum_map! {
                     FaceKey::A => side(Health::Half)
-                        .roll()
+                        .roll_to_rotate()
                         .add_row(row()
                                 .dodge_cost(2)
                                 .backstab_any()
@@ -3548,7 +3552,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Empty)
-                        .roll()
+                        .roll_to_rotate()
                         .add_row(row()
                                 .dodge_cost(3)
                                 .flip()
@@ -4253,7 +4257,7 @@ impl CardDefs {
                 64,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
-                        // TODO: blocking w condition
+                        .block_to_rotate_open_condition(2)
                         .feature(Features::Open)
                         .add_row(row()
                                  .stance_condition(StanceType::Open, 3)
@@ -4454,7 +4458,7 @@ impl CardDefs {
                         ,
                     FaceKey::B => side(Health::Half)
                         .feature(Features::Open)
-                        .block_to_rotate_open_condition()
+                        .block_to_rotate_open_condition(3)
                         .add_row(row()
                                  .stance_condition(StanceType::Fist, 3)
                                  .delay_open_any()
@@ -4471,7 +4475,7 @@ impl CardDefs {
                         ,
                     FaceKey::C => side(Health::Empty)
                         .feature(Features::Open)
-                        .block_to_rotate_open_condition()
+                        .block_to_rotate_open_condition(3)
                         .add_row(row()
                                  .hit_fist_any()
                         )
@@ -4511,7 +4515,7 @@ impl CardDefs {
                         ,
                     FaceKey::B => side(Health::Half)
                         .feature(Features::Open)
-                        .block_to_rotate_open_condition()
+                        .block_to_rotate_open_condition(3)
                         .add_row(row()
                                  .stance_condition(StanceType::Open, 3)
                                  .quicken_fist_any()
@@ -4539,7 +4543,7 @@ impl CardDefs {
                         ,
                     FaceKey::D => side(Health::Empty)
                         .feature(Features::Fist)
-                        .block_to_rotate_open_condition()
+                        .block_to_rotate_open_condition(3)
                         .add_row(row()
                                  .stance_condition(StanceType::Open, 3)
                                  .heal_ally()
@@ -4548,6 +4552,211 @@ impl CardDefs {
                         .add_row(row()
                                 .hit_fist_any()
                                 .delay_open_any()
+                        )
+                        ,
+                },
+            ));
+        }
+
+        {
+            let ooze = CharBuilder::new(Class::Ooze, Allegiance::Baddie);
+            card_defs.register_card(ooze.card(
+                69,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::United)
+                        .roll_to_rotate()
+                        .add_row(row()
+                                 .hit_enemy(1)
+                                 .hit_enemy(1)
+                        )
+                        .add_row(row()
+                                .pull_ally(4)
+                        )
+                        .add_row(row()
+                                .push_enemy_inf()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::United)
+                        .block_to_rotate()
+                        .add_row(row()
+                                 .pull_ally_inf()
+                                 .rotate()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Half)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                 .hit_enemy_inf()
+                                 .hit_enemy_inf()
+                                 .hit_enemy_inf()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                 .pull_ally(4)
+                        )
+                        .add_row(row()
+                                .claw_enemy(3)
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(ooze.card(
+                70,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::United)
+                        .roll_to_rotate()
+                        .add_row(row()
+                                 .claw_enemy(3)
+                        )
+                        .add_row(row()
+                                .pull_ally(4)
+                        )
+                        .add_row(row()
+                                .push_enemy_inf()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::United)
+                        .block_to_rotate()
+                        .add_row(row()
+                                 .pull_ally_inf()
+                                 .rotate()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Half)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                 .pull_ally_inf()
+                                 .pull_ally_inf()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                 .pull_ally(4)
+                        )
+                        .add_row(row()
+                                .hit_enemy(3)
+                                .hit_enemy(3)
+                        )
+                        .add_row(row()
+                                .push_enemy_inf()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(ooze.card(
+                71,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::United)
+                        .block_to_rotate()
+                        .add_row(row()
+                                 .hit_enemy(1)
+                                 .push_enemy(1)
+                        )
+                        .add_row(row()
+                                .pull_ally_inf()
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::United)
+                        .roll_to_rotate()
+                        .add_row(row()
+                                 .hit_enemy(1)
+                                 .hit_enemy(1)
+                        )
+                        .add_row(row()
+                                 .pull_ally(4)
+                        )
+                        .add_row(row()
+                                 .push_enemy_inf()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Half)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                 .hit_enemy(2)
+                                 .hit_enemy(2)
+                        )
+                        .add_row(row()
+                                 .pull_ally(4)
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                .hit_enemy(1)
+                                .hit_enemy(1)
+                        )
+                        .add_row(row()
+                                .push_enemy_inf()
+                        )
+                        ,
+                },
+            ));
+
+            card_defs.register_card(ooze.card(
+                72,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .feature(Features::United)
+                        .block_to_rotate()
+                        .add_row(row()
+                                 .hit_enemy(1)
+                                 .hit_enemy(1)
+                                 .rotate()
+                        )
+                        .add_row(row()
+                                .pull_ally_inf()
+                                .rotate()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::United)
+                        .roll_to_rotate()
+                        .add_row(row()
+                                 .claw_enemy(3)
+                        )
+                        .add_row(row()
+                                 .pull_ally(4)
+                        )
+                        .add_row(row()
+                                 .push_enemy_inf()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Half)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                 .push_ally_inf()
+                                 .push_ally_inf()
+                                 .push_ally_inf()
+                        )
+                        ,
+                    FaceKey::D => side(Health::Empty)
+                        .feature(Features::United)
+                        .roll_perm()
+                        .add_row(row()
+                                .pull_ally(4)
+                        )
+                        .add_row(row()
+                                .claw_enemy(3)
+                                 .push_ally_inf()
                         )
                         ,
                 },

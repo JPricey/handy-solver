@@ -6,7 +6,7 @@ use rand::thread_rng;
 
 // const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 5_000_000;
 // const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 2_000_000;
-const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 4_000_000;
+const ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE: usize = 6_000_000;
 
 fn generate_example(hero: Class, monster: Class) {
     let mut rng = thread_rng();

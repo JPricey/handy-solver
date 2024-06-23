@@ -18,7 +18,7 @@ pub fn class_to_character_name(class: Class) -> &'static str {
         Class::Wall => "Wall",
         Class::Piper => "Piper",
         Class::Troupe => "Troupe",
-        Class::Wisp => "Wisp",
+        Class::Ooze => "Ooze",
     }
 }
 
@@ -37,9 +37,9 @@ pub fn class_to_full_class_name(class: Class) -> &'static str {
         Class::Spider => "Spider Swarm",
         Class::Demon => "Blood Demon",
         Class::Flora => "Sentient Flora",
-        Class::Wall => "Wall (BETA)",
-        Class::Piper => "Pied Piper (BETA)",
+        Class::Wall => "Wall",
+        Class::Piper => "Pied Piper",
         Class::Troupe => "Circus Troupe",
-        Class::Wisp => "Wisp (ALPHA)",
+        Class::Ooze => "Ooze",
     }
 }

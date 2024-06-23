@@ -1,4 +1,4 @@
-use crate::game::card_ptr::CardPtrT;
+use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::game_state::EngineGameState;
 use crate::game::pile_utils::{
     can_card_be_damaged, exhaust_card, find_heal_target, find_hurt_faces, get_cost_predicate,
@@ -584,6 +584,8 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let range_cap = get_range_cap(&pile, active_idx, allegiance, range);
 
                 let mut attack_candidates: EnumMap<Allegiance, bool> = EnumMap::default();
+                let mut block_outcomes_by_allegiance: EnumMap<Allegiance, Vec<T>> =
+                    EnumMap::default();
 
                 for other in Allegiance::iter() {
                     let is_match = is_allegiance_match(allegiance, other, wrapped_action.target);
@@ -601,13 +603,13 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                         continue;
                     }
 
-                    let mut block_results = self.try_prevent_action_with_reaction(
+                    let block_results = self.try_prevent_action_with_reaction(
                         &state,
                         blocker_idx,
                         ReactionTrigger::Block,
                     );
                     if block_results.len() > 0 {
-                        results.append(&mut block_results);
+                        block_outcomes_by_allegiance[blocker_face.allegiance] = block_results;
 
                         if blocker_face.allegiance != allegiance {
                             attack_candidates[blocker_face.allegiance] = false;
@@ -615,11 +617,20 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     }
                 }
 
+                // Try to attack cards that have blockers, so that we can see if the block is
+                // needed
+                for other in Allegiance::iter() {
+                    if block_outcomes_by_allegiance[other].len() > 0 {
+                        attack_candidates[other] = true;
+                    }
+                }
+
                 // Find all hits
                 attack_candidates[Allegiance::Hero] = is_player_candidate;
                 for target_idx in active_idx + 1..range_cap {
                     let target_card = pile[target_idx];
-                    if !attack_candidates[target_card.get_active_face().allegiance] {
+                    let target_allegiance = target_card.get_active_face().allegiance;
+                    if !attack_candidates[target_allegiance] {
                         continue;
                     }
 
@@ -629,11 +640,20 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                         HitType::Hit,
                     ));
 
-                    results.append(&mut self.attack_card_get_all_outcomes(
+                    let mut attack_results = self.attack_card_get_all_outcomes(
                         &state_with_target,
                         target_idx,
                         HitType::Hit,
-                    ));
+                    );
+
+                    if attack_results.len() > 0 {
+                        if block_outcomes_by_allegiance[target_allegiance].len() > 0 {
+                            results.append(&mut block_outcomes_by_allegiance[target_allegiance]);
+                            attack_candidates[target_allegiance] = false;
+                        } else {
+                            results.append(&mut attack_results);
+                        }
+                    }
                 }
                 results
             }
@@ -1641,7 +1661,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
         if let Some(reaction) = target_face.reaction {
             match reaction {
-                Reaction::Roll => Vec::new(),
+                Reaction::Roll(_) => Vec::new(),
                 Reaction::Standard(condition, standard_reaction) => {
                     if condition.map_or(true, |c| {
                         is_boolean_condition_met(
@@ -1789,6 +1809,65 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         final_results
     }
 
+    fn _get_move_roll_outcomes(
+        &self,
+        state: &T,
+        target_idx: usize,
+        swap_with_idx: usize,
+        moved_card: &CardPtr,
+        moved_over_card: &CardPtr,
+        allow_skip_hits: bool,
+    ) -> (Vec<T>, bool) {
+        let Some(Reaction::Roll(maybe_roll_outcome)) = moved_card.get_active_face().reaction else {
+            return (Vec::new(), true);
+        };
+
+        let moved_card_allegiance = moved_card.get_active_face().allegiance;
+        let is_monster_moving = moved_card_allegiance != Allegiance::Hero;
+        let is_moving_over_target = moved_card_allegiance
+            != moved_over_card.get_active_face().allegiance
+            && moved_over_card.get_active_face().health != Health::Empty;
+
+        // If monste is moving over something invalid, skip
+        if is_monster_moving && !is_moving_over_target {
+            return (Vec::new(), true);
+        }
+
+        let mut new_state_with_roll_move = state.clone().append_event(Event::AttackCard(
+            target_idx,
+            state.get_pile()[target_idx],
+            HitType::Roll,
+        ));
+
+        if let Some(roll_outcome) = maybe_roll_outcome {
+            perform_card_self_action(
+                roll_outcome,
+                &mut new_state_with_roll_move.get_pile_mut()[swap_with_idx],
+            );
+        }
+
+        if is_monster_moving {
+            (
+                self.attack_card_get_all_outcomes(
+                    &new_state_with_roll_move,
+                    target_idx,
+                    HitType::Roll,
+                ),
+                false,
+            )
+        } else {
+            let mut attack_outcomes = self.attack_card_get_all_outcomes_allow_whif_hits(
+                &new_state_with_roll_move,
+                target_idx,
+                HitType::Roll,
+            );
+            if allow_skip_hits {
+                attack_outcomes.push(state.clone().append_event(Event::SkipHit(HitType::Roll)));
+            }
+            (attack_outcomes, true)
+        }
+    }
+
     fn _move_card_inner(
         &self,
         state: &T,
@@ -1812,6 +1891,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let moved_over_card = pile[swap_with_idx];
         let moved_over_face = moved_over_card.get_active_face();
 
+        // If we can't move over this card, end without returning any new results.
         if moved_over_face.allegiance != source_allegiance
             && moved_over_face.features.intersects(Features::Wall)
         {
@@ -1821,90 +1901,65 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let mut new_state = state.clone();
         new_state.get_pile_mut().swap(target_idx, swap_with_idx);
 
-        if moved_card.get_active_face().allegiance != Allegiance::Hero
+        let new_state_with_committed_move = new_state
+            .clone()
+            .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
+
+        let (outcomes_after_roll, may_continue_moving) = self._get_move_roll_outcomes(
+            &new_state_with_committed_move,
+            target_idx,
+            swap_with_idx,
+            &moved_card,
+            &moved_over_card,
+            true,
+        );
+        let may_continue_moving = may_continue_moving && distance_remaining > 1;
+
+        let outcomes_pre_trap = if outcomes_after_roll.len() > 0 {
+            outcomes_after_roll
+        } else {
+            vec![new_state_with_committed_move]
+        };
+
+        let should_resolve_trap = moved_card.get_active_face().allegiance != Allegiance::Hero
             && moved_over_card
                 .get_active_face()
                 .features
-                .intersects(Features::Trap)
-        {
-            let new_state_with_move = new_state
-                .clone()
-                .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
-            let hit_options = self.attack_card_get_all_outcomes(
-                &new_state_with_move,
-                swap_with_idx,
-                HitType::Trap,
-            );
+                .intersects(Features::Trap);
 
-            if hit_options.len() > 0 {
-                for hit_option in hit_options {
-                    if distance_remaining > 1
-                        && !hit_option.get_pile()[swap_with_idx]
-                            .get_active_face()
-                            .features
-                            .intersects(Features::Weight | Features::Invulnerable)
-                    {
-                        self._move_card_inner(
-                            &hit_option,
-                            swap_with_idx,
-                            distance_remaining - 1,
-                            distance_so_far + 1,
-                            0,
-                            move_type,
-                            source_allegiance,
-                            results_agg,
-                        );
+        for pre_trap in outcomes_pre_trap {
+            if should_resolve_trap {
+                let hit_options =
+                    self.attack_card_get_all_outcomes(&pre_trap, swap_with_idx, HitType::Trap);
+                if hit_options.len() > 0 {
+                    for hit_option in hit_options {
+                        if may_continue_moving
+                            && !hit_option.get_pile()[swap_with_idx]
+                                .get_active_face()
+                                .features
+                                .intersects(Features::Weight | Features::Invulnerable)
+                        {
+                            self._move_card_inner(
+                                &hit_option,
+                                swap_with_idx,
+                                distance_remaining - 1,
+                                distance_so_far + 1,
+                                0,
+                                move_type,
+                                source_allegiance,
+                                results_agg,
+                            );
+                        }
+
+                        results_agg.push((distance_so_far + 1, hit_option));
                     }
-
-                    results_agg.push((distance_so_far + 1, hit_option));
+                    continue;
                 }
-                return;
             }
+            results_agg.push((distance_so_far + 1, pre_trap));
         }
 
-        let mut could_skip_roll = false;
-        if moved_card.get_active_face().reaction == Some(Reaction::Roll) {
-            could_skip_roll = true;
-            let mut new_state_with_roll_move = new_state
-                .clone()
-                .append_event(Event::MoveResult(move_type, distance_since_last_event + 1))
-                .append_event(Event::AttackCard(
-                    target_idx,
-                    new_state.get_pile()[target_idx],
-                    HitType::Roll,
-                ));
-
-            perform_mandatory_action(
-                &mut new_state_with_roll_move,
-                SelfAction::Rotate,
-                swap_with_idx,
-            );
-
-            let hit_options = self.attack_card_get_all_outcomes_allow_whif_hits(
-                &new_state_with_roll_move,
-                target_idx,
-                HitType::Roll,
-            );
-
-            for hit_option in hit_options {
-                let final_state = hit_option
-                    .clone()
-                    .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
-                results_agg.push((distance_so_far + 1, final_state));
-            }
-        }
-
-        {
-            let mut final_state = new_state
-                .clone()
-                .append_event(Event::MoveResult(move_type, distance_since_last_event + 1));
-            if could_skip_roll {
-                final_state.mut_append_event(Event::SkipHit(HitType::Roll));
-            }
-            results_agg.push((distance_so_far + 1, final_state));
-        }
-
-        if distance_remaining > 1 {
+        if may_continue_moving && !should_resolve_trap {
             self._move_card_inner(
                 &new_state,
                 swap_with_idx,
@@ -1958,102 +2013,136 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
     pub fn move_card_to_end(
         &self,
-        state: &mut T,
+        state: &T,
         active_idx: usize,
-        mut target_idx: usize,
-        mut results_agg: &mut Vec<T>,
+        target_idx: usize,
+        results_agg: &mut Vec<T>,
         move_type: EndPileMoveType,
         source_allegiance: Allegiance,
+    ) {
+        self._move_card_to_end(
+            &mut state.clone(),
+            active_idx,
+            target_idx,
+            results_agg,
+            move_type,
+            source_allegiance,
+            false,
+        )
+    }
+
+    pub fn _move_card_to_end(
+        &self,
+        mut state: &mut T,
+        active_idx: usize,
+        target_idx: usize,
+        results_agg: &mut Vec<T>,
+        move_type: EndPileMoveType,
+        source_allegiance: Allegiance,
+        did_move: bool,
     ) {
         let direction = match move_type {
             EndPileMoveType::Push => 1,
             EndPileMoveType::Pull => -1,
         };
 
-        let mut did_move = false;
-        loop {
-            let swap_with_idx = (target_idx as i32 + direction) as usize;
+        let swap_with_idx = (target_idx as i32 + direction) as usize;
 
-            let is_in_bounds =
-                !(swap_with_idx <= active_idx || swap_with_idx >= state.get_pile().len());
+        let is_in_bounds =
+            !(swap_with_idx <= active_idx || swap_with_idx >= state.get_pile().len());
 
-            let mut should_continue = is_in_bounds;
-            if should_continue {
-                let swap_with_face = state.get_pile()[swap_with_idx].get_active_face();
-                let swap_is_enemy = swap_with_face.allegiance != source_allegiance;
-                let swap_has_wall = swap_with_face.features.intersects(Features::Wall);
-                if swap_is_enemy && swap_has_wall {
-                    should_continue = false;
-                }
+        let mut should_continue = is_in_bounds;
+        if should_continue {
+            let swap_with_face = state.get_pile()[swap_with_idx].get_active_face();
+            let swap_is_enemy = swap_with_face.allegiance != source_allegiance;
+            let swap_has_wall = swap_with_face.features.intersects(Features::Wall);
+            if swap_is_enemy && swap_has_wall {
+                should_continue = false;
             }
+        }
 
-            if !should_continue {
-                if did_move {
-                    state.mut_append_event(Event::EndPileMoveResult(move_type))
-                }
-                results_agg.push(state.clone());
-                return;
+        if !should_continue {
+            if did_move {
+                state.mut_append_event(Event::EndPileMoveResult(move_type))
             }
-            did_move = true;
+            results_agg.push(state.clone());
+            return;
+        }
 
-            let moved_card = state.get_pile()[target_idx];
-            let moved_over_card = state.get_pile()[swap_with_idx];
-            state.get_pile_mut().swap(target_idx, swap_with_idx);
+        let moved_card = state.get_pile()[target_idx];
+        let moved_over_card = state.get_pile()[swap_with_idx];
+        state.get_pile_mut().swap(target_idx, swap_with_idx);
 
-            if moved_card.get_active_face().reaction == Some(Reaction::Roll) {
-                let mut new_state_with_move = state.clone();
-                new_state_with_move.mut_append_event(Event::AttackCard(
-                    swap_with_idx,
-                    moved_over_card,
-                    HitType::Roll,
-                ));
-                new_state_with_move.mut_append_event(Event::EndPileMoveResult(move_type));
-                perform_mandatory_action(
-                    &mut new_state_with_move,
-                    SelfAction::Rotate,
-                    swap_with_idx,
-                );
+        let (outcomes_after_roll, may_continue_moving) = self._get_move_roll_outcomes(
+            &state,
+            target_idx,
+            swap_with_idx,
+            &moved_card,
+            &moved_over_card,
+            false,
+        );
 
-                let mut hit_options = self.attack_card_get_all_outcomes_allow_whif_hits(
-                    &new_state_with_move,
-                    target_idx,
-                    HitType::Roll,
-                );
+        let should_resolve_trap = moved_card.get_active_face().allegiance != Allegiance::Hero
+            && moved_over_card
+                .get_active_face()
+                .features
+                .intersects(Features::Trap);
 
-                results_agg.append(&mut hit_options);
-            }
-
-            target_idx = swap_with_idx;
-
-            if moved_card.get_active_face().allegiance != Allegiance::Hero
-                && moved_over_card
-                    .get_active_face()
-                    .features
-                    .intersects(Features::Trap)
-            {
-                let new_state_with_move = state
-                    .clone()
-                    .append_event(Event::EndPileMoveResult(move_type));
-                let hit_options = self.attack_card_get_all_outcomes(
-                    &new_state_with_move,
+        // For each roll, possibly resolve the trap, and definitely end here
+        for mut outcome_after_roll in outcomes_after_roll {
+            if should_resolve_trap {
+                let mut hit_options = self.attack_card_get_all_outcomes(
+                    &outcome_after_roll,
                     swap_with_idx,
                     HitType::Trap,
                 );
-
                 if hit_options.len() > 0 {
-                    for mut hit_option in hit_options {
-                        self.move_card_to_end(
-                            &mut hit_option,
-                            active_idx,
-                            target_idx,
-                            &mut results_agg,
-                            move_type,
-                            source_allegiance,
-                        )
+                    for hit_option in &mut hit_options {
+                        hit_option.mut_append_event(Event::EndPileMoveResult(move_type))
                     }
-                    return;
+                    results_agg.append(&mut hit_options);
+                    // Continue to skip adding base option
+                    continue;
                 }
             }
+
+            outcome_after_roll.mut_append_event(Event::EndPileMoveResult(move_type));
+            results_agg.push(outcome_after_roll);
+        }
+
+        // If we were forced to roll, don't look at the non-roll option
+        if !may_continue_moving {
+            return;
+        }
+
+        let mut trap_outcomes = if should_resolve_trap {
+            self.attack_card_get_all_outcomes(&state, swap_with_idx, HitType::Trap)
+        } else {
+            Vec::new()
+        };
+
+        if trap_outcomes.len() > 0 {
+            for mut trap_outcome in &mut trap_outcomes {
+                self._move_card_to_end(
+                    &mut trap_outcome,
+                    active_idx,
+                    swap_with_idx,
+                    results_agg,
+                    move_type,
+                    source_allegiance,
+                    true,
+                );
+            }
+        } else {
+            self._move_card_to_end(
+                &mut state,
+                active_idx,
+                swap_with_idx,
+                results_agg,
+                move_type,
+                source_allegiance,
+                true,
+            );
         }
     }
 
@@ -2170,7 +2259,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let target_face = target_card.get_active_face();
         if let Some(reaction) = target_face.reaction {
             match reaction {
-                Reaction::Roll => {
+                Reaction::Roll(_) => {
                     // Do nothing
                 }
                 Reaction::Standard(condition, standard_reaction) => {
@@ -2711,6 +2800,32 @@ mod tests {
                 &new_states,
                 vec![
                     "32D 0C 0B 30A 7A", // 7 doesn't get pulled
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_bug12() {
+        {
+            // 69A uses row 3 instead of 2?
+            let state = T::new(string_to_pile("69A 71A 10A 70A 11A 13A 12A 72B 14B"));
+            let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_row(
+                &state,
+                Allegiance::Baddie,
+                &state.pile[0].get_active_face().rows[1],
+                0,
+                false,
+                false,
+                true,
+            );
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    // 70 is targetted and rolls over 10D.
+                    // 10s trap doesn't land since 70 is now invulnerable
+                    "69A 71A 70B 10D 11A 13A 12A 72B 14B",
                 ],
             );
         }
@@ -3434,7 +3549,7 @@ mod tests {
     }
 
     #[test]
-    fn test_delay_trap() {
+    fn test_delay_trap_simple() {
         let starting_pile = string_to_pile("11A 0A 10C 14C");
 
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
@@ -4211,6 +4326,90 @@ mod tests {
     }
 
     #[test]
+    fn test_ooze_roll_delay_simple() {
+        let pile = string_to_pile("3A 69A 1A 2A");
+
+        let new_states = GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(
+            &T::new(pile),
+            1,
+            2,
+            MoveType::Delay,
+            Allegiance::Hero,
+        );
+
+        assert_actual_vs_expected_piles(&new_states, vec!["3A 1D 69B 2A"]);
+    }
+
+    #[test]
+    fn test_ooze_roll_delay_no_health() {
+        let pile = string_to_pile("3A 69A 1C 1A 1A");
+
+        let new_states = GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(
+            &T::new(pile),
+            1,
+            3,
+            MoveType::Delay,
+            Allegiance::Hero,
+        );
+
+        assert_actual_vs_expected_piles(
+            &new_states,
+            vec![
+                "3A 1C 69A 1A 1A", // Move by 1, no roll
+                "3A 1C 1D 69B 1A", // Move by 2 and roll
+            ],
+        );
+    }
+
+    #[test]
+    fn test_ooze_roll_delay_over_trap() {
+        let pile = string_to_pile("3A 69A 10A 1A");
+
+        let new_states = GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(
+            &T::new(pile),
+            1,
+            3,
+            MoveType::Delay,
+            Allegiance::Hero,
+        );
+
+        // Rolls over, and then blocks the hit back
+        assert_actual_vs_expected_piles(&new_states, vec!["3A 10D 69A 1A"]);
+    }
+
+    #[test]
+    fn test_ooze_roll_delay_over_trap_2() {
+        let pile = string_to_pile("3A 69C 10A 1A");
+
+        let new_states = GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(
+            &T::new(pile),
+            1,
+            3,
+            MoveType::Delay,
+            Allegiance::Hero,
+        );
+
+        // Rolls over, then gets hit by trap
+        assert_actual_vs_expected_piles(&new_states, vec!["3A 10D 69D 1A"]);
+    }
+
+    #[test]
+    fn test_ooze_roll_delay_over_trap_3() {
+        let pile = string_to_pile("3A 69A 10A 0A");
+
+        let new_states = GameStateEvaluator::new(get_identity_fn()).move_card_by_up_to_amount(
+            &T::new(pile),
+            1,
+            3,
+            MoveType::Delay,
+            Allegiance::Hero,
+        );
+
+        // Rolls over, then is invulnerable for the trap hit
+        assert_actual_vs_expected_piles(&new_states, vec!["3A 10D 69B 0A"]);
+    }
+
+    #[test]
     fn test_roll_push() {
         let pile = string_to_pile("1A 47B 48A 46D 0A");
         let mut new_states = Vec::new();
@@ -4227,15 +4426,32 @@ mod tests {
             &new_states,
             vec![
                 // Cant choose to move by 1 or 2 for a full push
-                "1A 48A 46D 0A 47B", // Move by 3
                 "1A 48B 47A 46D 0A", // Roll over 1, dodges
                 "1A 48C 47A 46D 0A", // Roll over 1, hit => C
                 "1A 48D 47A 46D 0A", // Roll over 1, hit => D
                 "1A 48A 46C 47A 0A", // Roll over 2, dodges
                 "1A 48A 46D 47A 0A", // Roll over 2, doesn't dodge
                 "1A 48A 46D 0B 47A", // Roll over 3, hit
+                "1A 48A 46D 0A 47B", // Move by 3
             ],
         );
+    }
+
+    #[test]
+    fn test_ooze_roll_push_trap() {
+        let pile = string_to_pile("3A 69A 10A 1A");
+        let mut new_states = Vec::new();
+        GameStateEvaluator::new(get_identity_fn()).move_card_to_end(
+            &mut T::new(pile),
+            0,
+            1,
+            &mut new_states,
+            EndPileMoveType::Push,
+            Allegiance::Hero,
+        );
+
+        // Rolls over, and then blocks the hit back
+        assert_actual_vs_expected_piles(&new_states, vec!["3A 10D 69A 1A"]);
     }
 
     #[test]

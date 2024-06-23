@@ -169,7 +169,7 @@ pub enum Reaction {
     Standard(Option<Condition>, StandardReaction),
     Assist(RequestAssistReaction),
     WhenHit(WhenHitType),
-    Roll,
+    Roll(Option<SelfAction>),
 }
 
 bitflags! {
@@ -185,7 +185,7 @@ bitflags! {
         const Invulnerable  = 0b0001000000;
         const Open          = 0b0010000000;
         const Fist          = 0b0100000000;
-        const Wisp          = 0b1000000000;
+        const United        = 0b1000000000;
     }
 }
 
@@ -260,7 +260,7 @@ pub enum Class {
     Wall,
     Piper,
     Troupe,
-    Wisp,
+    Ooze,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
