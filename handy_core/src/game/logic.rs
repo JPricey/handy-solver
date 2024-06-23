@@ -2569,7 +2569,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(pile),
             &WrappedAction {
-                action: Action::Delay(2),
+                action: Action::Delay(Range::Int(2)),
                 target: Target::Any,
             },
             0,
@@ -2622,7 +2622,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(pile),
             &WrappedAction {
-                action: Action::Delay(1),
+                action: Action::Delay(Range::Int(1)),
                 target: Target::Any,
             },
             0,
@@ -3263,7 +3263,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(starting_pile.clone()),
             &WrappedAction {
-                action: Action::Quicken(2),
+                action: Action::Quicken(Range::Int(2)),
                 target: Target::Ally,
             },
             0,
@@ -3288,7 +3288,7 @@ mod tests {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
                 &T::new(starting_pile.clone()),
                 &WrappedAction {
-                    action: Action::Quicken(2),
+                    action: Action::Quicken(Range::Int(2)),
                     target: Target::Any,
                 },
                 2,
@@ -3315,7 +3315,7 @@ mod tests {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
                 &T::new(starting_pile.clone()),
                 &WrappedAction {
-                    action: Action::Quicken(2),
+                    action: Action::Quicken(Range::Int(2)),
                     target: Target::Ally,
                 },
                 2,
@@ -3339,7 +3339,7 @@ mod tests {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
                 &T::new(starting_pile.clone()),
                 &WrappedAction {
-                    action: Action::Quicken(2),
+                    action: Action::Quicken(Range::Int(2)),
                     target: Target::Enemy,
                 },
                 2,
@@ -3362,7 +3362,7 @@ mod tests {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
                 &T::new(starting_pile.clone()),
                 &WrappedAction {
-                    action: Action::Quicken(2),
+                    action: Action::Quicken(Range::Int(2)),
                     target: Target::Any,
                 },
                 2,
@@ -3394,7 +3394,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(starting_pile),
             &WrappedAction {
-                action: Action::Quicken(3),
+                action: Action::Quicken(Range::Int(3)),
                 target: Target::Enemy,
             },
             0,
@@ -3418,7 +3418,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(starting_pile),
             &WrappedAction {
-                action: Action::Quicken(3),
+                action: Action::Quicken(Range::Int(3)),
                 target: Target::Ally,
             },
             0,
@@ -3440,7 +3440,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(starting_pile),
             &WrappedAction {
-                action: Action::Delay(3),
+                action: Action::Delay(Range::Int(3)),
                 target: Target::Enemy,
             },
             0,
@@ -3464,7 +3464,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(starting_pile),
             &WrappedAction {
-                action: Action::Quicken(2),
+                action: Action::Quicken(Range::Int(2)),
                 target: Target::Enemy,
             },
             0,
@@ -3778,7 +3778,7 @@ mod tests {
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_player_action(
             &T::new(starting_pile),
             &WrappedAction {
-                action: Action::Delay(2),
+                action: Action::Delay(Range::Int(2)),
                 target: Target::Enemy,
             },
             0,
