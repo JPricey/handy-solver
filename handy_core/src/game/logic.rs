@@ -1814,6 +1814,12 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         state: &T,
         target_idx: usize,
         swap_with_idx: usize,
+        // Quicken/Delay provide an event after the move, before the roll strike
+        // Push/Pull are interrupted by attacks immediately, so the idx of the attacked card
+        // changes during the pull vs after the move
+        // So, for more consistent targetting for roll push/pull,
+        // attack_event_idx will end up being swap_with_idx, not target_idx
+        attack_event_idx: usize,
         moved_card: &CardPtr,
         moved_over_card: &CardPtr,
         allow_skip_hits: bool,
@@ -1828,14 +1834,14 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             != moved_over_card.get_active_face().allegiance
             && moved_over_card.get_active_face().health != Health::Empty;
 
-        // If monste is moving over something invalid, skip
+        // If monster is moving over something invalid, skip
         if is_monster_moving && !is_moving_over_target {
             return (Vec::new(), true);
         }
 
         let mut new_state_with_roll_move = state.clone().append_event(Event::AttackCard(
-            target_idx,
-            state.get_pile()[target_idx],
+            attack_event_idx,
+            moved_over_card.clone(),
             HitType::Roll,
         ));
 
@@ -1909,6 +1915,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             &new_state_with_committed_move,
             target_idx,
             swap_with_idx,
+            target_idx,
             &moved_card,
             &moved_over_card,
             true,
@@ -2076,6 +2083,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let (outcomes_after_roll, may_continue_moving) = self._get_move_roll_outcomes(
             &state,
             target_idx,
+            swap_with_idx,
             swap_with_idx,
             &moved_card,
             &moved_over_card,
