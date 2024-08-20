@@ -98,7 +98,7 @@ pub fn string_to_pile_result(input: &str) -> Result<Pile, String> {
         let card_ptr = string_to_card_ptr_result(card_ptr_str)?;
         result.push(card_ptr);
 
-        if result.len() == 9 {
+        if result.len() == MAX_PILE_LEN {
             return Ok(result);
         }
     }

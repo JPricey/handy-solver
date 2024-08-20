@@ -79,45 +79,45 @@ impl TinyPileConverter {
 
     pub fn tiny_pile_to_pile(&self, tiny_pile: &TinyPile) -> Pile {
         let ordering = number_to_ordering(tiny_pile.pile_key);
-        [
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[0]),
-                face_key_from_byte(tiny_pile.faces[0], 0),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[1]),
-                face_key_from_byte(tiny_pile.faces[0], 1),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[2]),
-                face_key_from_byte(tiny_pile.faces[0], 2),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[3]),
-                face_key_from_byte(tiny_pile.faces[0], 3),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[4]),
-                face_key_from_byte(tiny_pile.faces[1], 0),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[5]),
-                face_key_from_byte(tiny_pile.faces[1], 1),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[6]),
-                face_key_from_byte(tiny_pile.faces[1], 2),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[7]),
-                face_key_from_byte(tiny_pile.faces[1], 3),
-            ),
-            CardPtr::new_from_id(
-                self.index_to_card_id(ordering[8]),
-                face_key_from_byte(tiny_pile.faces[2], 3),
-            ),
-        ]
-        .into()
+        let mut result = Pile::default();
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[0]),
+            face_key_from_byte(tiny_pile.faces[0], 0),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[1]),
+            face_key_from_byte(tiny_pile.faces[0], 1),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[2]),
+            face_key_from_byte(tiny_pile.faces[0], 2),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[3]),
+            face_key_from_byte(tiny_pile.faces[0], 3),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[4]),
+            face_key_from_byte(tiny_pile.faces[1], 0),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[5]),
+            face_key_from_byte(tiny_pile.faces[1], 1),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[6]),
+            face_key_from_byte(tiny_pile.faces[1], 2),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[7]),
+            face_key_from_byte(tiny_pile.faces[1], 3),
+        ));
+        result.push(CardPtr::new_from_id(
+            self.index_to_card_id(ordering[8]),
+            face_key_from_byte(tiny_pile.faces[2], 3),
+        ));
+
+        result
     }
 }
 

@@ -14,7 +14,9 @@ pub type TargetIds = Vec<TargetId>;
 // pub type VecPile = Vec<CardPtr>;
 // pub type BoxSlicePile = Box<[CardPtr]>;
 // pub type ArrayPile = [CardPtr; 9];
-pub type ArrayVecPile = ArrayVec<CardPtr, 9>;
+pub const MAX_PILE_LEN: usize = 12;
+
+pub type ArrayVecPile = ArrayVec<CardPtr, MAX_PILE_LEN>;
 
 pub type Pile = ArrayVecPile;
 
