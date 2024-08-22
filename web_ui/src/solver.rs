@@ -42,7 +42,7 @@ pub enum SolverState {
 struct SolverWorkerState {
     model: Option<Model>,
     root_piles: Vec<Pile>,
-    a_star_solver: Option<AStarSolver<Model>>,
+    a_star_solver: Option<AStarSolver>,
     state: SolverState,
 }
 
@@ -88,7 +88,8 @@ impl SolverWorkerState {
         if self.root_piles.len() > 0 {
             if let Some(model) = &self.model {
                 self.state = SolverState::Working;
-                self.a_star_solver = Some(AStarSolver::new(&self.root_piles, model.clone()));
+                self.a_star_solver =
+                    Some(AStarSolver::new(&self.root_piles, Box::new(model.clone())));
             }
         }
     }

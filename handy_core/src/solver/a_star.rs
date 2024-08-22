@@ -23,11 +23,11 @@ pub struct SolverState {
 // Stop if the next state in the queue has fscore > maxdepth + DEFAULT_F_SCORE_END_CUTOFF
 const DEFAULT_F_SCORE_END_CUTOFF_FROM_MAX: f32 = 20.0;
 
-pub struct AStarSolver<M> {
+pub struct AStarSolver {
     pub tiny_pile_converter: TinyPileConverter,
     pub seen_states: SeenMap,
     pub queue: PriorityQueue<f32, TinyPile>,
-    pub model: M,
+    pub model: Box<dyn ModelT>,
     pub total_iters: usize,
     pub max_depth: DepthType,
     pub max_fscore: f32,
@@ -59,8 +59,8 @@ pub enum AStarIterResult {
     NewBest(TinyPile),
 }
 
-impl<M: ModelT> AStarSolver<M> {
-    pub fn new(seed_piles: &[Pile], model: M) -> Self {
+impl AStarSolver {
+    pub fn new(seed_piles: &[Pile], model: Box<dyn ModelT>) -> Self {
         let start_pile = &seed_piles[0];
         let tiny_pile_converter = TinyPileConverter::new_from_pile(start_pile);
         let mut seen_states = SeenMap::new();
