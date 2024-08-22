@@ -8,28 +8,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashSet};
 use vectorize_derive::*;
 
-pub const HEROS: [Class; 8] = [
-    Class::Warrior,
-    Class::Huntress,
-    Class::Pyro,
-    Class::Cursed,
-    Class::Beastmaster,
-    Class::Assassin,
-    Class::Piper,
-    Class::Monk,
-];
-
-pub const BADDIES: [Class; 8] = [
-    Class::Ogre,
-    Class::Vampire,
-    Class::Spider,
-    Class::Demon,
-    Class::Flora,
-    Class::Wall,
-    Class::Troupe,
-    Class::Ooze,
-];
-
 pub type Matchup = (Class, Class);
 
 fn serialize_card_side_values<S, T>(

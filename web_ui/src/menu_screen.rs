@@ -7,7 +7,6 @@ use crate::init_pile_provider::*;
 use crate::types::*;
 use handy_core::game::primitives::*;
 use handy_core::game::Class;
-use handy_core::solver::{BADDIES, HEROS};
 use handy_core::utils::pile_utils::*;
 use leptos::*;
 use std::collections::HashSet;

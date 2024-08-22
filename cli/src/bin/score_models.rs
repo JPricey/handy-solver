@@ -2,10 +2,8 @@ use cli::state_eval_to_score;
 use cli::training_path_for_matchup;
 use cli::try_read_model_for_matchup;
 use cli::DepthModeTrainingExample;
+use handy_core::game::{BADDIES, HEROS};
 use handy_core::solver::Matchup;
-use handy_core::solver::BADDIES;
-use handy_core::solver::HEROS;
-// use handy_core::game::Class;
 use serde_jsonlines::json_lines;
 
 fn main() {

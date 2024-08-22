@@ -265,6 +265,28 @@ pub enum Class {
     Ooze,
 }
 
+pub const HEROS: [Class; 8] = [
+    Class::Warrior,
+    Class::Huntress,
+    Class::Pyro,
+    Class::Cursed,
+    Class::Beastmaster,
+    Class::Assassin,
+    Class::Piper,
+    Class::Monk,
+];
+
+pub const BADDIES: [Class; 8] = [
+    Class::Ogre,
+    Class::Vampire,
+    Class::Spider,
+    Class::Demon,
+    Class::Flora,
+    Class::Wall,
+    Class::Troupe,
+    Class::Ooze,
+];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TroupeType {
     Spade,
