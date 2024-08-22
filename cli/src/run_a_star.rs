@@ -1,6 +1,7 @@
 use crate::get_model_for_pile;
 use handy_core::game::*;
 use handy_core::solver::a_star::*;
+use handy_core::solver::tiny_pile::{TinyPile, TinyPileConverter};
 
 pub fn run_a_star_solver(
     start_pile: Pile,
@@ -10,7 +11,8 @@ pub fn run_a_star_solver(
 ) -> Vec<Pile> {
     let model = get_model_for_pile(&start_pile);
 
-    let mut a_star_solver = AStarSolver::new(&vec![start_pile], Box::new(model));
+    let mut a_star_solver =
+        AStarSolver::<TinyPile, TinyPileConverter>::new(&vec![start_pile], Box::new(model));
     if let Some(def_max_iters) = max_iters {
         a_star_solver.set_max_iters(def_max_iters);
     }
@@ -28,7 +30,8 @@ pub fn run_a_star_solver(
             AStarIterResult::Done(reason) => {
                 println!("Stopping Solver: {:?}", reason);
                 if let Some(best_win) = a_star_solver.best_win {
-                    return a_star_solver.unroll_state(best_win);
+                    let real_pile = a_star_solver.tiny_pile_to_pile(&best_win);
+                    return a_star_solver.unroll_state(real_pile);
                 }
                 return vec![];
             }

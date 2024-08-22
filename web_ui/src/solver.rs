@@ -42,7 +42,7 @@ pub enum SolverState {
 struct SolverWorkerState {
     model: Option<Model>,
     root_piles: Vec<Pile>,
-    a_star_solver: Option<AStarSolver>,
+    a_star_solver: Option<AStarSolver<Pile, NoopPileStorageConverter>>,
     state: SolverState,
 }
 
@@ -113,8 +113,8 @@ impl SolverWorkerState {
                                 self.state = SolverState::Idle;
                                 return OutputSignal::Done;
                             }
-                            AStarIterResult::NewBest(tiny_pile) => {
-                                let unrolled = a_star_solver.unroll_state(tiny_pile);
+                            AStarIterResult::NewBest(pile) => {
+                                let unrolled = a_star_solver.unroll_state(pile);
                                 let strings: Vec<_> =
                                     unrolled.iter().map(|pile| format!("{pile:?}")).collect();
                                 return OutputSignal::SolutionCrumb(strings);

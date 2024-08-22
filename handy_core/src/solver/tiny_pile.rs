@@ -1,6 +1,29 @@
 use crate::game::*;
 use crate::solver::pile_mapping::*;
+use std::cmp::Ord;
 use std::fmt::Debug;
+
+pub trait StorablePileT: Ord + PartialEq + Eq + Clone {}
+impl<T> StorablePileT for T where T: Ord + PartialEq + Eq + Clone {}
+
+pub trait PileStorageConverter<T: StorablePileT> {
+    fn new_from_pile(pile: &Pile) -> Self;
+    fn pile_to_tiny_pile(&self, pile: &Pile) -> T;
+    fn tiny_pile_to_pile(&self, tiny_pile: &T) -> Pile;
+}
+
+pub struct NoopPileStorageConverter {}
+impl PileStorageConverter<Pile> for NoopPileStorageConverter {
+    fn new_from_pile(_pile: &Pile) -> Self {
+        NoopPileStorageConverter {}
+    }
+    fn pile_to_tiny_pile(&self, pile: &Pile) -> Pile {
+        pile.clone()
+    }
+    fn tiny_pile_to_pile(&self, pile: &Pile) -> Pile {
+        pile.clone()
+    }
+}
 
 type PackedFaces = [u8; 3];
 
@@ -46,12 +69,6 @@ fn order_to_number(perm: &OrderingType) -> TinyPileOrderingType {
 }
 
 impl TinyPileConverter {
-    pub fn new_from_pile(pile: &Pile) -> Self {
-        Self {
-            pile_mappings: PileMappings::new(pile),
-        }
-    }
-
     fn pile_to_order(&self, pile: &Pile) -> OrderingType {
         [
             self.pile_mappings.index(pile[0].get_card_id()),
@@ -66,18 +83,26 @@ impl TinyPileConverter {
         ]
     }
 
-    pub fn pile_to_tiny_pile(&self, pile: &Pile) -> TinyPile {
+    fn index_to_card_id(&self, index: usize) -> CardId {
+        self.pile_mappings.card_id(index)
+    }
+}
+
+impl PileStorageConverter<TinyPile> for TinyPileConverter {
+    fn new_from_pile(pile: &Pile) -> Self {
+        Self {
+            pile_mappings: PileMappings::new(pile),
+        }
+    }
+
+    fn pile_to_tiny_pile(&self, pile: &Pile) -> TinyPile {
         TinyPile {
             pile_key: order_to_number(&self.pile_to_order(&pile)),
             faces: pack_faces_from_pile(pile),
         }
     }
 
-    fn index_to_card_id(&self, index: usize) -> CardId {
-        self.pile_mappings.card_id(index)
-    }
-
-    pub fn tiny_pile_to_pile(&self, tiny_pile: &TinyPile) -> Pile {
+    fn tiny_pile_to_pile(&self, tiny_pile: &TinyPile) -> Pile {
         let ordering = number_to_ordering(tiny_pile.pile_key);
         let mut result = Pile::default();
         result.push(CardPtr::new_from_id(

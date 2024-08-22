@@ -50,7 +50,8 @@ fn rate_model(
     trial: usize,
 ) -> Solutions {
     let now = SystemTime::now();
-    let mut a_star_solver = AStarSolver::new(&vec![start_pile], Box::new(model));
+    let mut a_star_solver =
+        AStarSolver::<TinyPile, TinyPileConverter>::new(&vec![start_pile], Box::new(model));
     a_star_solver.set_g_bias(g_bias);
 
     let mut solutions: Solutions = Vec::new();

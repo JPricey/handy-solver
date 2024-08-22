@@ -9,13 +9,13 @@ use crate::game::pile_utils::is_game_winner;
 use std::fmt::Debug;
 
 // BTree is slower, but memory is more compact, and resize events are gradual
-// type SeenMap = HashMap<TinyPile, SolverState>;
-pub type SeenMap = BTreeMap<TinyPile, SolverState>;
+// type SeenMap = HashMap<StoredPileT, SolverState>;
+pub type SeenMap<StoredPileT> = BTreeMap<StoredPileT, SolverState<StoredPileT>>;
 pub type DepthType = u8;
 
 #[derive(Debug)]
-pub struct SolverState {
-    parent: Option<TinyPile>,
+pub struct SolverState<StoredPileT> {
+    parent: Option<StoredPileT>,
     depth: DepthType,
 }
 
@@ -23,10 +23,10 @@ pub struct SolverState {
 // Stop if the next state in the queue has fscore > maxdepth + DEFAULT_F_SCORE_END_CUTOFF
 const DEFAULT_F_SCORE_END_CUTOFF_FROM_MAX: f32 = 20.0;
 
-pub struct AStarSolver {
-    pub tiny_pile_converter: TinyPileConverter,
-    pub seen_states: SeenMap,
-    pub queue: PriorityQueue<f32, TinyPile>,
+pub struct AStarSolver<StoredPileT, StorageConverterT> {
+    pub tiny_pile_converter: StorageConverterT,
+    pub seen_states: SeenMap<StoredPileT>,
+    pub queue: PriorityQueue<f32, StoredPileT>,
     pub model: Box<dyn ModelT>,
     pub total_iters: usize,
     pub max_depth: DepthType,
@@ -35,7 +35,7 @@ pub struct AStarSolver {
     pub g_bias: f32,
     pub h_bias: f32,
     pub max_iters: usize,
-    pub best_win: Option<TinyPile>,
+    pub best_win: Option<StoredPileT>,
 }
 
 #[derive(Debug)]
@@ -56,15 +56,19 @@ pub enum DoneIterResult {
 pub enum AStarIterResult {
     Done(AStarDoneReason),
     Continue(DoneIterResult),
-    NewBest(TinyPile),
+    NewBest(Pile),
 }
 
-impl AStarSolver {
+impl<StoredPileT, StorageConverterT> AStarSolver<StoredPileT, StorageConverterT>
+where
+    StoredPileT: StorablePileT,
+    StorageConverterT: PileStorageConverter<StoredPileT>,
+{
     pub fn new(seed_piles: &[Pile], model: Box<dyn ModelT>) -> Self {
         let start_pile = &seed_piles[0];
-        let tiny_pile_converter = TinyPileConverter::new_from_pile(start_pile);
-        let mut seen_states = SeenMap::new();
-        let mut queue: PriorityQueue<f32, TinyPile> = PriorityQueue::new();
+        let tiny_pile_converter = StorageConverterT::new_from_pile(start_pile);
+        let mut seen_states = SeenMap::<StoredPileT>::new();
+        let mut queue: PriorityQueue<f32, StoredPileT> = PriorityQueue::new();
 
         for pile in seed_piles {
             seen_states.insert(
@@ -158,18 +162,18 @@ impl AStarSolver {
 
             if resolution == WinType::Win {
                 if child_depth < self.max_depth {
-                    self.best_win = Some(new_tiny_pile);
+                    self.best_win = Some(new_tiny_pile.clone());
                     self.set_max_depth(child_depth);
                     self.clear_depth();
 
                     self.seen_states.insert(
-                        new_tiny_pile,
+                        new_tiny_pile.clone(),
                         SolverState {
                             parent: Some(tiny_pile),
                             depth: child_depth as DepthType,
                         },
                     );
-                    return AStarIterResult::NewBest(new_tiny_pile);
+                    return AStarIterResult::NewBest(new_pile);
                 }
             } else if resolution == WinType::Lose {
                 continue;
@@ -178,7 +182,7 @@ impl AStarSolver {
             if let Some(current_child_entry) = self.seen_states.get_mut(&new_tiny_pile) {
                 if current_child_entry.depth > child_depth as DepthType {
                     current_child_entry.depth = child_depth as DepthType;
-                    current_child_entry.parent = Some(tiny_pile);
+                    current_child_entry.parent = Some(tiny_pile.clone());
 
                     let new_score = self.g_bias * child_depth as f32
                         + self.h_bias * self.model.score_pile(&new_pile);
@@ -190,13 +194,13 @@ impl AStarSolver {
                 let new_score = self.g_bias * child_depth as f32
                     + self.h_bias * self.model.score_pile(&new_pile);
                 if new_score <= self.max_fscore {
-                    self.queue.put(new_score, new_tiny_pile);
+                    self.queue.put(new_score, new_tiny_pile.clone());
                 }
 
                 self.seen_states.insert(
                     new_tiny_pile,
                     SolverState {
-                        parent: Some(tiny_pile),
+                        parent: Some(tiny_pile.clone()),
                         depth: child_depth as DepthType,
                     },
                 );
@@ -264,21 +268,20 @@ impl AStarSolver {
         self.print_solution_custom_logger(&pile, &|x| println!("{}", x));
     }
 
-    pub fn print_solution_from_tiny(&self, tiny_pile: &TinyPile) {
+    pub fn print_solution_from_tiny(&self, tiny_pile: &StoredPileT) {
         let pile = self.tiny_pile_to_pile(tiny_pile);
         self.print_solution_from_pile(&pile);
     }
 
-    pub fn tiny_pile_to_pile(&self, tiny_pile: &TinyPile) -> Pile {
+    pub fn tiny_pile_to_pile(&self, tiny_pile: &StoredPileT) -> Pile {
         self.tiny_pile_converter.tiny_pile_to_pile(tiny_pile)
     }
 
-    pub fn unroll_state(&self, final_tiny_pile: TinyPile) -> Vec<Pile> {
-        let mut result = vec![final_tiny_pile];
+    pub fn unroll_state(&self, final_pile: Pile) -> Vec<Pile> {
+        let mut result = vec![self.tiny_pile_converter.pile_to_tiny_pile(&final_pile)];
 
         loop {
             let last_pile = result.last().unwrap();
-            // let last_tiny_pile = converter.pile_to_tiny_pile(last_pile);
             let entry = self.seen_states.get(&last_pile).unwrap();
             if let Some(parent) = &entry.parent {
                 result.push(parent.clone());
@@ -294,7 +297,7 @@ impl AStarSolver {
             .collect()
     }
 
-    pub fn convert_to_pile(&self, tiny_pile: TinyPile) -> Pile {
+    pub fn convert_to_pile(&self, tiny_pile: StoredPileT) -> Pile {
         self.tiny_pile_converter.tiny_pile_to_pile(&tiny_pile)
     }
 }
