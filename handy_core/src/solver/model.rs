@@ -188,7 +188,7 @@ impl Model {
                     .unwrap()[card.get_card_face()];
 
                 total += feature_face.value;
-                total += feature_face.value_in_position[i];
+                total += feature_face.value_in_position[std::cmp::min(i, 8)];
 
                 if num_baddie_infront > 0 {
                     total += feature_face.single_bad_touching_infront;

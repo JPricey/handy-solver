@@ -677,11 +677,6 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
 pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> GameFrame {
     let mut new_event_history = last_frame.event_history.clone();
     new_event_history.extend(option.events.clone());
-    log!(
-        "Adding new options: {:?}. New full history: {:?}",
-        &option.events,
-        &new_event_history
-    );
 
     let (available_moves, is_definite_win) =
         find_next_moves(&last_frame.root_pile, &new_event_history);
