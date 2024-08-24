@@ -23,6 +23,7 @@ fn generate_example(hero: Class, monster: Class) {
         None,
         Some(ROOT_PILE_SOLVE_NUM_ITERS_FOR_DEPTH_MODE),
         None,
+        None,
     );
     if root_res.len() == 0 {
         return;

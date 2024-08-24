@@ -8,6 +8,7 @@ use std::cmp;
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use handy_core::game::end_game::standard_check_is_game_winner;
 
 pub type ScoreMap = BTreeMap<Pile, usize>;
 
@@ -81,7 +82,7 @@ pub fn generate_examples<M: ModelT>(
             for child_state in child_states {
                 let child_pile = child_state.pile;
 
-                let resolution = is_game_winner(&child_pile);
+                let resolution = standard_check_is_game_winner(&child_pile);
                 if resolution == WinType::Win {
                     winners.push(pile.clone());
                 } else if resolution == WinType::Lose {

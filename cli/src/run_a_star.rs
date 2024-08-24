@@ -1,18 +1,24 @@
 use crate::get_model_for_pile;
+use end_game::GameEndCheckType;
 use handy_core::game::*;
 use handy_core::solver::a_star::*;
-use handy_core::solver::tiny_pile::{TinyPile, TinyPileConverter};
+use handy_core::solver::tiny_pile::{NoopPileStorageConverter, TinyPile, TinyPileConverter};
 
 pub fn run_a_star_solver(
     start_pile: Pile,
     max_depth: Option<DepthType>,
     max_iters: Option<usize>,
     g_bias: Option<f32>,
+    game_end_check_type: Option<GameEndCheckType>,
 ) -> Vec<Pile> {
     let model = get_model_for_pile(&start_pile);
 
+    // let mut a_star_solver =
+    //     AStarSolver::<TinyPile, TinyPileConverter>::new(&vec![start_pile], Box::new(model));
+
     let mut a_star_solver =
-        AStarSolver::<TinyPile, TinyPileConverter>::new(&vec![start_pile], Box::new(model));
+        AStarSolver::<Pile, NoopPileStorageConverter>::new(&vec![start_pile], Box::new(model));
+
     if let Some(def_max_iters) = max_iters {
         a_star_solver.set_max_iters(def_max_iters);
     }
@@ -22,6 +28,10 @@ pub fn run_a_star_solver(
     if let Some(g_bias) = g_bias {
         a_star_solver.set_g_bias(g_bias);
     }
+    if let Some(game_end_check_type) = game_end_check_type {
+        a_star_solver.set_game_end_check_type(game_end_check_type)
+    }
+
     let mut count: usize = 0;
     loop {
         count += 1;
@@ -29,7 +39,7 @@ pub fn run_a_star_solver(
         match iter_result {
             AStarIterResult::Done(reason) => {
                 println!("Stopping Solver: {:?}", reason);
-                if let Some(best_win) = a_star_solver.best_win {
+                if let Some(best_win) = a_star_solver.best_win.clone() {
                     let real_pile = a_star_solver.tiny_pile_to_pile(&best_win);
                     return a_star_solver.unroll_state(real_pile);
                 }

@@ -7,43 +7,9 @@ use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::primitives::{
     Action, Allegiance, Condition, ConditionCostType, Event, FaceKey, Features, Health, Pile,
     Range, RangeType, Reaction, ReactionTrigger, SkipActionReason, StanceType, Target, TroupeType,
-    WinType, WrappedAction,
+    WrappedAction,
 };
 use strum::IntoEnumIterator;
-
-pub fn is_game_winner(pile: &Pile) -> WinType {
-    let mut player_wins = true;
-    let mut enemy_wins = true;
-
-    for card in pile.iter() {
-        let active_face = card.get_active_face();
-        if active_face.health != Health::Empty {
-            match active_face.allegiance {
-                Allegiance::Hero => {
-                    enemy_wins = false;
-                    if !player_wins {
-                        return WinType::Unresolved;
-                    }
-                }
-                Allegiance::Baddie => {
-                    player_wins = false;
-                    if !enemy_wins {
-                        return WinType::Unresolved;
-                    }
-                }
-                Allegiance::Werewolf | Allegiance::Rat => (),
-            }
-        }
-    }
-
-    if player_wins {
-        WinType::Win
-    } else if enemy_wins {
-        WinType::Lose
-    } else {
-        WinType::Unresolved
-    }
-}
 
 pub fn does_card_have_energy(card_ptr: &CardPtr) -> bool {
     card_ptr
@@ -375,22 +341,3 @@ pub fn is_boolean_condition_met(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::utils::string_to_pile;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn test_game_over() {
-        {
-            let pile = string_to_pile("6D 3C 2C 5D 8C 1C 4D 7C 9C");
-            assert_eq!(is_game_winner(&pile), WinType::Lose);
-        }
-
-        {
-            let pile = string_to_pile("6C 3C 2C 5D 8C 1C 4D 7C 9C");
-            assert_eq!(is_game_winner(&pile), WinType::Win);
-        }
-    }
-}

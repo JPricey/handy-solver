@@ -2506,7 +2506,6 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 mod tests {
     use super::*;
     use crate::game::game_state::GameStateWithEventLog;
-    use crate::game::pile_utils::is_game_winner;
     use crate::game::primitives::{ClawSpaceType, Pile, WinType};
     use crate::utils::{string_to_card_ptr, string_to_pile};
     use pretty_assertions::assert_eq;
@@ -2859,19 +2858,6 @@ mod tests {
                 "33D 1C", // 1 Gets hit 1 time
             ],
         );
-    }
-
-    #[test]
-    fn test_game_over() {
-        {
-            let pile = string_to_pile("6D 3C 2C 5D 8C 1C 4D 7C 9C");
-            assert_eq!(is_game_winner(&pile), WinType::Lose);
-        }
-
-        {
-            let pile = string_to_pile("6C 3C 2C 5D 8C 1C 4D 7C 9C");
-            assert_eq!(is_game_winner(&pile), WinType::Win);
-        }
     }
 
     #[test]

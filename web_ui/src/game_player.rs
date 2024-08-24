@@ -130,6 +130,7 @@ pub enum ActionOption {
     ToggleSettingsBar,
     ToggleEngine,
     ToggleOnlyMoves,
+    ToggleLossCondition,
     Undo,
     AnimationSkip,
 }
@@ -202,6 +203,10 @@ fn hotkey_to_outcome(
 
     if hotkey == Hotkey::O {
         return Some(ActionOption::ToggleOnlyMoves);
+    }
+
+    if hotkey == Hotkey::C {
+        return Some(ActionOption::ToggleLossCondition);
     }
 
     if hotkey == Hotkey::U || hotkey == Hotkey::Left {
@@ -281,6 +286,9 @@ pub fn GamePlayer(
     init_pile_provider: Box<dyn InitPileProvider>,
     is_playing: RwSignal<bool>,
 ) -> impl IntoView {
+    let options = use_options(cx);
+    let game_end_type_memo = create_memo(cx, move |_| options.get().game_end_check_type);
+
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
     let gameplay_width = create_memo(cx, move |_| {
         placer_getter.get().golden_width - *HISTORY_ZONE_WIDTH_PX
@@ -289,6 +297,7 @@ pub fn GamePlayer(
         cx,
         init_pile_provider.get_init_pile(),
         gameplay_width.into(),
+        game_end_type_memo,
     );
 
     create_effect(cx, move |_| {
@@ -298,7 +307,6 @@ pub fn GamePlayer(
 
     let game_history_getter = game_state.game_history_getter;
     let render_card_map_getter = game_state.render_card_map_getter;
-    let options = use_options(cx);
 
     let (pile_provider_getter, _) = create_signal(cx, init_pile_provider.clone());
     let (hovered_cards_getter, hovered_cards_setter) = create_signal(cx, Vec::<CardId>::new());
@@ -405,6 +413,11 @@ pub fn GamePlayer(
                     }
                     ActionOption::ToggleOnlyMoves => {
                         options.update(|opts| opts.is_pick_only_moves = !opts.is_pick_only_moves);
+                    }
+                    ActionOption::ToggleLossCondition => {
+                        options.update(|opts| {
+                            opts.game_end_check_type = flip_end_game_type(opts.game_end_check_type)
+                        });
                     }
                     ActionOption::ToggleEngine => {
                         is_oracle_enabled.set(!is_oracle_enabled.get());
@@ -800,6 +813,7 @@ pub fn GamePlayer(
                 height=ORACLE_ZONE_HEIGHT_PX
                 current_frame=current_state.into()
                 is_enabled=is_oracle_enabled
+                game_end_type=game_end_type_memo
             />
 
             <div

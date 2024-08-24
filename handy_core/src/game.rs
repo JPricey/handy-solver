@@ -7,6 +7,7 @@ pub mod pile_modifiers;
 pub mod pile_utils;
 pub mod piper_helpers;
 pub mod primitives;
+pub mod end_game;
 
 pub use card_defs::*;
 pub use card_ptr::*;

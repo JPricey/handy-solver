@@ -1,4 +1,4 @@
-use crate::game::pile_utils::is_game_winner;
+use crate::game::end_game::standard_check_is_game_winner;
 use crate::game::*;
 use crate::solver::model::*;
 use std::fmt::Debug;
@@ -31,7 +31,7 @@ impl IdaSolver {
 
     fn _solve_recursive(&mut self, pile: &Pile, depth: DepthType) -> NodeResult {
         self.total_iters += 1;
-        let resolution = is_game_winner(pile);
+        let resolution = standard_check_is_game_winner(pile);
         if resolution == WinType::Win {
             self.max_depth = depth;
             println!("found solution at depth {}", depth);

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use end_game::GameEndCheckType;
 use futures::{FutureExt, StreamExt};
 use gloo::timers::future::sleep;
 use gloo::worker::reactor::{reactor, ReactorScope};
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum ControlSignal {
     SetModel(Model),
+    SetGameEndMode(GameEndCheckType),
     SetRootPiles(Vec<String>),
     ClearRootPiles,
     End,
@@ -23,7 +25,7 @@ pub enum ControlSignal {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum OutputSignal {
     Start,
-    SolutionCrumb(Vec<String>),
+    SolutionCrumb(GameEndCheckType, Vec<String>),
     Init,
     Sleeping,
     Working,
@@ -44,6 +46,7 @@ struct SolverWorkerState {
     root_piles: Vec<Pile>,
     a_star_solver: Option<AStarSolver<Pile, NoopPileStorageConverter>>,
     state: SolverState,
+    game_end_check_type: GameEndCheckType,
 }
 
 const ITER_BATCH_SIZE: usize = 1000;
@@ -56,6 +59,7 @@ impl SolverWorkerState {
             model: None,
             root_piles: vec![],
             state: SolverState::Init,
+            game_end_check_type: GameEndCheckType::Standard,
         }
     }
 
@@ -84,12 +88,19 @@ impl SolverWorkerState {
         self.root_piles = vec![];
     }
 
+    fn set_game_end_check_type(&mut self, game_end_check_type: GameEndCheckType) {
+        self.clear_solving_state();
+        self.game_end_check_type = game_end_check_type;
+        self._check_should_start();
+    }
+
     fn _check_should_start(&mut self) {
         if self.root_piles.len() > 0 {
             if let Some(model) = &self.model {
                 self.state = SolverState::Working;
-                self.a_star_solver =
-                    Some(AStarSolver::new(&self.root_piles, Box::new(model.clone())));
+                let mut new_solver = AStarSolver::new(&self.root_piles, Box::new(model.clone()));
+                new_solver.set_game_end_check_type(self.game_end_check_type);
+                self.a_star_solver = Some(new_solver);
             }
         }
     }
@@ -117,7 +128,10 @@ impl SolverWorkerState {
                                 let unrolled = a_star_solver.unroll_state(pile);
                                 let strings: Vec<_> =
                                     unrolled.iter().map(|pile| format!("{pile:?}")).collect();
-                                return OutputSignal::SolutionCrumb(strings);
+                                return OutputSignal::SolutionCrumb(
+                                    a_star_solver.game_end_check_type,
+                                    strings,
+                                );
                             }
                             AStarIterResult::Continue(_) => {}
                         }
@@ -145,6 +159,9 @@ pub async fn SolverWorker(mut scope: ReactorScope<ControlSignal, OutputSignal>) 
                     match signal {
                         ControlSignal::SetModel(model) => {
                             solver_worker_state.set_model(model);
+                        }
+                        ControlSignal::SetGameEndMode(game_end_mode) => {
+                            solver_worker_state.set_game_end_check_type(game_end_mode);
                         }
                         ControlSignal::SetRootPiles(pile_strings) => {
                             let root_piles: Vec<_> =

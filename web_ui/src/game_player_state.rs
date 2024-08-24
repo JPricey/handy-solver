@@ -4,6 +4,7 @@ use crate::game_player_types::*;
 use crate::types::*;
 use core::time::Duration;
 use glam::DQuat;
+use handy_core::game::end_game::{is_game_winner, GameEndCheckType};
 use handy_core::game::*;
 use handy_core::utils::*;
 use leptos::*;
@@ -626,7 +627,11 @@ pub fn render_pile_update(
     max_applied_duration
 }
 
-pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bool) {
+pub fn find_next_moves(
+    pile: &Pile,
+    prefix: &Vec<Event>,
+    game_end_check_type: GameEndCheckType,
+) -> (Vec<MoveOption>, bool) {
     let states = resolve_top_card_starting_with_prefix_dedupe_excess(
         &GameStateWithPileTrackedEventLog::new(pile.clone()),
         prefix,
@@ -642,7 +647,7 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bo
             if !results.contains(&move_option) {
                 results.push(move_option);
             }
-            if is_definite_win && is_game_winner(&state.pile) != WinType::Win {
+            if is_definite_win && is_game_winner(&state.pile, game_end_check_type) != WinType::Win {
                 is_definite_win = false;
             }
         }
@@ -655,10 +660,10 @@ pub fn find_next_moves(pile: &Pile, prefix: &Vec<Event>) -> (Vec<MoveOption>, bo
     (results, is_definite_win)
 }
 
-pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
-    let resolution = is_game_winner(&pile);
+pub fn get_frame_from_root_pile(pile: Pile, game_end_check_type: GameEndCheckType) -> GameFrame {
+    let resolution = is_game_winner(&pile, game_end_check_type);
     let (available_moves, is_definite_win) = if resolution == WinType::Unresolved {
-        find_next_moves(&pile, &Vec::new())
+        find_next_moves(&pile, &Vec::new(), game_end_check_type)
     } else {
         (Vec::new(), false)
     };
@@ -674,12 +679,19 @@ pub fn get_frame_from_root_pile(pile: Pile) -> GameFrame {
     }
 }
 
-pub fn get_frame_from_option(last_frame: &GameFrame, option: &MoveOption) -> GameFrame {
+pub fn get_frame_from_option(
+    last_frame: &GameFrame,
+    option: &MoveOption,
+    game_end_check_type: GameEndCheckType,
+) -> GameFrame {
     let mut new_event_history = last_frame.event_history.clone();
     new_event_history.extend(option.events.clone());
 
-    let (available_moves, is_definite_win) =
-        find_next_moves(&last_frame.root_pile, &new_event_history);
+    let (available_moves, is_definite_win) = find_next_moves(
+        &last_frame.root_pile,
+        &new_event_history,
+        game_end_check_type,
+    );
 
     GameFrame {
         root_pile: last_frame.root_pile.clone(),
@@ -761,11 +773,18 @@ pub struct GamePlayerState {
     pub render_card_map_getter: Signal<RenderCardMap>,
     pub interaction_getter: ReadSignal<InteractionOptions>,
     pub card_zone_width_px: Signal<WindowUnit>,
+    pub game_end_check_type: Memo<GameEndCheckType>,
 }
 
 impl GamePlayerState {
-    pub fn new(cx: Scope, init_pile: Pile, card_zone_width_px: Signal<WindowUnit>) -> Self {
-        let initial_frame = get_frame_from_root_pile(init_pile.clone());
+    pub fn new(
+        cx: Scope,
+        init_pile: Pile,
+        card_zone_width_px: Signal<WindowUnit>,
+        game_end_check_type: Memo<GameEndCheckType>,
+    ) -> Self {
+        let initial_frame =
+            get_frame_from_root_pile(init_pile.clone(), game_end_check_type.get_untracked());
         let init_state = GameHistory {
             all_frames: vec![initial_frame.clone()],
         };
@@ -790,6 +809,7 @@ impl GamePlayerState {
             maybe_animation_queue,
             options: use_options(cx),
             card_zone_width_px,
+            game_end_check_type,
         }
     }
 
@@ -806,7 +826,8 @@ impl GamePlayerState {
     }
 
     pub fn set_init_pile(self, pile: Pile) {
-        let initial_frame = get_frame_from_root_pile(pile.clone());
+        let initial_frame =
+            get_frame_from_root_pile(pile.clone(), self.game_end_check_type.get_untracked());
         let init_state = GameHistory {
             all_frames: vec![initial_frame.clone()],
         };
@@ -864,12 +885,16 @@ impl GamePlayerState {
         }
 
         if move_option.get_primary_event() == &Event::BottomCard {
-            game_history
-                .all_frames
-                .push(get_frame_from_root_pile(move_option.next_pile.clone()));
+            game_history.all_frames.push(get_frame_from_root_pile(
+                move_option.next_pile.clone(),
+                self.game_end_check_type.get_untracked(),
+            ));
         } else {
-            let next_frame =
-                get_frame_from_option(game_history.all_frames.last().unwrap(), &move_option);
+            let next_frame = get_frame_from_option(
+                game_history.all_frames.last().unwrap(),
+                &move_option,
+                self.game_end_check_type.get_untracked(),
+            );
             game_history.all_frames.push(next_frame.clone());
         }
 

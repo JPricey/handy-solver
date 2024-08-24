@@ -1,5 +1,6 @@
 use crate::components::*;
 use crate::contexts::*;
+use handy_core::game::end_game::GameEndCheckType;
 use leptos::*;
 
 use crate::types::WindowUnit;
@@ -31,6 +32,7 @@ where
     H: Fn() + 'static,
 {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let options = use_options(cx);
 
     view! { cx,
         <div
@@ -144,14 +146,39 @@ where
                         >
                             Settings
                         </div>
-                        <ShortcutRow
-                            shortcut="H".to_owned()
-                            text="Toggle Settings Bar Visibility".to_owned()
-                        />
-                        <ShortcutRow
-                            shortcut="O".to_owned()
-                            text="Toggle Auto Only-Moves".to_owned()
-                        />
+
+                        <div>
+                            <input
+                                type="checkbox"
+                                checked = move || options.get().game_end_check_type == GameEndCheckType::PerHeroClass
+                                on:click=move |_| {
+                                    options.update(|opts| opts.game_end_check_type = flip_end_game_type(opts.game_end_check_type));
+                                }
+                            />
+                            <span>{"Enable loss on any exhausted hero class ("}</span><b>C</b>{")"}
+                        </div>
+
+                        <div>
+                            <input
+                                type="checkbox"
+                                checked = move || options.get().is_pick_only_moves
+                                on:click=move |_| {
+                                    options.update(|opts| opts.is_pick_only_moves = !opts.is_pick_only_moves);
+                                }
+                            />
+                            <span>{"Enable Auto Only-Moves ("}</span><b>O</b>{")"}
+                        </div>
+
+                        <div>
+                            <input
+                                type="checkbox"
+                                checked = move || options.get().is_showing_settings_bar
+                                on:click=move |_| {
+                                    options.update(|opts| opts.is_showing_settings_bar = !opts.is_showing_settings_bar);
+                                }
+                            />
+                            <span>{"Enable Settings Bar Visibility ("}</span><b>H</b>{")"}
+                        </div>
                     </div>
 
                     <div

@@ -1,5 +1,6 @@
 use cli::get_starting_pile;
 use cli::paths::*;
+use handy_core::game::end_game::standard_check_is_game_winner;
 use handy_core::game::*;
 use handy_core::solver::*;
 use handy_core::utils::*;
@@ -95,7 +96,7 @@ fn card_activation_result_via_all_outcomes(pile: &Pile) -> Pile {
 
 pub fn start_cli_game(mut active_pile: Pile, is_interactive_mode: bool) {
     loop {
-        let resolution = is_game_winner(&active_pile);
+        let resolution = standard_check_is_game_winner(&active_pile);
         if resolution.is_over() {
             println!("You {:?}", resolution);
             break;

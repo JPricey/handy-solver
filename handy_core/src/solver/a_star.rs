@@ -1,11 +1,11 @@
+use crate::game::end_game::is_game_winner;
 use crate::game::*;
 use crate::solver::model_t::ModelT;
 use crate::solver::tiny_pile::*;
 use crate::utils::*;
+use end_game::GameEndCheckType;
 use priq::PriorityQueue;
 use std::collections::BTreeMap;
-// use std::collections::HashMap;
-use crate::game::pile_utils::is_game_winner;
 use std::fmt::Debug;
 
 // BTree is slower, but memory is more compact, and resize events are gradual
@@ -36,6 +36,7 @@ pub struct AStarSolver<StoredPileT, StorageConverterT> {
     pub h_bias: f32,
     pub max_iters: usize,
     pub best_win: Option<StoredPileT>,
+    pub game_end_check_type: GameEndCheckType,
 }
 
 #[derive(Debug)]
@@ -97,7 +98,12 @@ where
             fscore_depth_delta,
             max_iters: usize::MAX,
             best_win: None,
+            game_end_check_type: GameEndCheckType::Standard,
         }
+    }
+
+    pub fn set_game_end_check_type(&mut self, game_end_check_type: GameEndCheckType) {
+        self.game_end_check_type = game_end_check_type;
     }
 
     pub fn set_g_bias(&mut self, g_bias: f32) {
@@ -158,7 +164,7 @@ where
         for state in new_states {
             let new_pile = state.get_pile().clone();
             let new_tiny_pile = self.tiny_pile_converter.pile_to_tiny_pile(&new_pile);
-            let resolution = is_game_winner(&new_pile);
+            let resolution = is_game_winner(&new_pile, self.game_end_check_type);
 
             if resolution == WinType::Win {
                 if child_depth < self.max_depth {

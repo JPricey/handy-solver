@@ -1,4 +1,5 @@
 use clap::{ArgGroup, Parser};
+use handy_core::game::end_game::{is_game_winner, GameEndCheckType};
 use handy_core::game::*;
 use handy_core::utils::*;
 use std::collections::HashMap;
@@ -44,7 +45,7 @@ trait VictoryConditionChecker {
 struct WinChecker {}
 impl VictoryConditionChecker for WinChecker {
     fn condition_result(&self, pile: &Pile) -> VictoryConditionResult {
-        match is_game_winner(pile) {
+        match is_game_winner(pile, GameEndCheckType::Standard) {
             WinType::Win => VictoryConditionResult::Win,
             WinType::Lose => VictoryConditionResult::Loss,
             WinType::Unresolved => VictoryConditionResult::Continue,
@@ -73,7 +74,7 @@ impl VictoryConditionChecker for SurviveUntilTopChecker {
             return VictoryConditionResult::Win;
         }
 
-        match is_game_winner(pile) {
+        match is_game_winner(pile, GameEndCheckType::Standard) {
             // Hero probably shouldn't be allowed to win these?
             WinType::Win => VictoryConditionResult::Continue,
             WinType::Lose => VictoryConditionResult::Loss,
@@ -97,7 +98,7 @@ impl VictoryConditionChecker for ExhaustCardChecker {
             }
         }
 
-        match is_game_winner(pile) {
+        match is_game_winner(pile, GameEndCheckType::Standard) {
             WinType::Win => VictoryConditionResult::Continue,
             WinType::Lose => VictoryConditionResult::Loss,
             WinType::Unresolved => VictoryConditionResult::Continue,

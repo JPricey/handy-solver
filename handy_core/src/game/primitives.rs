@@ -243,7 +243,7 @@ pub enum FaceKey {
     D,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, strum_macros::EnumString)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Enum, strum_macros::EnumString)]
 #[strum(serialize_all = "snake_case")]
 pub enum Class {
     Dummy,
@@ -286,6 +286,31 @@ pub const BADDIES: [Class; 8] = [
     Class::Troupe,
     Class::Ooze,
 ];
+
+impl Class {
+    pub fn is_hero(self) -> bool {
+        match self {
+            Class::Warrior
+            | Class::Huntress
+            | Class::Pyro
+            | Class::Cursed
+            | Class::Beastmaster
+            | Class::Assassin
+            | Class::Piper
+            | Class::Monk => true,
+
+            Class::Dummy
+            | Class::Ogre
+            | Class::Vampire
+            | Class::Spider
+            | Class::Demon
+            | Class::Flora
+            | Class::Wall
+            | Class::Troupe
+            | Class::Ooze => false,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TroupeType {
