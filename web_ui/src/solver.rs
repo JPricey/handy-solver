@@ -8,7 +8,7 @@ use handy_core::game::*;
 use handy_core::solver::a_star::*;
 use handy_core::solver::*;
 use handy_core::utils::*;
-use leptos::log;
+use leptos::logging::log;
 
 use futures::sink::SinkExt;
 use serde::{Deserialize, Serialize};

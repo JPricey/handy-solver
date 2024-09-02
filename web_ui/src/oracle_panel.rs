@@ -10,6 +10,7 @@ use handy_core::game::end_game::{is_game_winner, GameEndCheckType};
 use handy_core::game::*;
 use handy_core::solver::*;
 use handy_core::utils::*;
+// use leptos::logging::log;
 use leptos::*;
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -44,7 +45,6 @@ async fn fetch_model_from_full_url(url: &str) -> Result<Model, ()> {
 
 #[component]
 pub fn OraclePanel(
-    cx: Scope,
     width: WindowUnit,
     height: WindowUnit,
     current_frame: Signal<GameFrame>,
@@ -56,11 +56,11 @@ pub fn OraclePanel(
     let bridge_sink = Rc::new(RefCell::new(bridge_sink));
 
     let (raw_ai_path, set_raw_ai_path) =
-        create_signal::<(GameEndCheckType, Vec<Pile>)>(cx, (game_end_type.get_untracked(), vec![]));
-    let (is_worker_started, set_worker_started) = create_signal(cx, false);
-    let (worker_state, set_worker_state) = create_signal::<SolverState>(cx, SolverState::Init);
+        create_signal::<(GameEndCheckType, Vec<Pile>)>((game_end_type.get_untracked(), vec![]));
+    let (is_worker_started, set_worker_started) = create_signal(false);
+    let (worker_state, set_worker_state) = create_signal::<SolverState>(SolverState::Init);
 
-    let game_winner = create_memo(cx, move |_| {
+    let game_winner = create_memo(move |_| {
         let current_frame = current_frame.get();
         if current_frame.event_history.len() == 0 {
             is_game_winner(&current_frame.current_pile, game_end_type.get())
@@ -82,20 +82,16 @@ pub fn OraclePanel(
     });
 
     // Clear piles when disabled
-    create_effect(
-        cx,
-        closure!(clone trigger_clear_root_piles, |_| {
-            if is_enabled.get() {
-                return;
-            }
+    create_effect(closure!(clone trigger_clear_root_piles, |_| {
+        if is_enabled.get() {
+            return;
+        }
 
-            trigger_clear_root_piles();
-        }),
-    );
+        trigger_clear_root_piles();
+    }));
 
     // Set piles on start, or when frame changes
     create_effect(
-        cx,
         closure!(clone bridge_sink, clone trigger_clear_root_piles, |_| {
             if !is_worker_started.get() || !is_enabled.get() {
                 return;
@@ -134,7 +130,7 @@ pub fn OraclePanel(
                 })
                 .collect();
 
-            log!("sending states: {:?}", &strings);
+            // log!("sending states: {:?}", &strings);
 
             set_worker_state.set(SolverState::Working);
 
@@ -151,67 +147,61 @@ pub fn OraclePanel(
     );
 
     // Update game end type
-    create_effect(
-        cx,
-        closure!(clone bridge_sink, |_| {
-            if !is_worker_started.get() {
-                return;
+    create_effect(closure!(clone bridge_sink, |_| {
+        if !is_worker_started.get() {
+            return;
+        }
+
+        let bridge_sink = bridge_sink.clone();
+        let game_end_type_mode = game_end_type.get();
+
+        spawn_local(async move {
+            if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
+                bridge_sink
+                    .send(ControlSignal::SetGameEndMode(game_end_type_mode))
+                    .await
+                    .unwrap();
             }
-
-            let bridge_sink = bridge_sink.clone();
-            let game_end_type_mode = game_end_type.get();
-
-            spawn_local(async move {
-                if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
-                    bridge_sink
-                        .send(ControlSignal::SetGameEndMode(game_end_type_mode))
-                        .await
-                        .unwrap();
-                }
-            });
-        }),
-    );
+        });
+    }));
 
     // Set model on start
-    create_effect(
-        cx,
-        closure!(clone bridge_sink, |_| {
-            if !is_worker_started.get() {
-                return;
+    create_effect(closure!(clone bridge_sink, |_| {
+        if !is_worker_started.get() {
+            return;
+        }
+
+        let bridge_sink = bridge_sink.clone();
+        spawn_local(async move {
+            let pile = current_frame.get_untracked().root_pile;
+            let matchups = get_all_matchups_from_pile(&pile);
+
+            let mut models: Vec<Model> = Vec::new();
+            for matchup in matchups {
+                let model_url = model_url(matchup);
+                let model = fetch_model_from_full_url(&model_url).await.unwrap();
+                models.push(model);
             }
 
-            let bridge_sink = bridge_sink.clone();
-            spawn_local(async move {
-                let pile = current_frame.get_untracked().root_pile;
-                let matchups = get_all_matchups_from_pile(&pile);
+            let final_model = if models.len() == 1 {
+                models[0].clone()
+            } else {
+                merge_models_for_pile(&pile, &models)
+            };
 
-                let mut models: Vec<Model> = Vec::new();
-                for matchup in matchups {
-                    let model_url = model_url(matchup);
-                    let model = fetch_model_from_full_url(&model_url).await.unwrap();
-                    models.push(model);
-                }
+            if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
+                bridge_sink
+                    .send(ControlSignal::SetGameEndMode(game_end_type.get_untracked()))
+                    .await
+                    .unwrap();
 
-                let final_model = if models.len() == 1 {
-                    models[0].clone()
-                } else {
-                    merge_models_for_pile(&pile, &models)
-                };
-
-                if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
-                    bridge_sink
-                        .send(ControlSignal::SetGameEndMode(game_end_type.get_untracked()))
-                        .await
-                        .unwrap();
-
-                    bridge_sink
-                        .send(ControlSignal::SetModel(final_model))
-                        .await
-                        .unwrap();
-                }
-            });
-        }),
-    );
+                bridge_sink
+                    .send(ControlSignal::SetModel(final_model))
+                    .await
+                    .unwrap();
+            }
+        });
+    }));
 
     spawn_local(async move {
         while let Some(output_signal) = bridge_stream.next().await {
@@ -220,11 +210,11 @@ pub fn OraclePanel(
                     set_worker_started.set(true);
                 }
                 OutputSignal::SolutionCrumb(game_end_check_type, pile_strings) => {
-                    log!(
-                        "got new output: {:?}, {:?}",
-                        game_end_check_type,
-                        pile_strings
-                    );
+                    // log!(
+                    //     "got new output: {:?}, {:?}",
+                    //     game_end_check_type,
+                    //     pile_strings
+                    // );
                     let piles: Vec<_> = pile_strings.iter().map(|s| string_to_pile(s)).collect();
                     set_raw_ai_path.set((game_end_check_type, piles));
                     set_worker_state.set(SolverState::Working);
@@ -244,7 +234,7 @@ pub fn OraclePanel(
         }
     });
 
-    let best_path = create_memo::<Option<(GameEndCheckType, Vec<Pile>)>>(cx, move |last| {
+    let best_path = create_memo::<Option<(GameEndCheckType, Vec<Pile>)>>(move |last| {
         let current_frame = current_frame.get();
         let next_piles: HashSet<Pile> = find_final_piles_matching_prefix(
             &current_frame.root_pile,
@@ -301,7 +291,7 @@ pub fn OraclePanel(
         }
     });
 
-    let next_event = create_memo::<Option<Event>>(cx, move |_| {
+    let next_event = create_memo::<Option<Event>>(move |_| {
         let best_path = best_path.get();
         let Some(best_path) = best_path else {
             return None;
@@ -352,34 +342,31 @@ pub fn OraclePanel(
         }
     };
 
-    on_cleanup(
-        cx,
-        closure!(clone bridge_sink, || {
-                    let bridge_sink = bridge_sink.clone();
-                    spawn_local(async move {
-                        // log!("Sending End Local");
-                        if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
-                            bridge_sink
-                                .send(ControlSignal::End)
-                                .await
-                                .unwrap();
-                            // log!("Sent End Local");
-                        }
-                    });
-                }
-        ),
-    );
+    on_cleanup(closure!(clone bridge_sink, || {
+                let bridge_sink = bridge_sink.clone();
+                spawn_local(async move {
+                    // log!("Sending End Local");
+                    if let Ok(mut bridge_sink) = bridge_sink.try_borrow_mut() {
+                        bridge_sink
+                            .send(ControlSignal::End)
+                            .await
+                            .unwrap();
+                        // log!("Sent End Local");
+                    }
+                });
+            }
+    ));
 
-    view! { cx,
+    view! {
         <Button
             width=width
             height=height
-            background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
+            background=Signal::derive( || MENU_BUTTON_COLOUR.to_owned())
             on:click= move |_| is_enabled.set(!is_enabled.get())
         >
             <Show
                 when=move || is_enabled.get()
-                fallback=move |_| "Show Engine (E)"
+                fallback=move || "Show Engine (E)"
             >
                 <div>
                     {path_text}
@@ -387,9 +374,9 @@ pub fn OraclePanel(
                 <div>
                     <Show
                         when=move || next_event.get().is_some() && !game_winner.get().is_over()
-                        fallback=|_| ()
+                        fallback=|| ()
                     >
-                        {move || view!{cx,
+                        {move || view!{
                             <EventSpan event=next_event.get().unwrap() />
                         }}
                     </Show>

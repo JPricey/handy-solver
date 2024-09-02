@@ -2,11 +2,11 @@ use crate::components::utils::*;
 use crate::contexts::*;
 use crate::types::*;
 use colors_transform::*;
+use leptos::logging::log;
 use leptos::*;
 
 #[component]
 pub fn Button(
-    cx: Scope,
     children: Children,
     width: WindowUnit,
     height: WindowUnit,
@@ -14,13 +14,13 @@ pub fn Button(
     #[prop(optional)] disabled: Option<Signal<bool>>,
     #[prop(optional)] font_size: Option<WindowUnit>,
 ) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
     let font_size = font_size.unwrap_or(DEFAULT_FONT_SIZE);
 
     let disabled_signal = if let Some(disabled_arg) = disabled {
         disabled_arg
     } else {
-        Signal::derive(cx, || false)
+        Signal::derive(|| false)
     };
 
     let border_color = move || {
@@ -37,7 +37,7 @@ pub fn Button(
         }
     };
 
-    view! { cx,
+    view! {
         <button
             class="standard-button"
             style:position="relative"
@@ -53,7 +53,7 @@ pub fn Button(
             style:cursor={move || if !disabled_signal.get() {Some("pointer")} else {None}}
             disabled={move || disabled_signal.get()}
         >
-            {children(cx)}
+            {children()}
         </button>
     }
 }

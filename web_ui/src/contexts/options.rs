@@ -18,14 +18,14 @@ impl Options {
     }
 }
 
-pub fn provide_options(cx: Scope) {
-    let options_signal = create_rw_signal(cx, Options::new());
+pub fn provide_options() {
+    let options_signal = create_rw_signal(Options::new());
 
-    provide_context(cx, options_signal);
+    provide_context(options_signal);
 }
 
-pub fn use_options(cx: Scope) -> RwSignal<Options> {
-    use_context::<RwSignal<Options>>(cx).unwrap()
+pub fn use_options() -> RwSignal<Options> {
+    use_context::<RwSignal<Options>>().unwrap()
 }
 
 pub fn flip_end_game_type(game_end_check_type: GameEndCheckType) -> GameEndCheckType {

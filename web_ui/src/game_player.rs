@@ -221,8 +221,8 @@ fn hotkey_to_outcome(
 }
 
 #[component]
-pub fn action_button(cx: Scope, text: String, is_skip: bool) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+pub fn action_button(text: String, is_skip: bool) -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
     let hotkey_text = if is_skip { "(0)" } else { "(Enter)" };
 
     let colour = if is_skip {
@@ -231,11 +231,11 @@ pub fn action_button(cx: Scope, text: String, is_skip: bool) -> impl IntoView {
         BUTTON_SELECTED_COLOUR
     };
 
-    view! {cx,
+    view! {
         <Button
             width=CHOICE_BUTTON_WIDTH_PX
             height=CHOICE_BUTTON_HEIGHT_PX
-            background=Signal::derive(cx, || colour.to_owned())
+            background=Signal::derive(|| colour.to_owned())
         >
             <div
                 width="100%"
@@ -282,25 +282,22 @@ fn get_hovered_card_ids(points: Vec<(f32, f32)>) -> Vec<CardId> {
 
 #[component]
 pub fn GamePlayer(
-    cx: Scope,
     init_pile_provider: Box<dyn InitPileProvider>,
     is_playing: RwSignal<bool>,
 ) -> impl IntoView {
-    let options = use_options(cx);
-    let game_end_type_memo = create_memo(cx, move |_| options.get().game_end_check_type);
+    let options = use_options();
+    let game_end_type_memo = create_memo(move |_| options.get().game_end_check_type);
 
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let gameplay_width = create_memo(cx, move |_| {
-        placer_getter.get().golden_width - *HISTORY_ZONE_WIDTH_PX
-    });
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    let gameplay_width =
+        create_memo(move |_| placer_getter.get().golden_width - *HISTORY_ZONE_WIDTH_PX);
     let game_state = GamePlayerState::new(
-        cx,
         init_pile_provider.get_init_pile(),
         gameplay_width.into(),
         game_end_type_memo,
     );
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         gameplay_width.track();
         game_state.do_render_pile_update();
     });
@@ -308,16 +305,15 @@ pub fn GamePlayer(
     let game_history_getter = game_state.game_history_getter;
     let render_card_map_getter = game_state.render_card_map_getter;
 
-    let (pile_provider_getter, _) = create_signal(cx, init_pile_provider.clone());
-    let (hovered_cards_getter, hovered_cards_setter) = create_signal(cx, Vec::<CardId>::new());
+    let (pile_provider_getter, _) = create_signal(init_pile_provider.clone());
+    let (hovered_cards_getter, hovered_cards_setter) = create_signal(Vec::<CardId>::new());
 
-    let current_state = create_memo(cx, move |_| {
-        game_history_getter.get().all_frames.last().unwrap().clone()
-    });
+    let current_state =
+        create_memo(move |_| game_history_getter.get().all_frames.last().unwrap().clone());
     let interaction_getter = game_state.interaction_getter;
 
-    let (is_showing_settings_getter, is_showing_settings_setter) = create_signal(cx, false);
-    let is_oracle_enabled = create_rw_signal(cx, false);
+    let (is_showing_settings_getter, is_showing_settings_setter) = create_signal(false);
+    let is_oracle_enabled = create_rw_signal(false);
 
     let render_cards_getter = move || {
         let mut result: Vec<RenderCard> = render_card_map_getter.get().values().copied().collect();
@@ -325,7 +321,7 @@ pub fn GamePlayer(
         result
     };
 
-    let maybe_selected_card_id_and_face = create_memo(cx, move |_| {
+    let maybe_selected_card_id_and_face = create_memo(move |_| {
         let hovered_cards = hovered_cards_getter.get();
         let render_card_map = render_card_map_getter.get();
 
@@ -346,7 +342,7 @@ pub fn GamePlayer(
     });
 
     let maybe_animation_queue = game_state.maybe_animation_queue;
-    let is_animating = create_memo(cx, move |_| maybe_animation_queue.get().is_some());
+    let is_animating = create_memo(move |_| maybe_animation_queue.get().is_some());
 
     let undo = move || {
         let mut new_history = game_history_getter.get();
@@ -478,14 +474,11 @@ pub fn GamePlayer(
     let init_animation = game_state.do_render_pile_update();
     game_state.maybe_schedule_next_move(init_animation);
 
-    on_cleanup(
-        cx,
-        closure!(clone mut game_state, || {
-            game_state.clear_animation();
-        }),
-    );
+    on_cleanup(closure!(clone mut game_state, || {
+        game_state.clear_animation();
+    }));
 
-    view! { cx,
+    view! {
         <div
             // Parent container
             style:display="flex"
@@ -533,12 +526,13 @@ pub fn GamePlayer(
                                 get_combined_interaction_buttons(&interaction_getter.get())
                             }
                         }
-                            key=|e| e.move_option.clone() view=move |cx, option| {
+                        key=|e| e.move_option.clone()
+                        children=move | option| {
                             let on_click = move |_| {
                                 game_state.apply_option(&option.move_option);
                             };
 
-                            view! { cx,
+                            view! {
                                 <div
                                     style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
                                     style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
@@ -558,12 +552,13 @@ pub fn GamePlayer(
                                     interaction_getter.get().skip_button
                                 }
                             }
-                            key=|e| e.move_option.clone() view=move |cx, option| {
+                            key=|e| e.move_option.clone()
+                            children=move |option| {
                             let on_click = move |_| {
                                 game_state.apply_option(&option.move_option);
                             };
 
-                            view! { cx,
+                            view! {
                                 <div
                                     style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
                                     style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
@@ -591,8 +586,9 @@ pub fn GamePlayer(
                                 interaction_getter.get().damage_card_options
                             }
                         }
-                        key=|e| e.clone() view=move |cx, damage_option| {
-                            view! { cx,
+                        key=|e| e.clone()
+                        children=move | damage_option| {
+                            view! {
                                 <div
                                     style:margin-left={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
                                     style:margin-right={move || wrap_px(placer_getter.get().scale(ACTION_ROW_SIDE_MARGIN))}
@@ -616,7 +612,7 @@ pub fn GamePlayer(
                     style:z-index=0
                 >
                     // Cards
-                    <For each=render_cards_getter key=|e| e.card_id view=move |cx, render_card| {
+                    <For each=render_cards_getter key=|e| e.card_id children=move | render_card| {
                         let get_row_options= move || {
                                 if is_animating.get() {
                                     return Vec::new();
@@ -630,7 +626,7 @@ pub fn GamePlayer(
                             )
                         };
 
-                        view! { cx,
+                        view! {
                             <InPlayGameCard
                                 render_card=render_card
                                 is_animating={is_animating.into()}
@@ -658,8 +654,8 @@ pub fn GamePlayer(
                                         }
                                     }
                                 >
-                                    <For each=get_row_options key=|e: &RenderRowOption| (e.row_index, e.move_option.clone()) view=move |cx, row_option| {
-                                        view! { cx,
+                                    <For each=get_row_options key=|e: &RenderRowOption| (e.row_index, e.move_option.clone()) children=move | row_option| {
+                                        view! {
                                             <div
                                                 style:position="absolute"
                                                 style:top={move || wrap_px(placer_getter.get().scale(RENDER_CARD_SIZE.1 * row_option.placement_pct))}
@@ -679,7 +675,7 @@ pub fn GamePlayer(
                                                     style:left="5.2%"
                                                     style:transform="translateY(-50%)"
                                                 >
-                                                    <RowIndexBadge number=Signal::derive(cx, move || row_option.row_index + 1) scale=1.0/>
+                                                    <RowIndexBadge number=Signal::derive( move || row_option.row_index + 1) scale=1.0/>
                                                 </div>
                                             </div>
                                         }
@@ -693,7 +689,7 @@ pub fn GamePlayer(
             // End game popup
             <Show
                 when=move || current_state.get().resolution.is_over()
-                fallback=move |_| ()
+                fallback=move || ()
             >
                 <div
                     style:position="absolute"
@@ -720,10 +716,10 @@ pub fn GamePlayer(
                     <div>
                         <Show
                             when=move || pile_provider_getter.get().is_pile_random()
-                            fallback=|_| ()
+                            fallback=|| ()
                         >
                             <Button
-                                background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                                background=Signal::derive( || BUTTON_SELECTED_COLOUR.to_string())
                                 width=100.0
                                 height=30.0
                                 on:click=move |_| {
@@ -742,7 +738,7 @@ pub fn GamePlayer(
                         </Show>
 
                         <Button
-                            background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                            background=Signal::derive( || BUTTON_SELECTED_COLOUR.to_string())
                             width=100.0
                             height=30.0
                             on:click=move |_| {
@@ -761,7 +757,7 @@ pub fn GamePlayer(
                         />
 
                         <Button
-                            background=Signal::derive(cx, || BUTTON_NON_SELECTED_COLOUR.to_string())
+                            background=Signal::derive( || BUTTON_NON_SELECTED_COLOUR.to_string())
                             width=100.0
                             height=30.0
                             on:click=move |_| {
@@ -784,9 +780,9 @@ pub fn GamePlayer(
         >
             <Show
                 when=move || maybe_selected_card_id_and_face.get().is_none()
-                fallback=move |_| {
+                fallback=move || {
                     let (card_id, face_key) = maybe_selected_card_id_and_face.get().unwrap();
-                    view! {cx,
+                    view! {
                         <CardSidesPanel card_id face_key />
                     }
                 }
@@ -823,7 +819,7 @@ pub fn GamePlayer(
             <Button
                 width=ORACLE_ZONE_WIDTH_PX
                 height=80.0
-                background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
+                background=Signal::derive( || MENU_BUTTON_COLOUR.to_owned())
                 on:click = move |_| undo()
             >
                 Undo (U)
@@ -836,7 +832,7 @@ pub fn GamePlayer(
             <Button
                 width=ORACLE_ZONE_WIDTH_PX
                 height=40.0
-                background=Signal::derive(cx, || MENU_BUTTON_COLOUR.to_owned())
+                background=Signal::derive( || MENU_BUTTON_COLOUR.to_owned())
                 on:click =move |_| is_showing_settings_setter.set(true)
             >
                 Help & Shortcuts (X,?)
@@ -845,7 +841,7 @@ pub fn GamePlayer(
 
         <Show
             when=move || is_showing_settings_getter.get()
-            fallback=move |_| ()
+            fallback=move || ()
         >
             <div
                 style:position="absolute"

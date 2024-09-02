@@ -66,15 +66,14 @@ pub fn try_card_string_to_id(card_id_string: String) -> Option<CardId> {
 
 #[component]
 pub fn InPlayGameCard(
-    cx: Scope,
     render_card: RenderCard,
     is_animating: Signal<bool>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
     let card_div_id = format!("in-play-card-{}", render_card.card_id);
 
-    view! { cx,
+    view! {
         <div
             id=card_div_id
             style:position="absolute"
@@ -85,7 +84,7 @@ pub fn InPlayGameCard(
             <GameCard
                 card_id=render_card.card_id
                 quat=render_card.animated_quat
-                is_clickable=Signal::derive(cx, move || !is_animating.get() && render_card.is_clickable.get())
+                is_clickable=Signal::derive( move || !is_animating.get() && render_card.is_clickable.get())
                 scale=1.0
                 index=Some(render_card.animated_position_in_pile)
                 children=children
@@ -96,7 +95,6 @@ pub fn InPlayGameCard(
 
 #[component]
 pub fn GameCard(
-    cx: Scope,
     card_id: CardId,
     quat: Signal<DQuat>,
     scale: f64,
@@ -104,8 +102,8 @@ pub fn GameCard(
     index: Option<Signal<WindowUnit>>,
     #[prop(optional_no_strip)] children: Option<Children>,
 ) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let el = create_node_ref::<Div>(cx);
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    let el = create_node_ref::<Div>();
 
     let src = move || {
         let quat = quat.get();
@@ -119,7 +117,7 @@ pub fn GameCard(
         get_card_url(card_id, card_side)
     };
 
-    view! { cx,
+    view! {
         <div
             style:position="relative"
             style:display="grid"
@@ -144,19 +142,19 @@ pub fn GameCard(
                 style:height="100%"
                 src={src}
             />
-            { children.map(|children| view! { cx,
+            { children.map(|children| view! {
                 <div
                     style:position="absolute"
                     style:width="100%"
                     style:height="100%"
                 >
-                    {children(cx)}
+                    {children()}
                 </div>
                 })
             }
             <Show
                 when=move || is_clickable.get()
-                fallback=move |_| ()
+                fallback=move || ()
             >
                 <button
                     class="clickable-option-overlay"
@@ -174,9 +172,9 @@ pub fn GameCard(
             >
                 {
                     if let Some(i) = index {
-                        Some(view! { cx,
+                        Some(view! {
                             <CardIndexBadge
-                                number=Signal::derive(cx, move || (i.get() + 1.0).round() as usize)
+                                number=Signal::derive( move || (i.get() + 1.0).round() as usize)
                                 is_foreground=is_clickable
                             />
                         })
@@ -194,9 +192,9 @@ pub fn GameCard(
             >
                 {
                     if let Some(i) = index {
-                        Some(view! { cx,
+                        Some(view! {
                             <CardIndexBadge
-                                number=Signal::derive(cx, move || (i.get() + 1.0).round() as usize)
+                                number=Signal::derive( move || (i.get() + 1.0).round() as usize)
                                 is_foreground=is_clickable
                             />
                         })
@@ -211,7 +209,6 @@ pub fn GameCard(
 
 #[component]
 pub fn StaticGameCard(
-    cx: Scope,
     card_id: CardId,
     face_key: FaceKey,
     is_clickable: bool,
@@ -219,12 +216,12 @@ pub fn StaticGameCard(
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let quat = quat_for_face(face_key);
-    view! { cx,
+    view! {
         <GameCard
             card_id=card_id
             scale=scale
-            quat = Signal::derive(cx, move || quat)
-            is_clickable=Signal::derive(cx, move || is_clickable)
+            quat = Signal::derive( move || quat)
+            is_clickable=Signal::derive( move || is_clickable)
             index=None
             children=children
         />

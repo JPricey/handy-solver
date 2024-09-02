@@ -54,9 +54,9 @@ fn try_map_code_to_key(code: &str) -> Option<Key> {
     }
 }
 
-pub fn register_key_manager(cx: Scope) -> impl IntoView {
-    let (key_manager_getter, key_manager_setter) = create_signal(cx, KeyManagerState::new());
-    provide_context(cx, key_manager_getter);
+pub fn register_key_manager() -> impl IntoView {
+    let (key_manager_getter, key_manager_setter) = create_signal( KeyManagerState::new());
+    provide_context( key_manager_getter);
 
     window_event_listener(ev::keydown, move |ev| {
         let code = ev.code();
@@ -93,7 +93,7 @@ pub fn register_key_manager(cx: Scope) -> impl IntoView {
     });
 }
 
-pub fn get_key_manager_getter(cx: Scope) -> ReadSignal<KeyManagerState> {
-    let key_manager_getter = use_context::<ReadSignal<KeyManagerState>>(cx).unwrap();
+pub fn get_key_manager_getter() -> ReadSignal<KeyManagerState> {
+    let key_manager_getter = use_context::<ReadSignal<KeyManagerState>>().unwrap();
     key_manager_getter
 }

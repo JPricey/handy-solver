@@ -10,12 +10,11 @@ const BADGE_FONT_SIZE_PX: WindowUnit = 10.0;
 
 #[component]
 pub fn CardIndexBadge(
-    cx: Scope,
     number: Signal<usize>,
     #[prop(optional)] scale: Option<WindowUnit>,
     #[prop(optional)] is_foreground: Option<Signal<bool>>,
 ) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
     let scale = scale.unwrap_or(1.0);
 
     let opacity_fn = move || {
@@ -26,7 +25,7 @@ pub fn CardIndexBadge(
         }
     };
 
-    view! { cx,
+    view! { 
         <svg
             style:display="block"
             style:width={move || wrap_px(placer_getter.get().scale(DIAMETER_PX * scale))}
@@ -58,14 +57,13 @@ pub fn CardIndexBadge(
 
 #[component]
 pub fn RowIndexBadge(
-    cx: Scope,
     number: Signal<usize>,
     #[prop(optional)] scale: Option<WindowUnit>,
 ) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
     let scale = scale.unwrap_or(1.0);
 
-    view! { cx,
+    view! { 
         <svg
             style:display="block"
             style:width={move || wrap_px(placer_getter.get().scale(DIAMETER_PX * scale))}

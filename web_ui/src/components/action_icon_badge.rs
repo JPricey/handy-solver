@@ -42,7 +42,6 @@ fn get_invert(target: Target, class: Class) -> bool {
 // TODO: take a target, range
 #[component]
 pub fn IconBadge(
-    cx: Scope,
     action: WrappedAction,
     actor: Class,
     scale: WindowUnit,
@@ -50,7 +49,7 @@ pub fn IconBadge(
     let background_colour = get_background_colour(action.target, actor);
     let is_inverted = get_invert(action.target, actor);
     let (icon_type, _range) = action_to_icon_type_and_range(action.action);
-    view! { cx,
+    view! { 
         <InnerIconBadge
             scale=scale
             background_colour=background_colour
@@ -64,13 +63,12 @@ pub fn IconBadge(
 // TODO: reverse colours when target is any
 #[component]
 pub fn InnerIconBadge(
-    cx: Scope,
     scale: WindowUnit,
     icon_type: IconType,
     background_colour: &'static str,
     is_inverted: bool,
 ) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
     let icon_spec = icon_type.value();
     let inverted_result = if is_inverted {
         Some("invert(100%)")
@@ -78,7 +76,7 @@ pub fn InnerIconBadge(
         None
     };
 
-    view! { cx,
+    view! { 
         <div
             style:position="relative"
             style:width={move || wrap_px(placer_getter.get().scale(icon_spec.native_size.0 * scale))}

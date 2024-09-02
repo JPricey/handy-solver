@@ -15,7 +15,7 @@ pub enum SpanItem {
 }
 
 #[component]
-pub fn TokenSpan(cx: Scope, elements: Vec<SpanItem>) -> impl IntoView {
+pub fn TokenSpan(elements: Vec<SpanItem>) -> impl IntoView {
     let mut spaced_elements: Vec<SpanItem> = vec![elements[0].clone()];
 
     for item in elements[1..].iter().cloned() {
@@ -23,49 +23,49 @@ pub fn TokenSpan(cx: Scope, elements: Vec<SpanItem>) -> impl IntoView {
         spaced_elements.push(item);
     }
 
-    view! { cx,
+    view! {
         <span>
             {
                 spaced_elements
                     .into_iter()
                     .map(|element|
                          match element {
-                            SpanItem::CardPtr(card_ptr) => view! {cx,
+                            SpanItem::CardPtr(card_ptr) => view! {
                                 <span><CardIdPill card_ptr=card_ptr /></span>
                             },
-                            SpanItem::CardIndex(card_index) => view! {cx,
+                            SpanItem::CardIndex(card_index) => view! {
                                 <span
                                     style:display="inline-block"
                                     style:vertical-align=wrap_pct(BADGE_VERTICAL_ALIGN_PCT)
                                 >
-                                    <CardIndexBadge number=Signal::derive(cx, move || card_index + 1 ) scale=BADGE_SCALE/>
+                                    <CardIndexBadge number=Signal::derive( move || card_index + 1 ) scale=BADGE_SCALE/>
                                 </span>
                             },
-                            SpanItem::CardPtrAndIndex(card_ptr, card_index) => view! {cx,
+                            SpanItem::CardPtrAndIndex(card_ptr, card_index) => view! {
                                 <span>
                                     <CardIdPill card_ptr=card_ptr />
                                     <span
                                         style:display="inline-block"
                                         style:vertical-align=wrap_pct(BADGE_VERTICAL_ALIGN_PCT)
                                     >
-                                        <CardIndexBadge number=Signal::derive(cx, move || card_index + 1 ) scale=BADGE_SCALE/>
+                                        <CardIndexBadge number=Signal::derive( move || card_index + 1 ) scale=BADGE_SCALE/>
                                     </span>
                                 </span>
                             },
-                            SpanItem::RowIndex(row_index) => view! {cx,
+                            SpanItem::RowIndex(row_index) => view! {
                                 <span
                                     style:display="inline-block"
                                     style:vertical-align=wrap_pct(BADGE_VERTICAL_ALIGN_PCT)
                                 >
-                                    <RowIndexBadge number=Signal::derive(cx, move || row_index + 1 ) scale=BADGE_SCALE/>
+                                    <RowIndexBadge number=Signal::derive( move || row_index + 1 ) scale=BADGE_SCALE/>
                                 </span>
                             },
-                            SpanItem::Text(text) => view! {cx,
+                            SpanItem::Text(text) => view! {
                                 <span>{text}</span>
                             },
                          }
                     )
-                    .collect_view(cx)
+                    .collect_view()
             }
         </span>
 

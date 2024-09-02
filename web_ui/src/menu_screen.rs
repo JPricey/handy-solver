@@ -11,6 +11,7 @@ use handy_core::utils::pile_utils::*;
 use leptos::*;
 use std::collections::HashSet;
 use url::Url;
+use leptos::logging::log;
 
 const CHAR_SELECT_BUTTON_WIDTH_PX: WindowUnit = 200.0;
 const CHAR_SELECT_BUTTON_HEIGHT_PX: WindowUnit = 40.0;
@@ -26,10 +27,10 @@ const VS_FONT_SIZE: WindowUnit = 24.0;
 const SELECT_FONT_SIZE: WindowUnit = 24.0;
 
 #[component]
-fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+fn ClassSelector(options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
 
-    view! { cx,
+    view! { 
         <div
             style:display="flex"
             style:flex-direction="column"
@@ -39,12 +40,12 @@ fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> 
                     .map(|class| {
                         let icon_path = get_class_full_health_icon_path(class);
 
-                        view! { cx,
+                        view! { 
                         <div
                             style:margin-top={move || wrap_px(placer_getter.get().scale(4.0))}
                         >
                             <Button
-                                background=Signal::derive(cx, move || {
+                                background=Signal::derive( move || {
                                     if selection.get() == class {
                                         BUTTON_SELECTED_COLOUR.to_owned()
                                     } else {
@@ -95,17 +96,17 @@ fn ClassSelector(cx: Scope, options: Vec<Class>, selection: RwSignal<Class>) -> 
                             </Button>
                         </div>
                     }})
-                    .collect_view(cx)
+                    .collect_view()
             }
         </div>
     }
 }
 
 #[component]
-fn MatchupSelector(cx: Scope, hero: RwSignal<Class>, baddie: RwSignal<Class>) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
+fn MatchupSelector( hero: RwSignal<Class>, baddie: RwSignal<Class>) -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
 
-    view! { cx,
+    view! { 
         <div
             style:display="flex"
             style:flex-direction="row"
@@ -128,13 +129,13 @@ fn MatchupSelector(cx: Scope, hero: RwSignal<Class>, baddie: RwSignal<Class>) ->
 const PILE_SELECTOR_WIDTH_PX: WindowUnit = 400.0;
 
 #[component]
-fn PileSelector<F>(cx: Scope, on_select: F) -> impl IntoView
+fn PileSelector<F>( on_select: F) -> impl IntoView
 where
     F: Fn(Pile) + 'static,
 {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let (raw, set_raw) = create_signal(cx, "".to_string());
-    let valid_pile = Signal::derive(cx, move || {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    let (raw, set_raw) = create_signal( "".to_string());
+    let valid_pile = Signal::derive( move || {
         let parsed_pile = string_to_pile_result(&raw.get());
         if let Ok(pile) = parsed_pile {
             Some(pile)
@@ -143,7 +144,7 @@ where
         }
     });
 
-    view! { cx,
+    view! { 
         <div
             style:display="flex"
             style:flex-direction="column"
@@ -193,7 +194,7 @@ where
 
             <Button
                 // background=button_background
-                background=Signal::derive(cx, || BRAWL_COLOUR.to_string())
+                background=Signal::derive( || BRAWL_COLOUR.to_string())
                 width=BRAWL_BUTTON_WIDTH_PX
                 height=BRAWL_BUTTON_HEIGHT_PX
                 on:click={move |_| {
@@ -201,16 +202,16 @@ where
                         on_select(pile)
                     }
                 }}
-                disabled=Signal::derive(cx, move || valid_pile.get().is_none())
+                disabled=Signal::derive( move || valid_pile.get().is_none())
             >
                 { move || {
                     if let Some(pile) = valid_pile.get() {
-                        view!(cx, <span>Start: <PileSpan pile=pile/></span> )
+                        view!( <span>Start: <PileSpan pile=pile/></span> )
                     } else {
                         if raw.get().len() == 0 {
-                            view!(cx, <span>Enter pile for custom start</span>)
+                            view!( <span>Enter pile for custom start</span>)
                         } else {
-                            view!(cx, <span>Could not parse</span>)
+                            view!( <span>Could not parse</span>)
                         }
                     }
                 }}
@@ -246,15 +247,14 @@ fn get_query_param_pile() -> Option<Pile> {
 }
 
 #[component]
-pub fn MenuScreen(cx: Scope) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let is_playing = create_rw_signal(cx, false);
+pub fn MenuScreen() -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    let is_playing = create_rw_signal(false);
 
-    let hero_signal = create_rw_signal(cx, Class::Warrior);
-    let enemy_signal = create_rw_signal(cx, Class::Ogre);
+    let hero_signal = create_rw_signal(Class::Warrior);
+    let enemy_signal = create_rw_signal(Class::Ogre);
 
     let pile_provider_signal: RwSignal<Box<dyn InitPileProvider>> = create_rw_signal(
-        cx,
         Box::new(MatchupPileProvider {
             matchup: (hero_signal.get_untracked(), enemy_signal.get_untracked()),
         }),
@@ -267,10 +267,10 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
         is_playing.set(true);
     }
 
-    view! { cx,
+    view! { 
         <Show
             when=move || !is_playing.get()
-            fallback=move |cx| view! {cx, <GamePlayer init_pile_provider={pile_provider_signal.get()} is_playing=is_playing /> }
+            fallback=move || view! { <GamePlayer init_pile_provider={pile_provider_signal.get()} is_playing=is_playing /> }
         >
             <div
                 style:width="100%"
@@ -305,7 +305,7 @@ pub fn MenuScreen(cx: Scope) -> impl IntoView {
                             />
 
                             <Button
-                                background=Signal::derive(cx, || BRAWL_COLOUR.to_string())
+                                background=Signal::derive( || BRAWL_COLOUR.to_string())
                                 width=BRAWL_BUTTON_WIDTH_PX
                                 height=BRAWL_BUTTON_HEIGHT_PX
                                 on:click=move |_| {

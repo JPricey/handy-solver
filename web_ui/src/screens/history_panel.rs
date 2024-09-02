@@ -6,11 +6,11 @@ use handy_core::game::Pile;
 use leptos::ev::scroll;
 use leptos::html::Div;
 use leptos::*;
-use leptos_use::*;
+use leptos_use::{use_event_listener};
 
 #[component]
-pub fn NewActivationSpan(cx: Scope, pile: Pile) -> impl IntoView {
-    view! {cx,
+pub fn NewActivationSpan(pile: Pile) -> impl IntoView {
+    view! {
         <span
             style:display="flex"
         >
@@ -28,9 +28,9 @@ pub fn NewActivationSpan(cx: Scope, pile: Pile) -> impl IntoView {
 }
 
 #[component]
-pub fn HistoryItemWrapper(cx: Scope, children: Children) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    view! { cx,
+pub fn HistoryItemWrapper(children: Children) -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    view! {
         <div
             style:width="100%"
             style:border-bottom="solid"
@@ -42,17 +42,17 @@ pub fn HistoryItemWrapper(cx: Scope, children: Children) -> impl IntoView {
                 style:margin-left="1%"
                 style:margin-right="1%"
             >
-                {children(cx)}
+                {children()}
             </div>
         </div>
     }
 }
 
 #[component]
-pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView {
+pub fn HistoryFrame(frame: GameFrame) -> impl IntoView {
     let events_to_render = frame.events_since_last_fame_this_activation;
     if events_to_render.is_empty() {
-        return view! { cx,
+        return view! {
             <HistoryItemWrapper>
                 <NewActivationSpan pile=frame.current_pile.clone() />
             </HistoryItemWrapper>
@@ -61,28 +61,24 @@ pub fn HistoryFrame(cx: Scope, frame: GameFrame) -> impl IntoView {
         return events_to_render
             .into_iter()
             .map(|event| {
-                view! { cx,
+                view! {
                     <HistoryItemWrapper>
                         <EventSpan event=event.clone() />
                     </HistoryItemWrapper>
                 }
             })
-            .collect_view(cx);
+            .collect_view();
     }
 }
 
 #[component]
-pub fn HistoryPanel(
-    cx: Scope,
-    game_history_getter: Signal<GameHistory>,
-    height: WindowUnit,
-) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let (is_bottom_locked, set_bottom_locked) = create_signal(cx, true);
-    let (did_scroll_after_new_items, set_did_scroll_after_new_items) = create_signal(cx, true);
-    let scroll_el = create_node_ref::<Div>(cx);
+pub fn HistoryPanel(game_history_getter: Signal<GameHistory>, height: WindowUnit) -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    let (is_bottom_locked, set_bottom_locked) = create_signal(true);
+    let (did_scroll_after_new_items, set_did_scroll_after_new_items) = create_signal(true);
+    let scroll_el = create_node_ref::<Div>();
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         game_history_getter.track();
         set_did_scroll_after_new_items.set(true);
 
@@ -97,7 +93,7 @@ pub fn HistoryPanel(
         }
     });
 
-    let _ = use_event_listener(cx, scroll_el.clone(), scroll, move |_| {
+    let _ = use_event_listener( scroll_el.clone(), scroll, move |_| {
         let Some(el) = scroll_el.get_untracked() else {
             return;
         };
@@ -121,7 +117,7 @@ pub fn HistoryPanel(
         }
     });
 
-    view! { cx,
+    view! {
         <div
             style:width="100%"
         >
@@ -133,8 +129,8 @@ pub fn HistoryPanel(
             >
                 <For each=move || game_history_getter.get().all_frames
                     key=move |e| e.clone()
-                    view=closure!(|cx, frame| {
-                        view! { cx,
+                    children=closure!(| frame| {
+                        view! {
                             <HistoryFrame frame=frame />
                         }
                     })

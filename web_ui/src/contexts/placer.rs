@@ -94,9 +94,9 @@ pub fn compute_is_mobile() -> bool {
 }
 
 #[component]
-pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
+pub fn PlacerContainer( children: Children) -> impl IntoView {
     let (window_size_getter, window_size_setter) =
-        create_signal(cx, get_current_window_size().unwrap());
+        create_signal( get_current_window_size().unwrap());
 
     window_event_listener(ev::resize, move |_ev| {
         if let Some(current_window) = get_current_window_size() {
@@ -105,12 +105,12 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
     });
 
     let is_mobile = compute_is_mobile();
-    let placer_getter = create_memo(cx, move |_| {
+    let placer_getter = create_memo( move |_| {
         GameComponentPlacer::new_from_root_window_size(window_size_getter.get(), is_mobile)
     });
-    provide_context(cx, placer_getter);
+    provide_context( placer_getter);
 
-    let origin = create_memo(cx, move |_| {
+    let origin = create_memo( move |_| {
         let window_size = window_size_getter.get();
         let placer = placer_getter.get();
         let projected_size = scalar_mult((placer.golden_width, GOLDEN_HEIGHT), placer.scale);
@@ -127,7 +127,7 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
         wrap_px(placer.scale(GOLDEN_HEIGHT))
     };
 
-    view! { cx,
+    view! { 
         <div
             style:background="#bae8f5"
             style:width="100%"
@@ -143,7 +143,7 @@ pub fn PlacerContainer(cx: Scope, children: Children) -> impl IntoView {
                 style:transform=move || if placer_getter.get().is_rotated { "rotate(90deg)" } else { "" }
                 style:font-size=move || wrap_px(placer_getter.get().scale(DEFAULT_FONT_SIZE))
             >
-                {children(cx)}
+                {children()}
             </div>
         </div>
     }

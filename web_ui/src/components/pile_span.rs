@@ -4,9 +4,9 @@ use handy_core::game::*;
 use leptos::*;
 
 #[component]
-pub fn PileSpan(cx: Scope, pile: Pile) -> impl IntoView {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    view! { cx,
+pub fn PileSpan( pile: Pile) -> impl IntoView {
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    view! { 
         <span>
             {
                 pile
@@ -17,7 +17,7 @@ pub fn PileSpan(cx: Scope, pile: Pile) -> impl IntoView {
                              true => 0.0,
                              false => 1.2,
                          };
-                        return view! { cx, <span>
+                        return view! {  <span>
                             <CardIdPill card_ptr=*card_ptr />
                             <span
                                 style:display="inline-block"
@@ -25,7 +25,7 @@ pub fn PileSpan(cx: Scope, pile: Pile) -> impl IntoView {
                             />
                         </span> }
                     })
-                    .collect_view(cx)
+                    .collect_view()
             }
         </span>
 

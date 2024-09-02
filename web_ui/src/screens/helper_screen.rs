@@ -9,8 +9,8 @@ const H1_FONT_SIZE: WindowUnit = 30.0;
 const H2_FONT_SIZE: WindowUnit = 18.0;
 
 #[component]
-fn ShortcutRow(cx: Scope, shortcut: String, text: String) -> impl IntoView {
-    view! { cx,
+fn ShortcutRow( shortcut: String, text: String) -> impl IntoView {
+    view! { 
         <div>
             <b>{shortcut}:</b>{format!(" {text}")}
         </div>
@@ -19,7 +19,6 @@ fn ShortcutRow(cx: Scope, shortcut: String, text: String) -> impl IntoView {
 
 #[component]
 pub fn HelperScreen<F, G, H>(
-    cx: Scope,
     is_showing_settings_setter: WriteSignal<bool>,
     should_show_new_match: bool,
     new_match_fn: F,
@@ -31,10 +30,10 @@ where
     G: Fn() + 'static,
     H: Fn() + 'static,
 {
-    let placer_getter = use_context::<Memo<GameComponentPlacer>>(cx).unwrap();
-    let options = use_options(cx);
+    let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
+    let options = use_options();
 
-    view! { cx,
+    view! { 
         <div
             style:position="relative"
             style:width="100%"
@@ -190,9 +189,9 @@ where
                         style:display="flex"
                         style:justify-content="space-around"
                     >
-                        { if should_show_new_match { Some(view! { cx,
+                        { if should_show_new_match { Some(view! { 
                             <Button
-                                background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                                background=Signal::derive( || BUTTON_SELECTED_COLOUR.to_string())
                                 width=100.0
                                 height=30.0
                                 on:click=move |_| {
@@ -208,7 +207,7 @@ where
                         }
 
                         <Button
-                            background=Signal::derive(cx, || BUTTON_SELECTED_COLOUR.to_string())
+                            background=Signal::derive( || BUTTON_SELECTED_COLOUR.to_string())
                             width=100.0
                             height=30.0
                             on:click=move |_| {
@@ -220,7 +219,7 @@ where
                         </Button>
 
                         <Button
-                            background=Signal::derive(cx, || BUTTON_NON_SELECTED_COLOUR.to_string())
+                            background=Signal::derive( || BUTTON_NON_SELECTED_COLOUR.to_string())
                             width=100.0
                             height=30.0
                             on:click=move |_| {

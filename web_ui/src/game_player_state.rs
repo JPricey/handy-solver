@@ -8,7 +8,10 @@ use handy_core::game::end_game::{is_game_winner, GameEndCheckType};
 use handy_core::game::*;
 use handy_core::utils::*;
 use leptos::*;
-use leptos_animation::*;
+use leptos_animation::AnimatedSignal;
+use leptos_animation::{create_animated_signal, tween_default, AnimationTarget};
+
+use leptos_dom::helpers::TimeoutHandle;
 use std::cmp::max;
 use std::f64::consts::PI;
 
@@ -709,31 +712,30 @@ pub fn dquat_tween(from: &DQuat, to: &DQuat, progress: f64) -> DQuat {
     res
 }
 
-fn get_init_render_pile(cx: Scope, init_pile: &Pile) -> RenderCardMap {
+fn get_init_render_pile(init_pile: &Pile) -> RenderCardMap {
     init_pile
         .iter()
         .enumerate()
         .map(|(i, card)| {
-            let active_face = create_rw_signal(cx, FaceKey::A);
+            let active_face = create_rw_signal(FaceKey::A);
 
-            let point = create_rw_signal(cx, (Point2D::default(), Duration::new(0, 0)));
-            let animated_point =
-                create_animated_signal(cx, move || point.get().into(), tween_default);
+            let point = create_rw_signal((Point2D::default(), Duration::new(0, 0)));
+            let animated_point: AnimatedSignal<Point2D, Point2D> =
+                create_animated_signal(move || point.get().into(), tween_default);
 
-            let quat = create_rw_signal(cx, (quat_for_face(FaceKey::A), Duration::new(0, 0)));
-            let animated_quat = create_animated_signal(cx, move || quat.get().into(), dquat_tween);
+            let quat = create_rw_signal((quat_for_face(FaceKey::A), Duration::new(0, 0)));
+            let animated_quat = create_animated_signal(move || quat.get().into(), dquat_tween);
 
-            let position_in_pile = create_rw_signal(cx, (i as WindowUnit, Duration::new(0, 0)));
+            let position_in_pile = create_rw_signal((i as WindowUnit, Duration::new(0, 0)));
             let animated_position_in_pile = create_animated_signal(
-                cx,
                 move || {
                     <(f64, Duration) as Into<AnimationTarget<f64>>>::into(position_in_pile.get())
                 },
                 tween_default,
             );
 
-            let is_important = create_rw_signal(cx, false);
-            let z_index = create_memo(cx, move |_| {
+            let is_important = create_rw_signal(false);
+            let z_index = create_memo(move |_| {
                 let important_offset = if is_important.get() { 100.0 } else { 0.0 };
 
                 ((important_offset - animated_position_in_pile.get() + 100.0) * 100.0) as i32
@@ -744,17 +746,17 @@ fn get_init_render_pile(cx: Scope, init_pile: &Pile) -> RenderCardMap {
                 active_face,
 
                 point,
-                animated_point,
+                animated_point: Signal::derive(move || animated_point.get()),
 
                 quat,
-                animated_quat,
+                animated_quat: Signal::derive(move || animated_quat.get()),
 
                 position_in_pile,
-                animated_position_in_pile,
+                animated_position_in_pile: Signal::derive(move || animated_position_in_pile.get()),
                 is_important,
                 z_index: z_index.into(),
 
-                is_clickable: create_rw_signal(cx, false),
+                is_clickable: create_rw_signal(false),
             };
 
             (card.card_id, render_card)
@@ -778,7 +780,6 @@ pub struct GamePlayerState {
 
 impl GamePlayerState {
     pub fn new(
-        cx: Scope,
         init_pile: Pile,
         card_zone_width_px: Signal<WindowUnit>,
         game_end_check_type: Memo<GameEndCheckType>,
@@ -788,17 +789,16 @@ impl GamePlayerState {
         let init_state = GameHistory {
             all_frames: vec![initial_frame.clone()],
         };
-        let game_history = create_rw_signal(cx, init_state);
+        let game_history = create_rw_signal(init_state);
         let game_history_getter = game_history.into();
 
-        let (render_card_map_getter, _) = create_signal(cx, get_init_render_pile(cx, &init_pile));
+        let (render_card_map_getter, _) = create_signal(get_init_render_pile(&init_pile));
 
         let (interaction_getter, interaction_setter) = create_signal::<InteractionOptions>(
-            cx,
             InteractionOptions::new(initial_frame.current_pile.clone()),
         );
 
-        let maybe_animation_queue = create_rw_signal(cx, None);
+        let maybe_animation_queue = create_rw_signal(None);
 
         Self {
             game_history,
@@ -807,7 +807,7 @@ impl GamePlayerState {
             interaction_getter,
             interaction_setter,
             maybe_animation_queue,
-            options: use_options(cx),
+            options: use_options(),
             card_zone_width_px,
             game_end_check_type,
         }
