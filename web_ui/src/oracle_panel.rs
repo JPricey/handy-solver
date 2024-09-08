@@ -30,6 +30,10 @@ fn model_url(matchup: Matchup) -> String {
     return get_full_path(&model_file);
 }
 
+fn quest_model_url() -> String {
+    return get_full_path("static/models/Quest.yaml");
+}
+
 async fn fetch_model_from_full_url(url: &str) -> Result<Model, ()> {
     let model_string = reqwasm::http::Request::get(url)
         .send()
@@ -179,6 +183,12 @@ pub fn OraclePanel(
             let mut models: Vec<Model> = Vec::new();
             for matchup in matchups {
                 let model_url = model_url(matchup);
+                let model = fetch_model_from_full_url(&model_url).await.unwrap();
+                models.push(model);
+            }
+
+            if does_have_quest(&pile) {
+                let model_url = quest_model_url();
                 let model = fetch_model_from_full_url(&model_url).await.unwrap();
                 models.push(model);
             }

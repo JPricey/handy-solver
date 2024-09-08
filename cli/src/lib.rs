@@ -68,10 +68,15 @@ pub fn get_starting_pile() -> Pile {
 
 pub fn get_model_for_pile(pile: &Pile) -> Model {
     let matchups = get_all_matchups_from_pile(pile);
-    let models: Vec<Model> = matchups
+    let mut models: Vec<Model> = matchups
         .into_iter()
         .map(|matchup| try_read_model_for_matchup(matchup).unwrap())
         .collect();
+
+    if does_have_quest(&pile) {
+        let quest_model = try_read_quest_model().unwrap();
+        models.push(quest_model);
+    }
 
     if models.len() == 1 {
         models[0].clone()

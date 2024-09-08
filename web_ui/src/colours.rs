@@ -19,6 +19,7 @@ pub fn main_colour_for_class(class: Class) -> &'static str {
         Class::Piper => "#4673A6",
         Class::Troupe => "#FA2A13",
         Class::Ooze => "#4D9116",
+        Class::Quest => "#636262",
     }
 }
 

@@ -45,7 +45,7 @@ pub fn is_moveable_target(
     let target_face = card_ptr.get_active_face();
     let target_allegiance = target_face.allegiance;
 
-    if !is_allegiance_match(active_allegiance, target_allegiance, target) {
+    if !is_allegiance_match_for_target(active_allegiance, target_allegiance, target) {
         return false;
     }
 
@@ -60,7 +60,28 @@ pub fn is_moveable_target(
     true
 }
 
-pub fn is_allegiance_match(me: Allegiance, other: Allegiance, spec: Target) -> bool {
+pub fn is_allegiance_match_for_target(me: Allegiance, other: Allegiance, spec: Target) -> bool {
+    // Quest can target monsters as allies
+    // Monsters don't target quests as enemies
+
+    if me == Allegiance::Quest {
+        return match spec {
+            Target::Any => true,
+            Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
+            Target::Ally => other == Allegiance::Quest || other == Allegiance::Monster,
+        };
+    } else if other == Allegiance::Quest {
+        return match spec {
+            Target::Any => other != Allegiance::Monster,
+            Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
+            Target::Ally => me == Allegiance::Quest,
+        };
+    } else {
+        is_allegiance_match_for_effect(me, other, spec)
+    }
+}
+
+pub fn is_allegiance_match_for_effect(me: Allegiance, other: Allegiance, spec: Target) -> bool {
     match spec {
         Target::Any => true,
         Target::Ally => me == other,
@@ -79,7 +100,7 @@ pub fn find_heal_target(
 
     for i in usize::from(starting_idx)..max_range {
         let active_card_ptr = &pile[i];
-        if is_allegiance_match(
+        if is_allegiance_match_for_target(
             allegiance,
             active_card_ptr.get_active_face().allegiance,
             target_type,
@@ -340,4 +361,3 @@ pub fn is_boolean_condition_met(
         _ => panic!("unimplemeneted boolean condition {:?}", condition),
     }
 }
-

@@ -15,7 +15,9 @@ lazy_static! {
     pub static ref ROW_PUSH_ENEMY_INF_PULL_ALLY_INF: Row = row().push_enemy_inf().pull_ally_inf();
     pub static ref ROW_CLAW_ENEMY_4: Row = row().claw_enemy(4);
     pub static ref ROW_HEAL_ALLY: Row = row().heal_ally();
+    pub static ref ROW_HEAL_ENEMY: Row = row().heal_enemy();
     pub static ref ROW_HEAL_ALLY_CLAW_ENEMY_3: Row = row().heal_ally().claw_enemy(3);
+    pub static ref ROW_DEATH: Row = row().death();
 }
 
 struct CharBuilder {
@@ -34,7 +36,7 @@ impl CharBuilder {
                 Allegiance::Rat | Allegiance::Werewolf => {
                     // Allegiance is correct already
                 }
-                Allegiance::Hero | Allegiance::Monster => {
+                Allegiance::Hero | Allegiance::Monster | Allegiance::Quest => {
                     // Overwrite
                     face.allegiance = self.allegiance
                 }
@@ -75,7 +77,7 @@ impl CharBuilder {
                 Allegiance::Rat | Allegiance::Werewolf => {
                     // Allegiance is correct already
                 }
-                Allegiance::Hero | Allegiance::Monster => {
+                Allegiance::Hero | Allegiance::Monster | Allegiance::Quest => {
                     // Overwrite
                     face.allegiance = self.allegiance
                 }
@@ -4759,6 +4761,45 @@ impl CardDefs {
                                  .push_ally_inf()
                         )
                         ,
+                },
+            ));
+        }
+
+        {
+            let quest = CharBuilder::new(Class::Quest, Allegiance::Quest);
+
+            card_defs.register_card(quest.card(
+                100,
+                enum_map! {
+                    FaceKey::A => side(Health::Full)
+                        .on_hit_reaction(&ROW_DEATH)
+                        .feature(Features::Resilient)
+                        .add_row(row()
+                                 .heal_ally()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Full)
+                        .feature(Features::Resilient)
+                        .on_hit_reaction(&ROW_HEAL_ENEMY)
+                        .add_row(row()
+                                 .troupe_condition(TroupeType::Heart)
+                                 .heal_ally()
+                        )
+                        .add_row(row()
+                                 .troupe_condition(TroupeType::Diamond)
+                                 .claw_enemy(2)
+                        )
+                        .add_row(row()
+                                 .troupe_condition(TroupeType::Club)
+                                 .hit_enemy(4)
+                        )
+                        .add_row(row()
+                                 .troupe_condition(TroupeType::Spade)
+                                 .push_enemy(2)
+                        )
+                        ,
+                    FaceKey::C => side(Health::Half),
+                    FaceKey::D => side(Health::Empty),
                 },
             ));
         }

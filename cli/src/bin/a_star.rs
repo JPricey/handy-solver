@@ -1,6 +1,7 @@
 use clap::Parser;
 use cli::run_a_star::run_a_star_solver;
 use cli::{get_starting_pile_from_args, StandardArgs};
+use handy_core::game::end_game::GameEndCheckType;
 
 fn main() {
     let args = StandardArgs::parse();
@@ -11,6 +12,7 @@ fn main() {
         None,
         None,
         args.g_bias,
-        Some(handy_core::game::end_game::GameEndCheckType::PerHeroClass),
+        Some(GameEndCheckType::Standard),
+        true,
     );
 }

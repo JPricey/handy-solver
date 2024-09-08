@@ -11,6 +11,7 @@ pub fn run_a_star_solver(
     max_iters: Option<usize>,
     g_bias: Option<f32>,
     game_end_check_type: Option<GameEndCheckType>,
+    should_print_solution: bool,
 ) -> Vec<Pile> {
     let model = get_model_for_pile(&start_pile);
 
@@ -46,9 +47,11 @@ pub fn run_a_star_solver(
                 }
                 return vec![];
             }
-            AStarIterResult::NewBest(_tiny_pile) => {
+            AStarIterResult::NewBest(pile) => {
                 println!("New best solution: {}", a_star_solver.max_depth);
-                // a_star_solver.print_solution_from_tiny(&tiny_pile);
+                if should_print_solution {
+                    a_star_solver.print_solution_from_pile(&pile);
+                }
             }
             AStarIterResult::Continue(_) => {
                 if let Some(def_max_iter) = max_iters {

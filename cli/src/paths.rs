@@ -36,6 +36,10 @@ pub fn model_path_for_matchup(matchup: Matchup) -> String {
         .to_owned()
 }
 
+pub fn quest_model_path() -> String {
+    MODELS_DIR.join("Quest.yaml").to_str().unwrap().to_owned()
+}
+
 pub fn swap_model_path_for_matchup(matchup: Matchup) -> String {
     MODELS_DIR
         .join(format!("swap.{}", matchup_to_yaml_str(matchup)))
@@ -65,6 +69,11 @@ pub fn try_read_model_from_custom_name(name: &str) -> Result<Model, String> {
 
 pub fn try_read_model_for_matchup(matchup: Matchup) -> Result<Model, String> {
     let full_path = model_path_for_matchup(matchup);
+    try_read_model_from_full_path(&full_path)
+}
+
+pub fn try_read_quest_model() -> Result<Model, String> {
+    let full_path = quest_model_path();
     try_read_model_from_full_path(&full_path)
 }
 

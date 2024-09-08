@@ -36,7 +36,7 @@ pub fn standard_check_is_game_winner(pile: &Pile) -> WinType {
                         return WinType::Unresolved;
                     }
                 }
-                Allegiance::Werewolf | Allegiance::Rat => (),
+                Allegiance::Werewolf | Allegiance::Rat | Allegiance::Quest => (),
             }
         }
     }

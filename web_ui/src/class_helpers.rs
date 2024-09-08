@@ -19,6 +19,7 @@ pub fn class_to_character_name(class: Class) -> &'static str {
         Class::Piper => "Piper",
         Class::Troupe => "Troupe",
         Class::Ooze => "Ooze",
+        Class::Quest => "Quest",
     }
 }
 
@@ -41,5 +42,6 @@ pub fn class_to_full_class_name(class: Class) -> &'static str {
         Class::Piper => "Pied Piper",
         Class::Troupe => "Circus Troupe",
         Class::Ooze => "Ooze",
+        Class::Quest => "Quest",
     }
 }

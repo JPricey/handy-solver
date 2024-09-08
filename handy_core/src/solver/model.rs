@@ -486,7 +486,9 @@ pub fn get_all_matchups_from_pile(pile: &Pile) -> Vec<Matchup> {
     let mut heros = Vec::new();
     let mut monsters = Vec::new();
     for class in classes {
-        if is_hero_class(class) {
+        if class == Class::Quest {
+            continue;
+        } else if is_hero_class(class) {
             heros.push(class);
         } else {
             monsters.push(class);
@@ -501,6 +503,17 @@ pub fn get_all_matchups_from_pile(pile: &Pile) -> Vec<Matchup> {
     }
 
     return result;
+}
+
+pub fn does_have_quest(pile: &Pile) -> bool {
+    let classes = get_classes_from_pile(pile);
+    for class in classes {
+        if class == Class::Quest {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 pub fn merge_models_for_pile(pile: &Pile, models: &Vec<Model>) -> Model {

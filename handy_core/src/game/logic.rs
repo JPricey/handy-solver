@@ -2,9 +2,9 @@ use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::game_state::EngineGameState;
 use crate::game::pile_utils::{
     can_card_be_damaged, exhaust_card, find_heal_target, find_hurt_faces, get_cost_predicate,
-    get_integer_range, get_next_troupe, get_range_cap, get_stance_count, is_allegiance_match,
-    is_boolean_condition_met, is_moveable_target, maybe_skip_action_event_for_spider_feature,
-    rotate_key,
+    get_integer_range, get_next_troupe, get_range_cap, get_stance_count,
+    is_allegiance_match_for_effect, is_allegiance_match_for_target, is_boolean_condition_met,
+    is_moveable_target, maybe_skip_action_event_for_spider_feature, rotate_key,
 };
 use crate::game::piper_helpers::{
     action_with_modified_range, any_card_has_modifiers, modifier_range_type_for_action,
@@ -131,7 +131,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let allegiance = active_card.get_active_face().allegiance;
 
         match allegiance {
-            Allegiance::Monster | Allegiance::Werewolf | Allegiance::Rat => {
+            Allegiance::Monster | Allegiance::Werewolf | Allegiance::Rat | Allegiance::Quest => {
                 self.resolve_enemy_turn(state, allegiance, active_idx)
             }
             Allegiance::Hero => {
@@ -436,7 +436,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card = pile[target_idx];
-                    if is_allegiance_match(
+                    if is_allegiance_match_for_target(
                         allegiance,
                         target_card.get_active_face().allegiance,
                         wrapped_action.target,
@@ -453,7 +453,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card = pile[target_idx];
-                    if is_allegiance_match(
+                    if is_allegiance_match_for_target(
                         allegiance,
                         target_card.get_active_face().allegiance,
                         wrapped_action.target,
@@ -588,7 +588,8 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     EnumMap::default();
 
                 for other in Allegiance::iter() {
-                    let is_match = is_allegiance_match(allegiance, other, wrapped_action.target);
+                    let is_match =
+                        is_allegiance_match_for_target(allegiance, other, wrapped_action.target);
                     attack_candidates[other] = is_match;
                 }
                 // Player can never block for team. We get that choice when we attack them directly.
@@ -663,7 +664,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
                 for target_idx in (start_idx..pile.len()).rev() {
                     let target_card_ptr = pile[target_idx];
-                    if !(is_allegiance_match(
+                    if !(is_allegiance_match_for_target(
                         allegiance,
                         target_card_ptr.get_active_face().allegiance,
                         wrapped_action.target,
@@ -691,7 +692,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
                 for target_idx in start_idx..pile.len() {
                     let target_card_ptr = pile[target_idx];
-                    if is_allegiance_match(
+                    if is_allegiance_match_for_target(
                         allegiance,
                         target_card_ptr.get_active_face().allegiance,
                         wrapped_action.target,
@@ -787,7 +788,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card = pile[target_idx];
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card.get_active_face().allegiance,
                         wrapped_action.target,
@@ -810,7 +811,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card = pile[target_idx];
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card.get_active_face().allegiance,
                         wrapped_action.target,
@@ -863,7 +864,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card_ptr = pile[target_idx];
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card_ptr.get_active_face().allegiance,
                         wrapped_action.target,
@@ -962,7 +963,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 let mut results: Vec<T> = Vec::new();
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card_ptr = pile[target_idx];
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card_ptr.get_active_face().allegiance,
                         wrapped_action.target,
@@ -1288,7 +1289,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 for target_idx in active_idx + 1..range_cap {
                     let target_card = pile[target_idx];
                     let target_card_allegiance = target_card.get_active_face().allegiance;
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card_allegiance,
                         wrapped_action.target,
@@ -1350,7 +1351,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             Action::Void => {
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card = pile[target_idx];
-                    if is_allegiance_match(
+                    if is_allegiance_match_for_target(
                         allegiance,
                         target_card.get_active_face().allegiance,
                         wrapped_action.target,
@@ -1391,7 +1392,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     let target_card = pile[target_idx];
                     let target_card_allegiance = target_card.get_active_face().allegiance;
 
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card_allegiance,
                         wrapped_action.target,
@@ -1452,7 +1453,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     let target_card = pile[target_idx];
                     let target_card_allegiance = target_card.get_active_face().allegiance;
 
-                    if !is_allegiance_match(
+                    if !is_allegiance_match_for_target(
                         allegiance,
                         target_card_allegiance,
                         wrapped_action.target,
@@ -1532,7 +1533,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             Action::Inspire => {
                 for target_idx in active_idx + 1..pile.len() {
                     let target_card = pile[target_idx];
-                    if is_allegiance_match(
+                    if is_allegiance_match_for_target(
                         allegiance,
                         target_card.get_active_face().allegiance,
                         wrapped_action.target,
@@ -1834,9 +1835,11 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
         let moved_card_allegiance = moved_card.get_active_face().allegiance;
         let is_monster_moving = moved_card_allegiance != Allegiance::Hero;
-        let is_moving_over_target = moved_card_allegiance
-            != moved_over_card.get_active_face().allegiance
-            && moved_over_card.get_active_face().health != Health::Empty;
+        let is_moving_over_target = is_allegiance_match_for_target(
+            moved_card_allegiance,
+            moved_over_card.get_active_face().allegiance,
+            Target::Any,
+        ) && moved_over_card.get_active_face().health != Health::Empty;
 
         // If monster is moving over something invalid, skip
         if is_monster_moving && !is_moving_over_target {
@@ -2235,7 +2238,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
         for target_idx in iter {
             let target_card = pile[target_idx];
-            if !is_allegiance_match(
+            if !is_allegiance_match_for_effect(
                 attacker_allegiance,
                 target_card.get_active_face().allegiance,
                 target,
@@ -2496,11 +2499,22 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let mut results = vec![];
         let pile = state.get_pile();
         let target_card = pile[target_idx];
-        for hurt_key in find_hurt_faces(&target_card) {
-            let mut new_state = state.clone();
-            new_state.get_pile_mut()[target_idx].key = hurt_key;
-            let event = Event::Damage(target_idx, pile[target_idx], hit_type, hurt_key);
-            results.push(new_state.append_event(event))
+
+        if target_card
+            .get_active_face()
+            .features
+            .intersects(Features::Resilient)
+        {
+            // TODO: event for resilient hits?
+            let new_state = state.clone();
+            results.push(new_state);
+        } else {
+            for hurt_key in find_hurt_faces(&target_card) {
+                let mut new_state = state.clone();
+                new_state.get_pile_mut()[target_idx].key = hurt_key;
+                let event = Event::Damage(target_idx, pile[target_idx], hit_type, hurt_key);
+                results.push(new_state.append_event(event))
+            }
         }
         results
     }

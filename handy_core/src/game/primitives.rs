@@ -62,6 +62,7 @@ pub enum Allegiance {
     Monster,
     Werewolf,
     Rat,
+    Quest,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -177,17 +178,18 @@ pub enum Reaction {
 bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
     pub struct Features: u16 {
-        const NoFeature     = 0b0000000000;
-        const Weight        = 0b0000000001;
-        const Trap          = 0b0000000010;
-        const Web           = 0b0000000100;
-        const Venom         = 0b0000001000;
-        const Energy        = 0b0000010000;
-        const Wall          = 0b0000100000;
-        const Invulnerable  = 0b0001000000;
-        const Open          = 0b0010000000;
-        const Fist          = 0b0100000000;
-        const United        = 0b1000000000;
+        const NoFeature     = 0b00000000000;
+        const Weight        = 0b00000000001;
+        const Trap          = 0b00000000010;
+        const Web           = 0b00000000100;
+        const Venom         = 0b00000001000;
+        const Energy        = 0b00000010000;
+        const Wall          = 0b00000100000;
+        const Invulnerable  = 0b00001000000;
+        const Open          = 0b00010000000;
+        const Fist          = 0b00100000000;
+        const United        = 0b01000000000;
+        const Resilient     = 0b10000000000;
     }
 }
 
@@ -263,6 +265,7 @@ pub enum Class {
     Piper,
     Troupe,
     Ooze,
+    Quest,
 }
 
 pub const HEROS: [Class; 8] = [
@@ -290,7 +293,8 @@ pub const MONSTERS: [Class; 8] = [
 impl Class {
     pub fn is_hero(self) -> bool {
         match self {
-            Class::Warrior
+            Class::Dummy
+            | Class::Warrior
             | Class::Huntress
             | Class::Pyro
             | Class::Cursed
@@ -299,7 +303,7 @@ impl Class {
             | Class::Piper
             | Class::Monk => true,
 
-            Class::Dummy
+            Class::Quest
             | Class::Ogre
             | Class::Vampire
             | Class::Spider
