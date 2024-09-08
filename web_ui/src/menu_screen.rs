@@ -103,7 +103,7 @@ fn ClassSelector(options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoVi
 }
 
 #[component]
-fn MatchupSelector( hero: RwSignal<Class>, baddie: RwSignal<Class>) -> impl IntoView {
+fn MatchupSelector( hero: RwSignal<Class>, monster: RwSignal<Class>) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
 
     view! { 
@@ -121,7 +121,7 @@ fn MatchupSelector( hero: RwSignal<Class>, baddie: RwSignal<Class>) -> impl Into
             >
                 VS
             </div>
-            <ClassSelector options={BADDIES.clone().into()} selection=baddie />
+            <ClassSelector options={MONSTERS.clone().into()} selection=monster />
         </div>
     }
 }
@@ -298,7 +298,7 @@ pub fn MenuScreen() -> impl IntoView {
                             style:align-items="center"
                         >
                             // Matchup Div
-                            <MatchupSelector hero=hero_signal baddie=enemy_signal/>
+                            <MatchupSelector hero=hero_signal monster=enemy_signal/>
 
                             <div
                                 style:height={move || wrap_px(placer_getter.get().scale(32.0))}

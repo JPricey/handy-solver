@@ -42,7 +42,7 @@
 //         let string = format!("{}{}", self.get_card_id(), self.key);
 //         let colored = match self.get_active_face().allegiance {
 //             Allegiance::Hero => string.blue(),
-//             Allegiance::Baddie => string.red(),
+//             Allegiance::Monster => string.red(),
 //             Allegiance::Werewolf => string.yellow(),
 //         };
 //         write!(fmt, "{}", colored)

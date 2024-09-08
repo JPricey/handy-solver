@@ -35,7 +35,7 @@ pub trait CardPtrT: Copy + Clone + PartialEq + Eq + Hash + Ord + PartialOrd + De
         let string = format!("{}{}", self.get_card_id(), self.get_card_face());
         match self.get_active_face().allegiance {
             Allegiance::Hero => string.blue(),
-            Allegiance::Baddie => string.red(),
+            Allegiance::Monster => string.red(),
             Allegiance::Werewolf => string.yellow(),
             Allegiance::Rat => string.yellow(),
         }

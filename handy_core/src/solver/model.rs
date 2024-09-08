@@ -303,7 +303,7 @@ pub fn training_ex_to_model(pile: &Pile) -> Model {
         let current_face = &mut current_card[card.get_card_face()];
 
         for j in i + 1..pile.len() {
-            if pile[j].get_active_face().allegiance == Allegiance::Baddie {
+            if pile[j].get_active_face().allegiance == Allegiance::Monster {
                 current_face.single_bad_touching_behind = 1.0;
                 current_face.bad_touching_behind_coeff += 1.0;
             } else {
@@ -312,7 +312,7 @@ pub fn training_ex_to_model(pile: &Pile) -> Model {
         }
 
         for j in i + 1..pile.len() {
-            if pile[j].get_active_face().allegiance != Allegiance::Baddie {
+            if pile[j].get_active_face().allegiance != Allegiance::Monster {
                 current_face.single_good_touching_behind = 1.0;
                 current_face.good_touching_behind_coeff += 1.0;
             } else {
@@ -321,7 +321,7 @@ pub fn training_ex_to_model(pile: &Pile) -> Model {
         }
 
         for j in (0..i).rev() {
-            if pile[j].get_active_face().allegiance == Allegiance::Baddie {
+            if pile[j].get_active_face().allegiance == Allegiance::Monster {
                 current_face.single_bad_touching_infront = 1.0;
                 current_face.bad_touching_infront_coeff += 1.0;
             } else {
@@ -330,7 +330,7 @@ pub fn training_ex_to_model(pile: &Pile) -> Model {
         }
 
         for j in (0..i).rev() {
-            if pile[j].get_active_face().allegiance != Allegiance::Baddie {
+            if pile[j].get_active_face().allegiance != Allegiance::Monster {
                 current_face.single_good_touching_infront = 1.0;
                 current_face.good_touching_infront_coeff += 1.0;
             } else {
@@ -467,7 +467,7 @@ pub fn find_any_in_list(list: &[Class], targets: &[Class]) -> Option<Class> {
 
 pub fn try_get_matchup_from_classes(classes: &Vec<Class>) -> Option<Matchup> {
     let maybe_hero = find_any_in_list(&classes, &HEROS);
-    let maybe_enemy = find_any_in_list(&classes, &BADDIES);
+    let maybe_enemy = find_any_in_list(&classes, &MONSTERS);
 
     if let (Some(hero), Some(enemy)) = (maybe_hero, maybe_enemy) {
         Some((hero, enemy))
@@ -484,19 +484,19 @@ pub fn try_get_matchup_from_pile(pile: &Pile) -> Option<Matchup> {
 pub fn get_all_matchups_from_pile(pile: &Pile) -> Vec<Matchup> {
     let classes = get_classes_from_pile(pile);
     let mut heros = Vec::new();
-    let mut baddies = Vec::new();
+    let mut monsters = Vec::new();
     for class in classes {
         if is_hero_class(class) {
             heros.push(class);
         } else {
-            baddies.push(class);
+            monsters.push(class);
         }
     }
 
     let mut result = Vec::new();
     for hero in &heros {
-        for baddie in &baddies {
-            result.push((hero.clone(), baddie.clone()));
+        for monster in &monsters {
+            result.push((hero.clone(), monster.clone()));
         }
     }
 

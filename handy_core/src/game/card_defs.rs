@@ -34,7 +34,7 @@ impl CharBuilder {
                 Allegiance::Rat | Allegiance::Werewolf => {
                     // Allegiance is correct already
                 }
-                Allegiance::Hero | Allegiance::Baddie => {
+                Allegiance::Hero | Allegiance::Monster => {
                     // Overwrite
                     face.allegiance = self.allegiance
                 }
@@ -75,7 +75,7 @@ impl CharBuilder {
                 Allegiance::Rat | Allegiance::Werewolf => {
                     // Allegiance is correct already
                 }
-                Allegiance::Hero | Allegiance::Baddie => {
+                Allegiance::Hero | Allegiance::Monster => {
                     // Overwrite
                     face.allegiance = self.allegiance
                 }
@@ -808,7 +808,7 @@ impl CardDefs {
         };
 
         {
-            let dummy = CharBuilder::new(Class::Dummy, Allegiance::Baddie);
+            let dummy = CharBuilder::new(Class::Dummy, Allegiance::Monster);
             card_defs.register_card(dummy.card(
                 0,
                 enum_map! {
@@ -1033,7 +1033,7 @@ impl CardDefs {
         }
 
         {
-            let ogre = CharBuilder::new(Class::Ogre, Allegiance::Baddie);
+            let ogre = CharBuilder::new(Class::Ogre, Allegiance::Monster);
             card_defs.register_card(ogre.card(
                 6,
                 enum_map! {
@@ -1440,7 +1440,7 @@ impl CardDefs {
         }
 
         {
-            let vampire = CharBuilder::new(Class::Vampire, Allegiance::Baddie);
+            let vampire = CharBuilder::new(Class::Vampire, Allegiance::Monster);
             card_defs.register_card(vampire.card(
                 15,
                 enum_map! {
@@ -1973,7 +1973,7 @@ impl CardDefs {
         }
 
         {
-            let spider = CharBuilder::new(Class::Spider, Allegiance::Baddie);
+            let spider = CharBuilder::new(Class::Spider, Allegiance::Monster);
             card_defs.register_card(spider.card(
                 24,
                 enum_map! {
@@ -2464,7 +2464,7 @@ impl CardDefs {
         }
 
         {
-            let demon = CharBuilder::new(Class::Demon, Allegiance::Baddie);
+            let demon = CharBuilder::new(Class::Demon, Allegiance::Monster);
             card_defs.register_card(demon.card(
                 33,
                 enum_map! {
@@ -3072,7 +3072,7 @@ impl CardDefs {
         }
 
         {
-            let verdant = CharBuilder::new(Class::Flora, Allegiance::Baddie);
+            let verdant = CharBuilder::new(Class::Flora, Allegiance::Monster);
             card_defs.register_card(verdant.card(
                 42,
                 enum_map! {
@@ -3584,7 +3584,7 @@ impl CardDefs {
         }
 
         {
-            let wall = CharBuilder::new(Class::Wall, Allegiance::Baddie);
+            let wall = CharBuilder::new(Class::Wall, Allegiance::Monster);
             card_defs.register_card(wall.back_card(
                 51,
                 enum_map! {
@@ -3964,7 +3964,7 @@ impl CardDefs {
         }
 
         {
-            let troupe = CharBuilder::new(Class::Troupe, Allegiance::Baddie);
+            let troupe = CharBuilder::new(Class::Troupe, Allegiance::Monster);
 
             card_defs.register_card(troupe.troupe_card(
                 60,
@@ -4559,7 +4559,7 @@ impl CardDefs {
         }
 
         {
-            let ooze = CharBuilder::new(Class::Ooze, Allegiance::Baddie);
+            let ooze = CharBuilder::new(Class::Ooze, Allegiance::Monster);
             card_defs.register_card(ooze.card(
                 69,
                 enum_map! {

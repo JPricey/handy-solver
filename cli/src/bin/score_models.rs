@@ -2,15 +2,15 @@ use cli::state_eval_to_score;
 use cli::training_path_for_matchup;
 use cli::try_read_model_for_matchup;
 use cli::DepthModeTrainingExample;
-use handy_core::game::{BADDIES, HEROS};
+use handy_core::game::{MONSTERS, HEROS};
 use handy_core::solver::Matchup;
 use serde_jsonlines::json_lines;
 
 fn main() {
     let mut all_results: Vec<(Matchup, f32)> = Vec::new();
     for hero in HEROS {
-        for baddie in BADDIES {
-            let matchup = (hero, baddie);
+        for monster in MONSTERS {
+            let matchup = (hero, monster);
             let Ok(struct_model) = try_read_model_for_matchup(matchup) else {
                 println!("Could not load model for: {matchup:?}");
                 all_results.push((matchup, 1000000.0));

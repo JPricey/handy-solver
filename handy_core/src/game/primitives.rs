@@ -59,7 +59,7 @@ pub enum Range {
 )]
 pub enum Allegiance {
     Hero,
-    Baddie,
+    Monster,
     Werewolf,
     Rat,
 }
@@ -276,7 +276,7 @@ pub const HEROS: [Class; 8] = [
     Class::Monk,
 ];
 
-pub const BADDIES: [Class; 8] = [
+pub const MONSTERS: [Class; 8] = [
     Class::Ogre,
     Class::Vampire,
     Class::Spider,

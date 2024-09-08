@@ -41,7 +41,7 @@ pub fn get_random_won_pile<R: Rng>(hero: Class, monster: Class, rng: &mut R) -> 
     let mut pile = get_start_from_classes(hero, monster, rng);
     randomize_sides(&mut pile, rng);
     for card in &mut pile {
-        if card.get_active_face().allegiance == Allegiance::Baddie {
+        if card.get_active_face().allegiance == Allegiance::Monster {
             card.key = get_random_exhausted_face(rng, card.get_card_def());
         }
     }
@@ -56,7 +56,7 @@ pub fn randomize_sides<R: Rng>(pile: &mut Pile, rng: &mut R) {
 
 pub fn randomize_hero_sides<R: Rng>(pile: &mut Pile, rng: &mut R) {
     for card_ptr in pile.iter_mut() {
-        if card_ptr.get_active_face().allegiance != Allegiance::Baddie {
+        if card_ptr.get_active_face().allegiance != Allegiance::Monster {
             card_ptr.key = get_random_face(rng);
         }
     }

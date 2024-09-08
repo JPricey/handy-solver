@@ -131,7 +131,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let allegiance = active_card.get_active_face().allegiance;
 
         match allegiance {
-            Allegiance::Baddie | Allegiance::Werewolf | Allegiance::Rat => {
+            Allegiance::Monster | Allegiance::Werewolf | Allegiance::Rat => {
                 self.resolve_enemy_turn(state, allegiance, active_idx)
             }
             Allegiance::Hero => {
@@ -1563,7 +1563,11 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let is_reaction_forced = target_allegiance != Allegiance::Hero;
 
         if !can_card_be_damaged(state.get_pile(), target_idx) {
-            return vec![];
+            return vec![state.clone().append_event(Event::WhiffHit(
+                target_idx,
+                target_card,
+                hit_type,
+            ))];
         }
 
         let mut results = self.attack_card_get_reaction_outcomes(state, target_idx, hit_type);
@@ -2506,7 +2510,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 mod tests {
     use super::*;
     use crate::game::game_state::GameStateWithEventLog;
-    use crate::game::primitives::{ClawSpaceType, Pile, WinType};
+    use crate::game::primitives::{ClawSpaceType, Pile};
     use crate::utils::{string_to_card_ptr, string_to_pile};
     use pretty_assertions::assert_eq;
     use std::collections::HashSet;
@@ -2603,7 +2607,7 @@ mod tests {
         let test_for_range = |range: Range, expected_str: &str| {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile.clone()),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(range),
                     target: Target::Enemy,
@@ -2624,7 +2628,7 @@ mod tests {
             // Pull 1
             let result = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Int(1)),
                     target: Target::Enemy,
@@ -2642,7 +2646,7 @@ mod tests {
         let row = &pile[0].get_active_face().rows[0];
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_row(
             &T::new(pile.clone()),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             row,
             0,
             false,
@@ -2769,7 +2773,7 @@ mod tests {
             let state = T::new(string_to_pile("6A 11D 14A"));
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_row(
                 &state,
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &state.pile[0].get_active_face().rows[0],
                 0,
                 false,
@@ -2819,7 +2823,7 @@ mod tests {
             let state = T::new(string_to_pile("69A 71A 10A 70A 11A 13A 12A 72B 14B"));
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_row(
                 &state,
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &state.pile[0].get_active_face().rows[1],
                 0,
                 false,
@@ -2844,7 +2848,7 @@ mod tests {
         let state = T::new(string_to_pile("33C 1D"));
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_row(
             &state,
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &state.pile[0].get_active_face().rows[2],
             0,
             false,
@@ -2967,7 +2971,7 @@ mod tests {
             let pile = string_to_pile("8A 29C 28A");
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Hit(Range::Inf),
                     target: Target::Enemy,
@@ -2983,7 +2987,7 @@ mod tests {
             let pile = string_to_pile("8A 28A 29C");
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Hit(Range::Inf),
                     target: Target::Enemy,
@@ -3000,7 +3004,7 @@ mod tests {
             let pile = string_to_pile("8A 28C 29C 30A");
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Hit(Range::Inf),
                     target: Target::Enemy,
@@ -3194,7 +3198,7 @@ mod tests {
             // Can assist block on behalf of ally
             let outcomes = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Hit(Range::Inf),
                     target: Target::Enemy,
@@ -3214,7 +3218,7 @@ mod tests {
             // Dodge doesn't work
             let outcomes = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("6A 38B 37A 41A")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Hit(Range::Inf),
                     target: Target::Enemy,
@@ -3238,7 +3242,7 @@ mod tests {
 
             let result_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Push(range),
                     target,
@@ -3271,7 +3275,7 @@ mod tests {
 
         let new_states_1 = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(pile.clone()),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Heal,
                 target: Target::Ally,
@@ -3288,7 +3292,7 @@ mod tests {
 
         let new_states_2 = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(new_states_1[0].pile.clone()),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Heal,
                 target: Target::Ally,
@@ -3595,7 +3599,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("26A 12A 13B 27B")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Ally,
@@ -3617,7 +3621,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("26A 12A 13A 27B")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Ally,
@@ -3639,7 +3643,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("26A 10A 12B 13A 27B")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Ally,
@@ -3661,7 +3665,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("26A 12A 13A 27C")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Ally,
@@ -3683,7 +3687,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("36C 10A 35B")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Ally,
@@ -3706,7 +3710,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("8D 10A 12B")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Enemy,
@@ -3724,7 +3728,7 @@ mod tests {
 
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Pull(Range::Inf),
                 target: Target::Enemy,
@@ -3747,7 +3751,7 @@ mod tests {
             let starting_pile = string_to_pile("6 7 1 2");
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(starting_pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Enemy,
@@ -3767,7 +3771,7 @@ mod tests {
             let starting_pile = string_to_pile("6 7 1 2C");
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(starting_pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Enemy,
@@ -3789,7 +3793,7 @@ mod tests {
             // Regular case: hero is pulled when healthy
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("6A 41A 37A")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Enemy,
@@ -3812,7 +3816,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("1A 26A 12A 13B 27B")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Pull(Range::Inf),
                     target: Target::Ally,
@@ -3829,7 +3833,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("26B 27B 11A 14A")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Push(Range::Inf),
                     target: Target::Ally,
@@ -3846,7 +3850,7 @@ mod tests {
         {
             let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
                 &T::new(string_to_pile("26B 27B 10A 13A")),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 &WrappedAction {
                     action: Action::Push(Range::Inf),
                     target: Target::Ally,
@@ -3864,7 +3868,7 @@ mod tests {
 
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Push(Range::Inf),
                 target: Target::Enemy,
@@ -3908,7 +3912,7 @@ mod tests {
 
         let new_states = GameStateEvaluator::new(get_identity_fn()).swarm_me_recursive(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             1,
         );
 
@@ -3926,7 +3930,7 @@ mod tests {
         let starting_pile = string_to_pile("26A 24C 27A 1A");
         let new_states = GameStateEvaluator::new(get_identity_fn()).swarm_me_recursive(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             1,
         );
 
@@ -3940,7 +3944,7 @@ mod tests {
         let starting_pile = string_to_pile("1 7 2 6 4 5");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Death,
                 target: Target::Enemy,
@@ -3957,7 +3961,7 @@ mod tests {
         let starting_pile = string_to_pile("36 1 2 3");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Void,
                 target: Target::Enemy,
@@ -3975,7 +3979,7 @@ mod tests {
         let starting_pile = string_to_pile("36 1C 2 3");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Void,
                 target: Target::Enemy,
@@ -3992,7 +3996,7 @@ mod tests {
         let starting_pile = string_to_pile("33D 35A 1B 3A 2A");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Claws(Range::Inf),
                 target: Target::Enemy,
@@ -4012,7 +4016,7 @@ mod tests {
         let starting_pile = string_to_pile("33D 3A 2A 1A");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::Claws(Range::Int(2)),
                 target: Target::Enemy,
@@ -4029,7 +4033,7 @@ mod tests {
         let starting_pile = string_to_pile("43A 1A 2A 3A 4B");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::SpacedClaws(ClawSpaceType::Odd),
                 target: Target::Enemy,
@@ -4046,7 +4050,7 @@ mod tests {
         let starting_pile = string_to_pile("43A 1A 2A 3A 4B");
         let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_enemy_action(
             &T::new(starting_pile),
-            Allegiance::Baddie,
+            Allegiance::Monster,
             &WrappedAction {
                 action: Action::SpacedClaws(ClawSpaceType::Even),
                 target: Target::Enemy,
@@ -4065,7 +4069,7 @@ mod tests {
             let pile = string_to_pile("4 1 2 3 5");
             let new_states = GameStateEvaluator::new(get_identity_fn()).attack_all_in_iter(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 (1..4).rev(),
                 Target::Any,
                 HitType::Hit,
@@ -4078,7 +4082,7 @@ mod tests {
             let pile = string_to_pile("4 1 2C 3 5");
             let new_states = GameStateEvaluator::new(get_identity_fn()).attack_all_in_iter(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 (1..4).rev(),
                 Target::Any,
                 HitType::Hit,
@@ -4091,7 +4095,7 @@ mod tests {
             let pile = string_to_pile("4 1C 2C");
             let new_states = GameStateEvaluator::new(get_identity_fn()).attack_all_in_iter(
                 &T::new(pile),
-                Allegiance::Baddie,
+                Allegiance::Monster,
                 (1..3).rev(),
                 Target::Any,
                 HitType::Hit,

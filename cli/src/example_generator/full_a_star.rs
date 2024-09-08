@@ -1,10 +1,10 @@
 
 /*
-fn write_examples<R: Rng>(hero: Class, baddie: Class, rng: &mut R) {
-    let start_pile = get_random_pile_matching_stats(hero, baddie, RANDOMIZE_SIDES_PCT, RANDOMIZE_HERO_SIDES_PCT, &mut rng);
+fn write_examples<R: Rng>(hero: Class, monster: Class, rng: &mut R) {
+    let start_pile = get_random_pile_matching_stats(hero, monster, RANDOMIZE_SIDES_PCT, RANDOMIZE_HERO_SIDES_PCT, &mut rng);
 
     println!(
-        "{}, Starting new pile {hero:?} v {baddie:?}: {:?}",
+        "{}, Starting new pile {hero:?} v {monster:?}: {:?}",
         get_datetime_stamp(),
         start_pile
     );
@@ -24,7 +24,7 @@ fn write_examples<R: Rng>(hero: Class, baddie: Class, rng: &mut R) {
             eval: StateEval::Win(i),
         };
         let ex_str = serde_json::to_string(&example).unwrap();
-        let path = training_path_for_matchup((hero, baddie));
+        let path = training_path_for_matchup((hero, monster));
 
         let mut file = OpenOptions::new()
             .create(true)

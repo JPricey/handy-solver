@@ -30,7 +30,7 @@ pub fn standard_check_is_game_winner(pile: &Pile) -> WinType {
                         return WinType::Unresolved;
                     }
                 }
-                Allegiance::Baddie => {
+                Allegiance::Monster => {
                     player_wins = false;
                     if !enemy_wins {
                         return WinType::Unresolved;
@@ -69,7 +69,7 @@ pub fn per_class_game_resolution(pile: &Pile) -> WinType {
                     alive_class[active_class] = true;
                 }
             }
-        } else if active_allegiance == Allegiance::Baddie {
+        } else if active_allegiance == Allegiance::Monster {
             if active_face.health != Health::Empty {
                 player_wins = false;
             }

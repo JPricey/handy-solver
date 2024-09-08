@@ -85,7 +85,7 @@ pub fn get_training_matchups_from_args() -> Vec<Matchup> {
 
     for class in args.classes {
         if is_hero_class(class) {
-            for other in BADDIES {
+            for other in MONSTERS {
                 all_matchups.insert((class, other));
             }
         } else {
@@ -97,7 +97,7 @@ pub fn get_training_matchups_from_args() -> Vec<Matchup> {
 
     if args.all {
         for hero in HEROS {
-            for monster in BADDIES {
+            for monster in MONSTERS {
                 all_matchups.insert((hero, monster));
             }
         }

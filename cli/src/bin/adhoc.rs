@@ -5,7 +5,7 @@ use handy_core::solver::model::Model;
 use handy_core::utils::string_to_pile;
 use serde;
 use serde_jsonlines::json_lines;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::Debug;
 // use csv::Writer;
 // use inc_stats;
