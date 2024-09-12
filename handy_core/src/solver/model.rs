@@ -7,6 +7,7 @@ use enum_map::EnumMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::{BTreeMap, HashSet};
 use vectorize_derive::*;
+use std::cmp;
 
 pub type Matchup = (Class, Class);
 
@@ -369,7 +370,7 @@ pub fn training_ex_to_model(pile: &Pile) -> Model {
             current_face.is_start_num_energy = total_energy;
         }
         current_face.value = 1.0;
-        current_face.value_in_position[i] = 1.0;
+        current_face.value_in_position[cmp::min(i, 8)] = 1.0;
     }
 
     model

@@ -1143,9 +1143,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     let mut total_rage = 0;
                     for i in active_idx + 1..pile.len() {
                         let other_card = pile[i];
-                        if other_card.get_active_face().allegiance == allegiance {
-                            total_rage += other_card.get_active_face().rage;
-                        }
+                        total_rage += other_card.get_active_face().rage;
                     }
                     if total_rage < required_amount {
                         return Vec::new();

@@ -21,6 +21,10 @@ pub fn standard_check_is_game_winner(pile: &Pile) -> WinType {
     let mut enemy_wins = true;
 
     for card in pile.iter() {
+        if card.get_card_def().class == Class::Quest {
+            continue;
+        }
+
         let active_face = card.get_active_face();
         if active_face.health != Health::Empty {
             match active_face.allegiance {
@@ -57,8 +61,11 @@ pub fn per_class_game_resolution(pile: &Pile) -> WinType {
     let mut alive_class: EnumMap<Class, bool> = enum_map!(_=>false);
 
     for card in pile.iter() {
-        let active_face = card.get_active_face();
         let active_class = card.get_card_def().class;
+        if active_class == Class::Quest {
+            continue;
+        }
+        let active_face = card.get_active_face();
         let is_hero_class = active_class.is_hero();
         let active_allegiance = active_face.allegiance;
 

@@ -33,10 +33,10 @@ impl CharBuilder {
     fn card(&self, id: CardId, mut faces: EnumMap<FaceKey, FaceDef>) -> CardDef {
         for face in faces.values_mut() {
             match face.allegiance {
-                Allegiance::Rat | Allegiance::Werewolf => {
+                Allegiance::Rat | Allegiance::Werewolf | Allegiance::Quest => {
                     // Allegiance is correct already
                 }
-                Allegiance::Hero | Allegiance::Monster | Allegiance::Quest => {
+                Allegiance::Hero | Allegiance::Monster => {
                     // Overwrite
                     face.allegiance = self.allegiance
                 }
@@ -4766,10 +4766,10 @@ impl CardDefs {
         }
 
         {
-            let quest = CharBuilder::new(Class::Quest, Allegiance::Quest);
+            let quest = CharBuilder::new(Class::Quest, Allegiance::Monster);
 
             card_defs.register_card(quest.card(
-                100,
+                101,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
                         .on_hit_reaction(&ROW_DEATH)
@@ -4781,6 +4781,7 @@ impl CardDefs {
                     FaceKey::B => side(Health::Full)
                         .feature(Features::Resilient)
                         .on_hit_reaction(&ROW_HEAL_ENEMY)
+
                         .add_row(row()
                                  .troupe_condition(TroupeType::Heart)
                                  .heal_ally()
@@ -4800,6 +4801,33 @@ impl CardDefs {
                         ,
                     FaceKey::C => side(Health::Half),
                     FaceKey::D => side(Health::Empty),
+                },
+            ));
+
+            card_defs.register_card(quest.card(
+                103,
+                enum_map! {
+                    FaceKey::A => side(Health::Empty)
+                        .add_row(row()
+                                 .hit_enemy_inf()
+                                 .rotate()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .rage(1)
+                        .add_row(row()
+                                 .claw_enemy(4)
+                                 .flip()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Full)
+                        .rage(2)
+                        .add_row(row().death())
+                    ,
+                    FaceKey::D => side(Health::Empty)
+                        .rage(2)
+                        .add_row(row().death())
+                    ,
                 },
             ));
         }

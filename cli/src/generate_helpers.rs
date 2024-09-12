@@ -74,6 +74,9 @@ pub struct TrainArgs {
 
     #[clap(long, value_parser=parse_dot_separated_matchup, num_args=0..)]
     pub matchups: Vec<Matchup>,
+
+    #[clap(long)]
+    pub q1: bool,
 }
 
 pub fn get_training_matchups_from_args() -> Vec<Matchup> {

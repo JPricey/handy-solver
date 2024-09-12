@@ -100,7 +100,9 @@ fn get_weight_for_examples(examples: &Vec<DepthModeTrainingExample>) -> Vec<f32>
 fn main() {
     let args = TrainArgs::parse();
     let matchup = try_get_matchup_from_classes(&args.classes).expect("Could not parse matchup");
-    let relevant_cards = get_relevant_cards_for_matchup(matchup);
+    let mut relevant_cards = get_relevant_cards_for_matchup(matchup);
+    relevant_cards.push(103);
+
     let mut struct_model: Model = if args.cont {
         println!("Using existing Model");
         try_read_model_for_matchup(matchup).expect("Couldn't load existing model")

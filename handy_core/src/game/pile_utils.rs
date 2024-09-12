@@ -61,24 +61,25 @@ pub fn is_moveable_target(
 }
 
 pub fn is_allegiance_match_for_target(me: Allegiance, other: Allegiance, spec: Target) -> bool {
-    // Quest can target monsters as allies
-    // Monsters don't target quests as enemies
+    is_allegiance_match_for_effect(me, other, spec)
+    // // Quest can target monsters as allies
+    // // Monsters don't target quests as enemies
 
-    if me == Allegiance::Quest {
-        return match spec {
-            Target::Any => true,
-            Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
-            Target::Ally => other == Allegiance::Quest || other == Allegiance::Monster,
-        };
-    } else if other == Allegiance::Quest {
-        return match spec {
-            Target::Any => other != Allegiance::Monster,
-            Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
-            Target::Ally => me == Allegiance::Quest,
-        };
-    } else {
-        is_allegiance_match_for_effect(me, other, spec)
-    }
+    // if me == Allegiance::Quest {
+    //     return match spec {
+    //         Target::Any => true,
+    //         Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
+    //         Target::Ally => other == Allegiance::Quest || other == Allegiance::Monster,
+    //     };
+    // } else if other == Allegiance::Quest {
+    //     return match spec {
+    //         Target::Any => other != Allegiance::Monster,
+    //         Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
+    //         Target::Ally => me == Allegiance::Quest,
+    //     };
+    // } else {
+    //     is_allegiance_match_for_effect(me, other, spec)
+    // }
 }
 
 pub fn is_allegiance_match_for_effect(me: Allegiance, other: Allegiance, spec: Target) -> bool {
