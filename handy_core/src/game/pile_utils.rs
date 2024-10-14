@@ -7,7 +7,7 @@ use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::primitives::{
     Action, Allegiance, Condition, ConditionCostType, Event, FaceKey, Features, Health, Pile,
     Range, RangeType, Reaction, ReactionTrigger, SkipActionReason, StanceType, Target, TroupeType,
-    WrappedAction,
+    WrappedAction, Class
 };
 use strum::IntoEnumIterator;
 
@@ -295,7 +295,9 @@ pub fn get_next_troupe(
 ) -> Option<TroupeType> {
     for i in active_idx + 1..pile.len() {
         let other_card = pile[i];
-        if other_card.get_active_face().allegiance == active_allegiance {
+        if other_card.get_active_face().allegiance == active_allegiance
+            && other_card.get_card_def().class == Class::Troupe
+        {
             return other_card.get_card_def().troupe_type;
         }
     }

@@ -1833,10 +1833,16 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
 
         let moved_card_allegiance = moved_card.get_active_face().allegiance;
         let is_monster_moving = moved_card_allegiance != Allegiance::Hero;
+        let target_allegiance_spec = if is_monster_moving {
+            Target::Enemy
+        } else {
+            Target::Any
+        };
+
         let is_moving_over_target = is_allegiance_match_for_target(
             moved_card_allegiance,
             moved_over_card.get_active_face().allegiance,
-            Target::Any,
+            target_allegiance_spec,
         ) && moved_over_card.get_active_face().health != Health::Empty;
 
         // If monster is moving over something invalid, skip
@@ -1858,14 +1864,17 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         }
 
         if is_monster_moving {
-            (
-                self.attack_card_get_all_outcomes(
-                    &new_state_with_roll_move,
-                    target_idx,
-                    HitType::Roll,
-                ),
-                false,
-            )
+            let attack_outcomes = self.attack_card_get_all_outcomes(
+                &new_state_with_roll_move,
+                target_idx,
+                HitType::Roll,
+            );
+
+            if attack_outcomes.len() == 0 {
+                (Vec::new(), true)
+            } else {
+                (attack_outcomes, false)
+            }
         } else {
             let mut attack_outcomes = self.attack_card_get_all_outcomes_allow_whif_hits(
                 &new_state_with_roll_move,
@@ -2851,6 +2860,35 @@ mod tests {
                     "69A 71A 70B 10D 11A 13A 12A 72B 14B",
                 ],
             );
+        }
+    }
+
+    #[test]
+    fn test_bug13() {
+        {
+            // 60A skips its turn?
+            let state = T::new(string_to_pile("60A101B4A61A63A1A3A62A2A5A"));
+            let new_states = resolve_top_card(&state);
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec![
+                    "101B, 4B, 61A, 63A, 1A, 3A, 62A, 2A, 5A, 60B",
+                    "101B, 4C, 61A, 63A, 1A, 3A, 62A, 2A, 5A, 60B",
+                    "101B, 4A, 61A, 63A, 1A, 3A, 62A, 2A, 5B, 60B",
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn test_bug14() {
+        {
+            // 70C skips its turn instead of performing pulls
+            let state = T::new(string_to_pile("70C 3A 69A 4A 5B 71A 72B 1C 2B"));
+            let new_states = resolve_top_card(&state);
+
+            assert_actual_vs_expected_piles(&new_states, vec!["71A 3A 69A 4A 72A 5C 1C 2B 70C"]);
         }
     }
 
