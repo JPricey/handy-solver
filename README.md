@@ -2,19 +2,18 @@
 A solver and web UI written in Rust for the very clever [Handy Brawl](https://boardgamegeek.com/boardgame/362692/handy-brawl) print & play card game by Igor Zuber.
 
 ## Usage
-See v0 of the web UI [here](https://jpricey.github.io/handy-solver/).
+Find the web UI [here](https://jpricey.github.io/handy-solver/).
 
 See sections below for using the CLI
 
 ## A-Star Solver
 
-The A-Star solver is built to solve standard game states of 9 cards with a single hero type vs a single enemy type.
-This solver does not guarantee optimal solutions, but if a state can be solved it's pretty good at finding a solution, and will attempt to find a faster solution once found.
-States can be input starting with an exact pile string, or generated randomly for a given matchup. See below for invocation examples.
+The A-Star attempts to find the quickest victory it can from a given game state.
+States can be input starting with an exact game state, or generated randomly for a given matchup. See below for invocation examples.
 
 ### Pile Input Mode
 An exact start state can be supplied with the `--pile` argument, followed by a pile state string.
-A pile is a list of cards. A card is a card number, optionally followed by a card face (`A`, `B`, `C`, `D`). If no card face is given, `A` is defaulted to. Lowercase faces are accepted.
+A pile is a list of cards, where a card is a card number, optionally followed by a card face (`A`, `B`, `C`, `D`). If no card face is given, `A` is defaulted to. Lowercase faces are accepted.
 Pile strings are read left to right, with the leftmost card representing the top card.
 
 ### Class Input Mode
@@ -28,6 +27,8 @@ Available hero classes:
 - pyro
 - cursed
 - beastmaster
+- piper
+- monk
 
 Available monster classes:
 - ogre
@@ -35,6 +36,8 @@ Available monster classes:
 - spider
 - demon
 - flora
+- troupe
+- ooze
 
 ### Examples
 Examples of how to start the program through cargo:
@@ -87,11 +90,3 @@ cargo run -p cli --bin exhaustive_search --release -- --pile "12A > 9A > 21D > 1
 6:
 cargo run -p cli --bin exhaustive_search --release -- --pile "9D > 11B > 10A > 8D > 20D" --win --turns 3 --rev
 ```
-
-## Notes / Future Work
-Ideas for future work:
-- Use a neural network for modelling state instead of a feature based heuristic function
-- More sophisticated search algorithm
-- Support for multithreading
-- Improvements to the web GUI
-- Puzzle generator
