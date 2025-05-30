@@ -124,7 +124,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         card_outcomes
     }
 
-    fn resolve_card_at_index(&self, state: &T, active_idx: usize) -> Vec<T> {
+    pub fn resolve_card_at_index(&self, state: &T, active_idx: usize) -> Vec<T> {
         let pile = state.get_pile();
         let active_card = &pile[active_idx];
         let active_face = &active_card.get_active_face();
@@ -1169,7 +1169,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             let modifier_range_type = modifier_range_type_for_action(&action.action);
             for current_state in &active_states {
                 if let Some(spider_skip_event) = maybe_skip_action_event_for_spider_feature(
-                    state.get_pile(),
+                    current_state.get_pile(),
                     active_idx,
                     allegiance,
                     action,
@@ -2889,6 +2889,21 @@ mod tests {
             let new_states = resolve_top_card(&state);
 
             assert_actual_vs_expected_piles(&new_states, vec!["71A 3A 69A 4A 72A 5C 1C 2B 70C"]);
+        }
+    }
+
+    #[test]
+    fn test_bug15() {
+        {
+            // 32C when inspired shoul pull & then start attacking, but attacks are getting skipped
+            // due to venom
+            // Venom check for enemy was done on the starting state when evaluating a row, not the current
+            // state
+            let state = T::new(string_to_pile("29D 30A 32C 24D 25B 26B 27B 31B 28D"));
+            let new_states =
+                GameStateEvaluator::new(get_identity_fn()).resolve_card_at_index(&state, 2);
+
+            assert_actual_vs_expected_piles(&new_states, vec!["29D 30A 32D 28B 24C 25D 26B 27B 31B"]);
         }
     }
 

@@ -43,7 +43,7 @@ pub fn get_random_won_pile<R: Rng>(hero: Class, monster: Class, rng: &mut R) -> 
     for card in &mut pile {
         if card.get_active_face().allegiance == Allegiance::Monster {
             card.key = get_random_exhausted_face(rng, card.get_card_def());
-        }
+       }
     }
     return pile;
 }

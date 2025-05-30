@@ -1,0 +1,12 @@
+[package]
+name = "learning"
+version = "0.1.0"
+edition = "2021"
+
+# [lib]
+# proc-macro = true
+
+[dependencies]
+handy_core = { path = "../handy_core" }
+tch = "0.19.0"
+anyhow = "1.0.97"

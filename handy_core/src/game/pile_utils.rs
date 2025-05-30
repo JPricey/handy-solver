@@ -5,9 +5,9 @@ All helpers are on immutable piles or cards.
 
 use crate::game::card_ptr::{CardPtr, CardPtrT};
 use crate::game::primitives::{
-    Action, Allegiance, Condition, ConditionCostType, Event, FaceKey, Features, Health, Pile,
-    Range, RangeType, Reaction, ReactionTrigger, SkipActionReason, StanceType, Target, TroupeType,
-    WrappedAction, Class
+    Action, Allegiance, Class, Condition, ConditionCostType, Event, FaceKey, Features, Health,
+    Pile, Range, RangeType, Reaction, ReactionTrigger, SkipActionReason, StanceType, Target,
+    TroupeType, WrappedAction,
 };
 use strum::IntoEnumIterator;
 
