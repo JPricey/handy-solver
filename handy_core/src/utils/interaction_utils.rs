@@ -26,7 +26,13 @@ pub fn does_event_prefix_fit_sequence_for_state(
 
 pub fn should_skip_event_in_prefix_match(event: &Event) -> bool {
     match event {
-        Event::StartAction(_, _) => true,
+        Event::StartAction(_, wrapped_action) => {
+            match wrapped_action.action {
+                Action::Claws(_) => false,
+                Action::SpacedClaws(_) => false,
+                _ => true,
+            }
+        },
         _ => false,
     }
 }

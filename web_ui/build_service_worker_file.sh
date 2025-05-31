@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Must be kept up to date with versioning.rs
-VERSION=2
+VERSION=3
 cat >$TRUNK_STAGING_DIR/service_worker.js << EOL
 var cacheName = 'handy-solver';
 var filesToCache = [

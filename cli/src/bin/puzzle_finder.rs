@@ -3,8 +3,7 @@ use std::collections::{HashMap, HashSet};
 use cli::get_fully_random_pile;
 use handy_core::{
     game::{
-        end_game::{is_game_winner, GameEndCheckType},
-        resolve_top_card, Class, EngineGameState, GameStateNoEventLog, Pile, WinType,
+        end_game::{is_game_winner, GameEndCheckType}, resolve_top_card, Allegiance, CardPtrT, Class, EngineGameState, GameStateNoEventLog, Pile, WinType
     },
     utils::get_start_from_classes,
 };
@@ -81,7 +80,9 @@ fn _inner(
 
     if let RecursiveResult::SingleSolution(win_depth) = current_outcome {
         if win_depth >= LOG_SOLN_FOR_DEPTH {
-            println!("Depth {} only soln: {:?}", rem_depth, source_pile);
+            if source_pile[0].get_active_face().allegiance == Allegiance::Hero {
+                println!("Depth {} only soln: {:?}", win_depth, source_pile);
+            }
         }
     }
 
@@ -94,11 +95,11 @@ fn _inner(
 
 fn main() {
     let mut rng = thread_rng();
-    let hero = Class::Cursed;
-    let monster = Class::Spider;
+    let hero = Class::Assassin;
+    let monster = Class::Vampire;
 
     for i in 1.. {
-        let root = if true {
+        let root = if false {
             get_fully_random_pile(hero, monster, &mut rng)
         } else {
             get_start_from_classes(hero, monster, &mut rng)
@@ -106,6 +107,6 @@ fn main() {
         println!("{i}: investigating source {:?}", root);
 
         let mut visited_set = VisitedCache::new();
-        _inner(&mut visited_set, &root, 8);
+        _inner(&mut visited_set, &root, 9);
     }
 }
