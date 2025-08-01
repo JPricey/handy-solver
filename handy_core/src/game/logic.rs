@@ -15,6 +15,7 @@ use crate::game::primitives::{
     Range, RangeType, Reaction, ReactionTrigger, Row, SelfAction, SkipActionReason,
     StandardReaction, Target, TargetId, TargetIds, WrappedAction,
 };
+use crate::game::KeyTrigger;
 use arrayvec::ArrayVec;
 
 use enum_map::EnumMap;
@@ -117,8 +118,15 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             panic!("Saw no outcomes for top card: {:?}", state.get_pile())
         }
 
+        let root_top_card_id = state.get_pile()[0].card_id;
         for outcome in &mut card_outcomes {
-            bottom_top_card(outcome);
+            // top card might get removed by a key action
+            let top_card_id = outcome.get_pile()[0].card_id;
+            if root_top_card_id == top_card_id {
+                bottom_top_card(outcome);
+            } else {
+                outcome.mut_append_event(Event::BottomCard);
+            }
         }
 
         card_outcomes
@@ -131,7 +139,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let allegiance = active_card.get_active_face().allegiance;
 
         match allegiance {
-            Allegiance::Monster | Allegiance::Werewolf | Allegiance::Rat | Allegiance::Quest => {
+            Allegiance::Monster | Allegiance::Werewolf | Allegiance::Rat | Allegiance::Neutral => {
                 self.resolve_enemy_turn(state, allegiance, active_idx)
             }
             Allegiance::Hero => {
@@ -151,6 +159,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                 all_outcomes.push(state.clone().append_event(Event::SkipTurn(*active_card)));
                 all_outcomes
             }
+            Allegiance::None => panic!("Invalid None allegiance"),
         }
     }
 
@@ -404,6 +413,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             | Action::Push(_)
             | Action::Death
             | Action::Void
+            | Action::Key(_)
             | Action::SpacedClaws(_) => {
                 panic!("Skipping unimplemented player action {:?}", wrapped_action)
             }
@@ -1371,7 +1381,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             Action::Death => {
                 let mut new_state = state.clone();
                 for card in new_state.get_pile_mut().iter_mut() {
-                    if card.get_active_face().allegiance == Allegiance::Hero {
+                    if card.get_card_def().allegiance == Allegiance::Hero {
                         mut_exhaust_card_without_giving_options(card);
                     }
                 }
@@ -1545,6 +1555,82 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                     }
                 }
             }
+            Action::Key(range) => {
+                let range_cap = get_range_cap(&pile, active_idx, allegiance, range);
+
+                for target_idx in active_idx + 1..range_cap {
+                    let target_card = pile[target_idx];
+                    let target_face = target_card.get_active_face();
+                    let Some(reaction) = target_face.reaction else {
+                        continue;
+                    };
+                    let Reaction::Key(key_reaction) = reaction else {
+                        continue;
+                    };
+
+                    match key_reaction {
+                        KeyTrigger::SelfAction(self_action) => {
+                            let mut new_state = state.clone();
+                            perform_card_self_action(
+                                self_action,
+                                &mut new_state.get_pile_mut()[target_idx],
+                            );
+                            new_state.mut_append_event(Event::Key(
+                                target_idx,
+                                target_card,
+                                self_action,
+                                new_state.get_pile()[target_idx].key,
+                            ));
+                            results.push(new_state);
+                        }
+                        KeyTrigger::Book => {
+                            let mut except_hero_heal = state.clone();
+                            let new_pile = except_hero_heal.get_pile_mut();
+
+                            // Move target to the end, to side A
+                            let new_len = new_pile.len();
+                            for swap_idx in target_idx..new_pile.len() - 1 {
+                                new_pile[swap_idx] = new_pile[swap_idx + 1];
+                            }
+                            let end_idx = new_len - 1;
+                            new_pile[end_idx] = target_card;
+                            new_pile[end_idx].key = FaceKey::A;
+
+                            // Remove the key card
+                            new_pile.remove(active_idx);
+
+                            // Heal all monsters
+                            for card in new_pile {
+                                if card.get_active_face().allegiance == Allegiance::Monster {
+                                    card.key = FaceKey::A;
+                                }
+                            }
+
+                            except_hero_heal.mut_append_event(Event::Open(target_idx, target_card));
+                            let mut did_heal_any = false;
+                            for card_idx in 0..except_hero_heal.get_pile().len() {
+                                let card = except_hero_heal.get_pile()[card_idx];
+                                if card.get_card_def().allegiance == Allegiance::Hero {
+                                    let mut new_state = except_hero_heal.clone();
+                                    let new_event =
+                                        Event::Heal(card_idx, new_state.get_pile()[card_idx]);
+                                    new_state.get_pile_mut()[card_idx].key = FaceKey::A;
+                                    results.push(new_state.append_event(new_event));
+                                    did_heal_any = true;
+                                }
+                            }
+
+                            if !did_heal_any {
+                                results.push(except_hero_heal);
+                            }
+
+                            // results.push(except_hero_heal);
+                        }
+                    }
+
+                    break;
+                }
+            }
         }
 
         results
@@ -1558,8 +1644,6 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
     ) -> Vec<T> {
         let target_card = state.get_pile()[target_idx];
         let target_face = target_card.get_active_face();
-        let target_allegiance = target_face.allegiance;
-        let is_reaction_forced = target_allegiance != Allegiance::Hero;
 
         if !can_card_be_damaged(state.get_pile(), target_idx) {
             return vec![state.clone().append_event(Event::WhiffHit(
@@ -1569,7 +1653,8 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
             ))];
         }
 
-        let mut results = self.attack_card_get_reaction_outcomes(state, target_idx, hit_type);
+        let (mut results, is_reaction_forced) =
+            self.attack_card_get_reaction_outcomes(state, target_idx, hit_type);
 
         if results.len() > 0 && is_reaction_forced {
             return results;
@@ -1596,15 +1681,12 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         target_idx: usize,
         hit_type: HitType,
     ) -> Vec<T> {
-        let target_face = state.get_pile()[target_idx].get_active_face();
-        let target_allegiance = target_face.allegiance;
-        let is_reaction_forced = target_allegiance != Allegiance::Hero;
-
         if !can_card_be_damaged(state.get_pile(), target_idx) {
             return vec![];
         }
 
-        let mut results = self.attack_card_get_reaction_outcomes(state, target_idx, hit_type);
+        let (mut results, is_reaction_forced) =
+            self.attack_card_get_reaction_outcomes(state, target_idx, hit_type);
 
         if results.len() > 0 && is_reaction_forced {
             return results;
@@ -1656,15 +1738,16 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         state: &T,
         target_idx: usize,
         hit_type: HitType,
-    ) -> Vec<T> {
+    ) -> (Vec<T>, bool) {
         let pile = state.get_pile();
         let target_card = pile[target_idx];
         let target_face = target_card.get_active_face();
         let target_allegiance = target_face.allegiance;
+        let base_is_reaction_forced = target_allegiance != Allegiance::Hero;
 
         if let Some(reaction) = target_face.reaction {
             match reaction {
-                Reaction::Roll(_) => Vec::new(),
+                Reaction::Roll(_) | Reaction::Key(_) => (Vec::new(), base_is_reaction_forced),
                 Reaction::Standard(condition, standard_reaction) => {
                     if condition.map_or(true, |c| {
                         is_boolean_condition_met(
@@ -1674,13 +1757,16 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                             c,
                         )
                     }) {
-                        vec![self.get_standard_reaction_result(
-                            state,
-                            target_idx,
-                            standard_reaction,
-                        )]
+                        (
+                            vec![self.get_standard_reaction_result(
+                                state,
+                                target_idx,
+                                standard_reaction,
+                            )],
+                            base_is_reaction_forced,
+                        )
                     } else {
-                        Vec::new()
+                        (Vec::new(), base_is_reaction_forced)
                     }
                 }
                 Reaction::Assist(assist_reaction) => {
@@ -1702,14 +1788,15 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                             ));
                         }
                     }
-                    results
+                    (results, base_is_reaction_forced)
                 }
-                Reaction::WhenHit(row) => {
-                    self.damage_card_with_on_hit_row(state, target_idx, hit_type, row)
-                }
+                Reaction::WhenHit(row) => (
+                    self.damage_card_with_on_hit_row(state, target_idx, hit_type, row),
+                    true,
+                ),
             }
         } else {
-            Vec::new()
+            (Vec::new(), base_is_reaction_forced)
         }
     }
 
@@ -2281,7 +2368,7 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         let target_face = target_card.get_active_face();
         if let Some(reaction) = target_face.reaction {
             match reaction {
-                Reaction::Roll(_) => {
+                Reaction::WhenHit(_) | Reaction::Roll(_) | Reaction::Key(_) => {
                     // Do nothing
                 }
                 Reaction::Standard(condition, standard_reaction) => {
@@ -2325,7 +2412,6 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
                         }
                     }
                 }
-                Reaction::WhenHit(_) => (), // Don't
             }
         }
         Vec::new()
@@ -2510,11 +2596,10 @@ impl<T: EngineGameState> GameStateEvaluator<T> {
         if target_card
             .get_active_face()
             .features
-            .intersects(Features::Resilient)
+            .intersects(Features::Tough)
         {
-            // TODO: event for resilient hits?
-            let new_state = state.clone();
-            results.push(new_state);
+            let event = Event::ToughBlock(target_idx, pile[target_idx], hit_type);
+            results.push(state.clone().append_event(event));
         } else {
             for hurt_key in find_hurt_faces(&target_card) {
                 let mut new_state = state.clone();
@@ -2903,7 +2988,10 @@ mod tests {
             let new_states =
                 GameStateEvaluator::new(get_identity_fn()).resolve_card_at_index(&state, 2);
 
-            assert_actual_vs_expected_piles(&new_states, vec!["29D 30A 32D 28B 24C 25D 26B 27B 31B"]);
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec!["29D 30A 32D 28B 24C 25D 26B 27B 31B"],
+            );
         }
     }
 
@@ -4553,5 +4641,41 @@ mod tests {
             // 1: 56 only
             assert_eq!(results[1].0.pile, string_to_pile("55 56B 57"));
         }
+    }
+
+    #[test]
+    fn test_key_questing() {
+        {
+            // Phase 1
+            let state = T::new(string_to_pile("102A 101C 3B 4B 7B 8C"));
+            let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_top_card(&state);
+
+            assert_actual_vs_expected_piles(&new_states, vec!["101D 3B 4B 7B 8C 102A"]);
+        }
+
+        {
+            // Phase 2
+            let state = T::new(string_to_pile("102A 3B 101D 4B 7B 8C"));
+            let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_top_card(&state);
+
+            for new_state in &new_states {
+                println!("{:?}", new_state)
+            }
+
+            assert_actual_vs_expected_piles(
+                &new_states,
+                vec!["3A 4B 7A 8A 101A", "3B 4A 7A 8A 101A"],
+            );
+        }
+    }
+
+    #[test]
+    fn test_allied_orb_getting_hit() {
+        let state = T::new(string_to_pile("7A 101A 02A"));
+        let new_states = GameStateEvaluator::new(get_identity_fn()).resolve_top_card(&state);
+
+        pprint(&new_states);
+
+        // assert_actual_vs_expected_piles(&new_states, vec!["101D 3B 4B 7B 8C 102A"]);
     }
 }

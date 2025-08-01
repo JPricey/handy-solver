@@ -71,3 +71,24 @@ impl InitPileProvider for ExactPileProvider {
         false
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScenarioPileProvider {
+    scenario_selection: ScenarioSelection,
+}
+
+impl ScenarioPileProvider {
+    pub fn new(scenario_selection: ScenarioSelection) -> Self {
+        Self { scenario_selection }
+    }
+}
+
+impl InitPileProvider for ScenarioPileProvider {
+    fn get_init_pile(&self) -> Pile {
+        get_scenario_starts(self.scenario_selection, &mut rand::thread_rng())
+    }
+
+    fn is_pile_random(&self) -> bool {
+        true
+    }
+}

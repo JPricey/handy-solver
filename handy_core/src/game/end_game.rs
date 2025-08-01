@@ -1,5 +1,6 @@
 use crate::game::card_ptr::CardPtrT;
 use crate::game::primitives::{Allegiance, Class, Health, Pile, WinType, HEROS};
+use crate::game::Features;
 use enum_map::{enum_map, EnumMap};
 use serde::{Deserialize, Serialize};
 
@@ -21,26 +22,35 @@ pub fn standard_check_is_game_winner(pile: &Pile) -> WinType {
     let mut enemy_wins = true;
 
     for card in pile.iter() {
-        if card.get_card_def().class == Class::Quest {
-            continue;
+        let card_def = card.get_card_def();
+        let active_face = card.get_active_face();
+        if active_face.features.intersects(Features::WinBlocker) {
+            player_wins = false;
+            if !enemy_wins {
+                return WinType::Unresolved;
+            }
         }
 
-        let active_face = card.get_active_face();
         if active_face.health != Health::Empty {
             match active_face.allegiance {
                 Allegiance::Hero => {
-                    enemy_wins = false;
-                    if !player_wins {
-                        return WinType::Unresolved;
+                    if card_def.allegiance == Allegiance::Hero {
+                        enemy_wins = false;
+                        if !player_wins {
+                            return WinType::Unresolved;
+                        }
                     }
                 }
                 Allegiance::Monster => {
-                    player_wins = false;
-                    if !enemy_wins {
-                        return WinType::Unresolved;
+                    if card_def.allegiance == Allegiance::Monster {
+                        player_wins = false;
+                        if !enemy_wins {
+                            return WinType::Unresolved;
+                        }
                     }
                 }
-                Allegiance::Werewolf | Allegiance::Rat | Allegiance::Quest => (),
+                Allegiance::Werewolf | Allegiance::Rat | Allegiance::Neutral => (),
+                Allegiance::None => panic!("Invalid None allegiance"),
             }
         }
     }
@@ -62,10 +72,11 @@ pub fn per_class_game_resolution(pile: &Pile) -> WinType {
 
     for card in pile.iter() {
         let active_class = card.get_card_def().class;
-        if active_class == Class::Quest {
-            continue;
-        }
         let active_face = card.get_active_face();
+        if active_face.features.intersects(Features::WinBlocker) {
+            player_wins = false;
+        }
+
         let is_hero_class = active_class.is_hero();
         let active_allegiance = active_face.allegiance;
 
@@ -147,5 +158,20 @@ mod tests {
             let pile = string_to_pile("1C 10A 6A");
             assert_eq!(per_class_game_resolution(&pile), WinType::Lose);
         }
+    }
+
+    #[test]
+    fn test_win_blocker_quest_resolution() {
+        // NoBlock quest cards prevent the game from ending, even with all enemies dead
+        let pile = string_to_pile("2A8C7C101C6C3A1A9C102A5A4A");
+        assert_eq!(standard_check_is_game_winner(&pile), WinType::Unresolved);
+        assert_eq!(per_class_game_resolution(&pile), WinType::Unresolved);
+    }
+
+    #[test]
+    fn test_quest_cards_dont_keep_hero_alive() {
+        let pile = string_to_pile("22C9D7D19C101A8C6D20D21C23C");
+        assert_eq!(standard_check_is_game_winner(&pile), WinType::Lose);
+        assert_eq!(per_class_game_resolution(&pile), WinType::Lose);
     }
 }

@@ -299,6 +299,7 @@ pub fn action_simple_name(wrapped_action: &WrappedAction) -> String {
         Action::Poison => "Poison".to_owned(),
         Action::Rats => "Rats".to_owned(),
         Action::Hypnosis => "Hypnosis".to_owned(),
+        Action::Key(_) => "Key".to_owned(),
     }
 }
 

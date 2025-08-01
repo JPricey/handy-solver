@@ -61,25 +61,16 @@ pub fn is_moveable_target(
 }
 
 pub fn is_allegiance_match_for_target(me: Allegiance, other: Allegiance, spec: Target) -> bool {
-    is_allegiance_match_for_effect(me, other, spec)
-    // // Quest can target monsters as allies
-    // // Monsters don't target quests as enemies
-
-    // if me == Allegiance::Quest {
-    //     return match spec {
-    //         Target::Any => true,
-    //         Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
-    //         Target::Ally => other == Allegiance::Quest || other == Allegiance::Monster,
-    //     };
-    // } else if other == Allegiance::Quest {
-    //     return match spec {
-    //         Target::Any => other != Allegiance::Monster,
-    //         Target::Enemy => !(other == Allegiance::Quest || other == Allegiance::Monster),
-    //         Target::Ally => me == Allegiance::Quest,
-    //     };
-    // } else {
-    //     is_allegiance_match_for_effect(me, other, spec)
-    // }
+    match spec {
+        Target::Any => {
+            // Neutral cards can only be targetted by other neutral cards, or heros
+            // NPC will ignore them
+            other != Allegiance::Neutral || me == Allegiance::Neutral || me == Allegiance::Hero
+        }
+        Target::Ally => me == other,
+        // NPC will ignore neutral cards
+        Target::Enemy => me != other && (other != Allegiance::Neutral || me == Allegiance::Hero),
+    }
 }
 
 pub fn is_allegiance_match_for_effect(me: Allegiance, other: Allegiance, spec: Target) -> bool {
@@ -284,7 +275,8 @@ pub fn maybe_skip_action_event_for_spider_feature(
         | Action::CallAssist
         | Action::CallAssistTwice
         | Action::Inspire
-        | Action::Hypnosis => None,
+        | Action::Hypnosis
+        | Action::Key(_) => None,
     }
 }
 

@@ -62,7 +62,8 @@ pub enum Allegiance {
     Monster,
     Werewolf,
     Rat,
-    Quest,
+    Neutral,
+    None,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -102,6 +103,8 @@ pub enum Action {
     Maneuver,
     Revive,
     Claws(Range),
+    // Quest
+    Key(Range),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -166,6 +169,12 @@ pub struct RequestAssistReaction {
     pub outcome: Option<SelfAction>,
 }
 
+#[derive(strum_macros::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum KeyTrigger {
+    SelfAction(SelfAction),
+    Book,
+}
+
 pub type WhenHitType = &'static Row;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Reaction {
@@ -173,23 +182,25 @@ pub enum Reaction {
     Assist(RequestAssistReaction),
     WhenHit(WhenHitType),
     Roll(Option<SelfAction>),
+    Key(KeyTrigger),
 }
 
 bitflags! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
     pub struct Features: u16 {
-        const NoFeature     = 0b00000000000;
-        const Weight        = 0b00000000001;
-        const Trap          = 0b00000000010;
-        const Web           = 0b00000000100;
-        const Venom         = 0b00000001000;
-        const Energy        = 0b00000010000;
-        const Wall          = 0b00000100000;
-        const Invulnerable  = 0b00001000000;
-        const Open          = 0b00010000000;
-        const Fist          = 0b00100000000;
-        const United        = 0b01000000000;
-        const Resilient     = 0b10000000000;
+        const NoFeature     = 0b000000000000;
+        const Weight        = 0b000000000001;
+        const Trap          = 0b000000000010;
+        const Web           = 0b000000000100;
+        const Venom         = 0b000000001000;
+        const Energy        = 0b000000010000;
+        const Wall          = 0b000000100000;
+        const Invulnerable  = 0b000001000000;
+        const Open          = 0b000010000000;
+        const Fist          = 0b000100000000;
+        const United        = 0b001000000000;
+        const Tough         = 0b010000000000;
+        const WinBlocker    = 0b100000000000;
     }
 }
 
@@ -324,13 +335,14 @@ pub enum TroupeType {
     Heart,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CardDef {
     pub id: CardId,
     pub class: Class,
     pub faces: EnumMap<FaceKey, FaceDef>,
     pub is_back_start: bool,
     pub troupe_type: Option<TroupeType>,
+    pub allegiance: Allegiance,
 }
 
 impl PartialEq for CardDef {
@@ -394,6 +406,7 @@ pub enum Event {
     StartAction(CardPtr, WrappedAction),
     AttackCard(usize, CardPtr, HitType),
     Damage(usize, CardPtr, HitType, FaceKey),
+    ToughBlock(usize, CardPtr, HitType),
     WhiffHit(usize, CardPtr, HitType),
 
     // Special Attacks
@@ -430,6 +443,8 @@ pub enum Event {
     Block(usize, CardPtr, Option<SelfAction>, FaceKey),
     Dodge(usize, CardPtr, Option<SelfAction>, FaceKey),
     OnHurt(usize, CardPtr),
+    Key(usize, CardPtr, SelfAction, FaceKey),
+    Open(usize, CardPtr),
 
     // Other
     PayRowConditionCosts(ConditionCostType, PayCostArrType),

@@ -316,7 +316,12 @@ pub fn GamePlayer(
     let is_oracle_enabled = create_rw_signal(false);
 
     let render_cards_getter = move || {
-        let mut result: Vec<RenderCard> = render_card_map_getter.get().values().copied().collect();
+        let mut result: Vec<RenderCard> = render_card_map_getter
+            .get()
+            .values()
+            .filter(|c| c.is_visible.get())
+            .copied()
+            .collect();
         result.sort_by_key(|card| card.z_index.get());
         result
     };

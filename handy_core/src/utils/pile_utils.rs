@@ -34,6 +34,72 @@ pub fn get_start_from_classes(
     (&cards_vec as &[_]).try_into().unwrap()
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ScenarioSelection {
+    ScenarioOne(Class),
+    ScenarioTwo(Class),
+    ScenarioThree(Class),
+}
+
+fn _scenario_one(hero_class: Class, rng: &mut dyn RngCore) -> Pile {
+    let mut cards = CARDS.get_cards_for_class(hero_class);
+    cards.append(&mut CARDS.get_cards_for_class(Class::Ogre));
+
+    let mut cards_vec = cards
+        .iter()
+        .map(|&card_def| CardPtr::new_from_id(card_def.id, FaceKey::A))
+        .collect::<Vec<_>>();
+
+    let c101 = CardPtr::new_from_id(101, FaceKey::C);
+    cards_vec.push(c101);
+    cards_vec.shuffle(rng);
+
+    let c102 = CardPtr::new_from_id(102, FaceKey::A);
+    cards_vec.push(c102);
+
+    (&cards_vec as &[_]).try_into().unwrap()
+}
+
+fn _scenario_two(hero_class: Class, rng: &mut dyn RngCore) -> Pile {
+    let mut cards = CARDS.get_cards_for_class(hero_class);
+    cards.append(&mut CARDS.get_cards_for_class(Class::Vampire));
+
+    let mut cards_vec = cards
+        .iter()
+        .map(|&card_def| CardPtr::new_from_id(card_def.id, FaceKey::A))
+        .collect::<Vec<_>>();
+
+    let c101 = CardPtr::new_from_id(111, FaceKey::A);
+    cards_vec.push(c101);
+    cards_vec.shuffle(rng);
+
+    (&cards_vec as &[_]).try_into().unwrap()
+}
+
+fn _scenario_three(hero_class: Class, rng: &mut dyn RngCore) -> Pile {
+    let mut cards = CARDS.get_cards_for_class(hero_class);
+    cards.append(&mut CARDS.get_cards_for_class(Class::Troupe));
+
+    let mut cards_vec = cards
+        .iter()
+        .map(|&card_def| CardPtr::new_from_id(card_def.id, FaceKey::A))
+        .collect::<Vec<_>>();
+
+    let c101 = CardPtr::new_from_id(101, FaceKey::B);
+    cards_vec.push(c101);
+    cards_vec.shuffle(rng);
+
+    (&cards_vec as &[_]).try_into().unwrap()
+}
+
+pub fn get_scenario_starts(scenario_selection: ScenarioSelection, rng: &mut dyn RngCore) -> Pile {
+    match scenario_selection {
+        ScenarioSelection::ScenarioOne(hero) => _scenario_one(hero, rng),
+        ScenarioSelection::ScenarioTwo(hero) => _scenario_two(hero, rng),
+        ScenarioSelection::ScenarioThree(hero) => _scenario_three(hero, rng),
+    }
+}
+
 pub fn get_random_face<R: Rng>(rng: &mut R) -> FaceKey {
     match rng.gen_range(0..4) {
         0 => FaceKey::A,

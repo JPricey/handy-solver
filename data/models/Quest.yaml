@@ -49,6 +49,103 @@ card_face_features:
     is_start_num_consecutive_enemies: -0.026231514
     num_energy: 0.0
     is_start_num_energy: 0.0
+  - value: 100.0
+    value_in_position:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 2.0
+    - 4.0
+    - 6.0
+    - 8.0
+    - 10.0
+    - 12.0
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -0.0029234823
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: -0.026231514
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  - value: 50.0
+    value_in_position:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 2.0
+    - 4.0
+    - 6.0
+    - 8.0
+    - 10.0
+    - 12.0
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -0.0029234823
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: -0.026231514
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  102:
+  - value: 0.0
+    value_in_position:
+    - 0.0
+    - 2.0
+    - 4.0
+    - 6.0
+    - 8.0
+    - 10.0
+    - 12.0
+    - 14.0
+    - 16.0
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -3.0
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: 1.0
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  - value: 10.0
+    value_in_position:
+    - 0.0
+    - 2.0
+    - 4.0
+    - 6.0
+    - 8.0
+    - 10.0
+    - 12.0
+    - 14.0
+    - 16.0
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -3.0
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: 1.0
+    num_energy: 0.0
+    is_start_num_energy: 0.0
   - value: -2.71222
     value_in_position:
     - -0.0029234823
@@ -192,5 +289,102 @@ card_face_features:
     is_touching_start_through_allies: 0.062196516
     is_start_num_consecutive_allies: 0.0
     is_start_num_consecutive_enemies: 0.0
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  111:
+  - value: -2.71222
+    value_in_position:
+    - -0.0029234823
+    - -0.27859175
+    - -0.012155865
+    - -0.19578686
+    - -0.4209876
+    - -0.4379312
+    - -0.46321177
+    - -0.5622583
+    - -0.69001836
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -0.0029234823
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: -0.026231514
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  - value: -2.71222
+    value_in_position:
+    - -0.0029234823
+    - -0.27859175
+    - -0.012155865
+    - -0.19578686
+    - -0.4209876
+    - -0.4379312
+    - -0.46321177
+    - -0.5622583
+    - -0.69001836
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -0.0029234823
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: -0.026231514
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  - value: 100.0
+    value_in_position:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 2.0
+    - 4.0
+    - 6.0
+    - 8.0
+    - 10.0
+    - 12.0
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -0.0029234823
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: -0.026231514
+    num_energy: 0.0
+    is_start_num_energy: 0.0
+  - value: 50.0
+    value_in_position:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 2.0
+    - 4.0
+    - 6.0
+    - 8.0
+    - 10.0
+    - 12.0
+    single_bad_touching_infront: -0.53856796
+    single_bad_touching_behind: -0.4581082
+    bad_touching_infront_coeff: -0.5009243
+    bad_touching_behind_coeff: -0.7058097
+    single_good_touching_infront: -1.682285
+    single_good_touching_behind: -0.53104365
+    good_touching_infront_coeff: 0.3662257
+    good_touching_behind_coeff: 0.05470443
+    is_touching_start_through_allies: -0.0029234823
+    is_start_num_consecutive_allies: 0.0
+    is_start_num_consecutive_enemies: -0.026231514
     num_energy: 0.0
     is_start_num_energy: 0.0

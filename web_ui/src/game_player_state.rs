@@ -4,6 +4,8 @@ use crate::game_player_types::*;
 use crate::types::*;
 use core::time::Duration;
 use glam::DQuat;
+use gloo::console::log;
+use gloo::render;
 use handy_core::game::end_game::{is_game_winner, GameEndCheckType};
 use handy_core::game::*;
 use handy_core::utils::*;
@@ -399,6 +401,17 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                     .hints
                     .insert("Take Damage".to_owned());
             }
+            Event::ToughBlock(_, card_ptr, _) => {
+                new_interaction_options
+                    .damage_card_options
+                    .push(DamageCardOption {
+                        move_option: available_move.clone(),
+                        card_ptr: *card_ptr,
+                    });
+                new_interaction_options
+                    .hints
+                    .insert("Tough Hit".to_owned());
+            }
             Event::WhiffHit(_, card_ptr, _) => {
                 new_interaction_options
                     .damage_card_options
@@ -483,6 +496,21 @@ pub fn calculate_interaction_options(game_frame: &GameFrame) -> InteractionOptio
                 new_interaction_options
                     .hints
                     .insert("Skip react action".to_owned());
+            }
+            // Quest
+            Event::Key(_, card_ptr, _, _) => {
+                add_clickable_card_option(
+                    card_ptr.get_card_id(),
+                    ClickableCardReason::Move(available_move.clone()),
+                );
+                new_interaction_options.hints.insert("Key".to_owned());
+            }
+            Event::Open(_, card_ptr) => {
+                add_clickable_card_option(
+                    card_ptr.get_card_id(),
+                    ClickableCardReason::Move(available_move.clone()),
+                );
+                new_interaction_options.hints.insert("Open".to_owned());
             }
         }
     }
@@ -587,9 +615,17 @@ pub fn render_pile_update(
         (card_zone_width_px / (GOLDEN_MIN_WIDTH - *HISTORY_ZONE_WIDTH_PX)) * BASE_CARD_MOVE_SPEED;
     let pile_len = pile.len();
 
+    // Check if cards need to be removed
+    for (idx, card) in render_card_map.iter_mut() {
+        let found_idx = pile.iter().find(|c| c.card_id == *idx);
+        card.is_visible.set(found_idx.is_some());
+    }
+
     let mut max_applied_duration = Duration::new(0, 0);
     for (i, card) in pile.iter().enumerate() {
-        let render_card = render_card_map.get_mut(&card.get_card_id()).unwrap();
+        let render_card = render_card_map
+            .get_mut(&card.get_card_id())
+            .expect("Could not find card in map");
 
         let is_selected = interaction_options
             .selected_cards
@@ -757,6 +793,8 @@ fn get_init_render_pile(init_pile: &Pile) -> RenderCardMap {
                 z_index: z_index.into(),
 
                 is_clickable: create_rw_signal(false),
+
+                is_visible: create_rw_signal(true),
             };
 
             (card.card_id, render_card)

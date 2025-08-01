@@ -8,10 +8,10 @@ use crate::types::*;
 use handy_core::game::primitives::*;
 use handy_core::game::Class;
 use handy_core::utils::pile_utils::*;
+use leptos::logging::log;
 use leptos::*;
 use std::collections::HashSet;
 use url::Url;
-use leptos::logging::log;
 
 const CHAR_SELECT_BUTTON_WIDTH_PX: WindowUnit = 200.0;
 const CHAR_SELECT_BUTTON_HEIGHT_PX: WindowUnit = 40.0;
@@ -30,7 +30,7 @@ const SELECT_FONT_SIZE: WindowUnit = 24.0;
 fn ClassSelector(options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
 
-    view! { 
+    view! {
         <div
             style:display="flex"
             style:flex-direction="column"
@@ -40,7 +40,7 @@ fn ClassSelector(options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoVi
                     .map(|class| {
                         let icon_path = get_class_full_health_icon_path(class);
 
-                        view! { 
+                        view! {
                         <div
                             style:margin-top={move || wrap_px(placer_getter.get().scale(4.0))}
                         >
@@ -103,10 +103,10 @@ fn ClassSelector(options: Vec<Class>, selection: RwSignal<Class>) -> impl IntoVi
 }
 
 #[component]
-fn MatchupSelector( hero: RwSignal<Class>, monster: RwSignal<Class>) -> impl IntoView {
+fn MatchupSelector(hero: RwSignal<Class>, monster: RwSignal<Class>) -> impl IntoView {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
 
-    view! { 
+    view! {
         <div
             style:display="flex"
             style:flex-direction="row"
@@ -129,13 +129,13 @@ fn MatchupSelector( hero: RwSignal<Class>, monster: RwSignal<Class>) -> impl Int
 const PILE_SELECTOR_WIDTH_PX: WindowUnit = 400.0;
 
 #[component]
-fn PileSelector<F>( on_select: F) -> impl IntoView
+fn PileSelector<F>(on_select: F) -> impl IntoView
 where
     F: Fn(Pile) + 'static,
 {
     let placer_getter = use_context::<Memo<GameComponentPlacer>>().unwrap();
-    let (raw, set_raw) = create_signal( "".to_string());
-    let valid_pile = Signal::derive( move || {
+    let (raw, set_raw) = create_signal("".to_string());
+    let valid_pile = Signal::derive(move || {
         let parsed_pile = string_to_pile_result(&raw.get());
         if let Ok(pile) = parsed_pile {
             Some(pile)
@@ -144,7 +144,7 @@ where
         }
     });
 
-    view! { 
+    view! {
         <div
             style:display="flex"
             style:flex-direction="column"
@@ -254,11 +254,10 @@ pub fn MenuScreen() -> impl IntoView {
     let hero_signal = create_rw_signal(Class::Warrior);
     let enemy_signal = create_rw_signal(Class::Ogre);
 
-    let pile_provider_signal: RwSignal<Box<dyn InitPileProvider>> = create_rw_signal(
-        Box::new(MatchupPileProvider {
+    let pile_provider_signal: RwSignal<Box<dyn InitPileProvider>> =
+        create_rw_signal(Box::new(MatchupPileProvider {
             matchup: (hero_signal.get_untracked(), enemy_signal.get_untracked()),
-        }),
-    );
+        }));
 
     if let Some(query_param_pile) = get_query_param_pile() {
         pile_provider_signal.set(Box::new(ExactPileProvider {
@@ -267,7 +266,7 @@ pub fn MenuScreen() -> impl IntoView {
         is_playing.set(true);
     }
 
-    view! { 
+    view! {
         <Show
             when=move || !is_playing.get()
             fallback=move || view! { <GamePlayer init_pile_provider={pile_provider_signal.get()} is_playing=is_playing /> }
@@ -353,22 +352,91 @@ pub fn MenuScreen() -> impl IntoView {
                     <div
                         style:position="absolute"
                         style:right="0%"
-                        style:bottom="0%"
+                        style:height="100%"
+                        style:display="flex"
+                        style:flex-direction="column"
                         style:margin={move || wrap_px(placer_getter.get().scale(2.0))}
                     >
-                        <div>
-                            <a href="https://boardgamegeek.com/boardgame/362692/handy-brawl">Handy Brawl</a>
-                            game designed by
-                            <a href="https://boardgamegeek.com/boardgamedesigner/145462/igor-zuber" >Igor Zuber</a>
+                        <div
+                            style:flex-grow=1
+                            style:display="flex"
+                            style:justify-content="right"
+                        >
+                            <div
+                                style:margin={move || wrap_px(placer_getter.get().scale(4.0))}
+                            >
+                                <Button
+                                    background=Signal::derive( || BRAWL_COLOUR.to_string())
+                                    width=25.0
+                                    height=25.0
+                                    on:click=move |_| {
+                                        pile_provider_signal.set(Box::new(ScenarioPileProvider::new(
+                                            ScenarioSelection::ScenarioOne(hero_signal.get())
+                                        )));
+
+                                        is_playing.set(true)
+                                    }
+                                >
+                                    1
+                                </Button>
+                            </div>
+
+                            <div
+                                style:margin={move || wrap_px(placer_getter.get().scale(4.0))}
+                            >
+                                <Button
+                                    background=Signal::derive( || BRAWL_COLOUR.to_string())
+                                    width=25.0
+                                    height=25.0
+                                    on:click=move |_| {
+                                        pile_provider_signal.set(Box::new(ScenarioPileProvider::new(
+                                            ScenarioSelection::ScenarioTwo(hero_signal.get())
+                                        )));
+
+                                        is_playing.set(true)
+                                    }
+                                >
+                                    2
+                                </Button>
+                            </div>
+
+                            <div
+                                style:margin={move || wrap_px(placer_getter.get().scale(4.0))}
+                            >
+                                <Button
+                                    background=Signal::derive( || BRAWL_COLOUR.to_string())
+                                    width=25.0
+                                    height=25.0
+                                    on:click=move |_| {
+                                        pile_provider_signal.set(Box::new(ScenarioPileProvider::new(
+                                            ScenarioSelection::ScenarioThree(hero_signal.get())
+                                        )));
+
+                                        is_playing.set(true)
+                                    }
+                                >
+                                    3
+                                </Button>
+                            </div>
                         </div>
-                        <div>
-                            Art by
-                            <a href="https://boardgamegeek.com/boardgameartist/116088/aleksander-jagodzinski">Aleksander Jagodziński</a>
-                            and
-                            <a href="https://boardgamegeek.com/boardgameartist/145463/weronika-kaluza">Weronika Kałuża</a>
-                        </div>
-                        <div>
-                            <a href="https://github.com/JPricey/handy-solver"> Implemented by Joe Price</a>
+
+                        <div
+                            style:flex-grow=0
+                        >
+                            <div>
+                                <a href="https://boardgamegeek.com/boardgame/362692/handy-brawl">Handy Brawl</a>
+                                game designed by
+                                <a href="https://boardgamegeek.com/boardgamedesigner/145462/igor-zuber" >Igor Zuber</a>
+                            </div>
+                            <div>
+                                Art by
+                                <a href="https://boardgamegeek.com/boardgameartist/116088/aleksander-jagodzinski">Aleksander Jagodziński</a>
+                                and
+                                <a href="https://boardgamegeek.com/boardgameartist/145463/weronika-kaluza">Weronika Kałuża</a>
+                            </div>
+                            <div>
+                                <a href="https://github.com/JPricey/handy-solver"> Implemented by Joe Price</a>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -11,10 +11,10 @@ fn format_cost(cost: &Option<SelfAction>) -> String {
 }
 
 #[component]
-pub fn EventSpan( event: Event) -> impl IntoView {
+pub fn EventSpan(event: Event) -> impl IntoView {
     match event {
         Event::PickRow(row_num, _, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -27,7 +27,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::SkipTurn(card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -39,7 +39,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::SkipHit(hit_type) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -50,7 +50,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::BottomCard => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -63,7 +63,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
 
         Event::StartAction(card_ptr, wrapped_action) => {
             let action_text = action_simple_name(&wrapped_action);
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -84,7 +84,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             };
 
             let action_text = action_simple_name(&wrapped_action);
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -101,7 +101,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::AttackCard(card_idx, card_ptr, hit_type) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -115,7 +115,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
         }
         Event::Damage(card_idx, card_ptr, hit_type, result_face) => {
             let new_card_ptr = CardPtr::new_from_id(card_ptr.get_card_id(), result_face);
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -127,8 +127,21 @@ pub fn EventSpan( event: Event) -> impl IntoView {
                 </span>
             }
         }
+        Event::ToughBlock(card_idx, card_ptr, hit_type) => {
+            view! {
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                            SpanItem::Text(format!("Tough Bumped by {}",  hit_type)),
+                            SpanItem::CardPtr(card_ptr),
+                        ]
+                    />
+                </span>
+            }
+        }
         Event::WhiffHit(card_idx, card_ptr, hit_type) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -140,7 +153,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Death => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -152,7 +165,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
         }
         Event::Void(card_idx, card_ptr, face_key) => {
             let new_card_ptr = CardPtr::new_from_id(card_ptr.get_card_id(), face_key);
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -165,7 +178,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Inspire(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -177,7 +190,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Hypnosis(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -189,7 +202,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::MoveTarget(card_idx, card_ptr, move_type) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -205,7 +218,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
                 MoveType::Quicken => "Over",
                 MoveType::Delay => "Under",
             };
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -217,7 +230,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::MoveResult(move_type, amount) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -228,7 +241,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Pull(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -240,7 +253,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Push(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -252,7 +265,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::EndPileMoveResult(move_type) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -263,7 +276,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Teleport(card_idx1, card_ptr1, card_idx2, card_ptr2) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -277,7 +290,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Mandatory(card_ptr, self_action) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -289,7 +302,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::FireballTarget(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -301,7 +314,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Ablaze(card_idx1, card_ptr1, card_idx2, card_ptr2) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -315,7 +328,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Heal(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -327,7 +340,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Revive(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -339,7 +352,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Rat(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -351,7 +364,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Maneuver(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -366,7 +379,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             let mut new_card_ptr = card_ptr.clone();
             new_card_ptr.key = face_key;
 
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -382,7 +395,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             let mut new_card_ptr = card_ptr.clone();
             new_card_ptr.key = face_key;
 
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -395,7 +408,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::OnHurt(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -438,7 +451,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::Swarm(card_idx, card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -450,7 +463,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::UseActionAssistCard(assist_idx, assist_card_ptr) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -462,7 +475,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
             }
         }
         Event::UseActionAssistRow(assist_idx, assist_card_ptr, assist_row_idx) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -476,7 +489,7 @@ pub fn EventSpan( event: Event) -> impl IntoView {
         }
 
         Event::ReactAssistUsed(card_idx, card_ptr, trigger, cost) => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
@@ -489,11 +502,42 @@ pub fn EventSpan( event: Event) -> impl IntoView {
         }
 
         Event::SkipReactActionAssist => {
-            view! { 
+            view! {
                 <span>
                     <TokenSpan
                         elements=vec![
                             SpanItem::Text("Skip React Action".to_owned()),
+                        ]
+                    />
+                </span>
+            }
+        }
+
+        // Quest
+        Event::Key(card_idx, card_ptr, self_action, face_key) => {
+            let mut new_card_ptr = card_ptr.clone();
+            new_card_ptr.key = face_key;
+
+            view! {
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                            SpanItem::Text(format!("Key{}", format_cost(&Some(self_action)))),
+                            SpanItem::CardPtr(new_card_ptr),
+                        ]
+                    />
+                </span>
+            }
+        }
+
+        Event::Open(card_idx, card_ptr) => {
+            view! {
+                <span>
+                    <TokenSpan
+                        elements=vec![
+                            SpanItem::CardPtrAndIndex(card_ptr, card_idx),
+                            SpanItem::Text("Open".to_owned()),
                         ]
                     />
                 </span>

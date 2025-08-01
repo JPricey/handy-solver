@@ -1,4 +1,5 @@
 use glam::{DQuat, EulerRot};
+use gloo::console::log;
 use handy_core::game::*;
 use leptos::*;
 use std::f64::consts::PI;
@@ -39,6 +40,8 @@ pub struct RenderCard {
     pub z_index: Signal<i32>,
 
     pub is_clickable: RwSignal<bool>,
+
+    pub is_visible: RwSignal<bool>,
 }
 
 pub fn scalar_mult(point: WindowSize, scale: WindowUnit) -> WindowSize {
@@ -123,6 +126,9 @@ impl MoveOption {
 
     /// Returns the event that will be used to decide affordances for this action
     pub fn get_primary_event(&self) -> &Event {
+        if self.events.len() == 0 {
+            log!("pile had no events?: ", format!("{:?}", self.next_pile));
+        }
         self.events.last().unwrap()
     }
 }

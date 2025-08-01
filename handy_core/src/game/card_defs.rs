@@ -32,64 +32,34 @@ impl CharBuilder {
 
     fn card(&self, id: CardId, mut faces: EnumMap<FaceKey, FaceDef>) -> CardDef {
         for face in faces.values_mut() {
-            match face.allegiance {
-                Allegiance::Rat | Allegiance::Werewolf | Allegiance::Quest => {
-                    // Allegiance is correct already
-                }
-                Allegiance::Hero | Allegiance::Monster => {
-                    // Overwrite
-                    face.allegiance = self.allegiance
-                }
+            if face.allegiance == Allegiance::None {
+                // Allegiance was never changed - overwrite it
+                face.allegiance = self.allegiance;
             }
+
+            assert_ne!(face.allegiance, Allegiance::None);
         }
+
         CardDef {
             id,
             faces,
             class: self.class,
             is_back_start: false,
             troupe_type: None,
+            allegiance: self.allegiance,
         }
     }
+}
 
-    fn back_card(&self, id: CardId, mut faces: EnumMap<FaceKey, FaceDef>) -> CardDef {
-        for face in faces.values_mut() {
-            if face.allegiance != Allegiance::Werewolf {
-                face.allegiance = self.allegiance
-            }
-        }
-        CardDef {
-            id,
-            faces,
-            class: self.class,
-            is_back_start: true,
-            troupe_type: None,
-        }
+impl CardDef {
+    pub fn set_back_start(mut self) -> Self {
+        self.is_back_start = true;
+        self
     }
 
-    fn troupe_card(
-        &self,
-        id: CardId,
-        troupe_type: TroupeType,
-        mut faces: EnumMap<FaceKey, FaceDef>,
-    ) -> CardDef {
-        for face in faces.values_mut() {
-            match face.allegiance {
-                Allegiance::Rat | Allegiance::Werewolf => {
-                    // Allegiance is correct already
-                }
-                Allegiance::Hero | Allegiance::Monster | Allegiance::Quest => {
-                    // Overwrite
-                    face.allegiance = self.allegiance
-                }
-            }
-        }
-        CardDef {
-            id,
-            faces,
-            class: self.class,
-            is_back_start: false,
-            troupe_type: Some(troupe_type),
-        }
+    pub fn set_troupe_type(mut self, troup_type: TroupeType) -> Self {
+        self.troupe_type = Some(troup_type);
+        self
     }
 }
 
@@ -566,12 +536,20 @@ impl Row {
         self.is_mandatory = true;
         self
     }
+
+    fn key_any(mut self, range: usize) -> Self {
+        self.actions.push(WrappedAction {
+            action: Action::Key(Range::Int(range)),
+            target: Target::Any,
+        });
+        self
+    }
 }
 
 fn side(health: Health) -> FaceDef {
     FaceDef {
         health,
-        allegiance: Allegiance::Hero,
+        allegiance: Allegiance::None,
         features: Features::NoFeature,
         reaction: None,
         reaction_assist: None,
@@ -594,8 +572,18 @@ impl FaceDef {
         self
     }
 
-    fn werewolf(mut self) -> Self {
+    fn allegiance_werewolf(mut self) -> Self {
         self.allegiance = Allegiance::Werewolf;
+        self
+    }
+
+    fn allegiance_hero(mut self) -> Self {
+        self.allegiance = Allegiance::Hero;
+        self
+    }
+
+    fn allegiance_monster(mut self) -> Self {
+        self.allegiance = Allegiance::Monster;
         self
     }
 
@@ -706,6 +694,14 @@ impl FaceDef {
 
     fn roll_perm(self) -> Self {
         self.reaction(Reaction::Roll(None))
+    }
+
+    fn key_rotate(self) -> Self {
+        self.reaction(Reaction::Key(KeyTrigger::SelfAction(SelfAction::Rotate)))
+    }
+
+    fn key_open(self) -> Self {
+        self.reaction(Reaction::Key(KeyTrigger::Book))
     }
 
     fn add_row(mut self, row: Row) -> Self {
@@ -2212,7 +2208,7 @@ impl CardDefs {
                                  )
                         ,
                     FaceKey::C => side(Health::Half)
-                        .werewolf()
+                        .allegiance_werewolf()
                         .block_to_rotate()
                         .add_row(row()
                                  .claw_enemy(3)
@@ -2263,7 +2259,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Half)
-                        .werewolf()
+                        .allegiance_werewolf()
                         .block_to_rotate()
                         .add_row(row()
                                  .claw_enemy(3)
@@ -2316,7 +2312,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Half)
-                        .werewolf()
+                        .allegiance_werewolf()
                         .block_to_rotate()
                         .add_row(row()
                                  .hit_enemy(2)
@@ -2373,7 +2369,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Half)
-                        .werewolf()
+                        .allegiance_werewolf()
                         .block_to_rotate()
                         .add_row(row()
                                  .hit_enemy(2)
@@ -2433,7 +2429,7 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Half)
-                        .werewolf()
+                        .allegiance_werewolf()
                         .block_to_rotate()
                         .add_row(row()
                                  .pull_enemy(6)
@@ -3587,46 +3583,49 @@ impl CardDefs {
 
         {
             let wall = CharBuilder::new(Class::Wall, Allegiance::Monster);
-            card_defs.register_card(wall.back_card(
-                51,
-                enum_map! {
-                    FaceKey::A => side(Health::Empty)
-                        .feature(Features::Wall)
-                        .feature(Features::Invulnerable)
-                        .add_row(row()
-                                .pull_ally_inf()
-                                .rotate()
-                        )
-                        ,
-                    FaceKey::B => side(Health::Empty)
-                        .feature(Features::Wall)
-                        .feature(Features::Invulnerable)
-                        .block_perm()
-                        .add_row(row()
-                                .heal_ally()
-                                .flip()
-                                .is_mandatory()
-                        )
-                        ,
-                    FaceKey::C => side(Health::Empty)
-                        .feature(Features::Wall)
-                        .feature(Features::Invulnerable)
-                        .add_row(row()
-                                .death()
-                        )
-                        ,
-                    FaceKey::D => side(Health::Empty)
-                        .feature(Features::Wall)
-                        .feature(Features::Invulnerable)
-                        .block_perm()
-                        .add_row(row()
-                                .push_enemy_inf()
-                                .pull_ally_inf()
-                                .rotate()
-                        )
-                        ,
-                },
-            ));
+            card_defs.register_card(
+                wall.card(
+                    51,
+                    enum_map! {
+                        FaceKey::A => side(Health::Empty)
+                            .feature(Features::Wall)
+                            .feature(Features::Invulnerable)
+                            .add_row(row()
+                                    .pull_ally_inf()
+                                    .rotate()
+                            )
+                            ,
+                        FaceKey::B => side(Health::Empty)
+                            .feature(Features::Wall)
+                            .feature(Features::Invulnerable)
+                            .block_perm()
+                            .add_row(row()
+                                    .heal_ally()
+                                    .flip()
+                                    .is_mandatory()
+                            )
+                            ,
+                        FaceKey::C => side(Health::Empty)
+                            .feature(Features::Wall)
+                            .feature(Features::Invulnerable)
+                            .add_row(row()
+                                    .death()
+                            )
+                            ,
+                        FaceKey::D => side(Health::Empty)
+                            .feature(Features::Wall)
+                            .feature(Features::Invulnerable)
+                            .block_perm()
+                            .add_row(row()
+                                    .push_enemy_inf()
+                                    .pull_ally_inf()
+                                    .rotate()
+                            )
+                            ,
+                    },
+                )
+                .set_back_start(),
+            );
 
             card_defs.register_card(wall.card(
                 52,
@@ -3968,289 +3967,301 @@ impl CardDefs {
         {
             let troupe = CharBuilder::new(Class::Troupe, Allegiance::Monster);
 
-            card_defs.register_card(troupe.troupe_card(
-                60,
-                TroupeType::Heart,
-                enum_map! {
-                    FaceKey::A => side(Health::Full)
-                        .block_perm()
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .hit_enemy_inf()
-                                 .rotate()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(3)
-                                 .heal_ally()
-                        )
-                        ,
-                    FaceKey::B => side(Health::Full)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .death()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(3)
-                                 .heal_ally()
-                        )
-                        ,
-                    FaceKey::C => side(Health::Half)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .death()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(4)
-                                 .heal_ally()
-                        )
-                        ,
-                    FaceKey::D => side(Health::Empty)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .death()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(4)
-                                 .heal_ally()
-                        )
-                        ,
-                },
-            ));
+            card_defs.register_card(
+                troupe
+                    .card(
+                        60,
+                        enum_map! {
+                            FaceKey::A => side(Health::Full)
+                                .block_perm()
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .hit_enemy_inf()
+                                         .rotate()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(3)
+                                         .heal_ally()
+                                )
+                                ,
+                            FaceKey::B => side(Health::Full)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .death()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(3)
+                                         .heal_ally()
+                                )
+                                ,
+                            FaceKey::C => side(Health::Half)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .death()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(4)
+                                         .heal_ally()
+                                )
+                                ,
+                            FaceKey::D => side(Health::Empty)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .death()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(4)
+                                         .heal_ally()
+                                )
+                                ,
+                        },
+                    )
+                    .set_troupe_type(TroupeType::Heart),
+            );
 
-            card_defs.register_card(troupe.troupe_card(
-                61,
-                TroupeType::Diamond,
-                enum_map! {
-                    FaceKey::A => side(Health::Full)
-                        .block_perm()
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .hit_enemy_inf()
-                                 .rotate()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .claw_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(3)
-                                 .pull_ally(5)
-                        )
-                        ,
-                    FaceKey::B => side(Health::Full)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .death()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .claw_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(3)
-                                 .pull_ally(5)
-                        )
-                        ,
-                    FaceKey::C => side(Health::Half)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .death()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .claw_enemy(4)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(4)
-                                 .pull_ally(5)
-                        )
-                        ,
-                    FaceKey::D => side(Health::Empty)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .death()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .claw_enemy(4)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(4)
-                                 .pull_ally(5)
-                        )
-                        ,
-                },
-            ));
+            card_defs.register_card(
+                troupe
+                    .card(
+                        61,
+                        enum_map! {
+                            FaceKey::A => side(Health::Full)
+                                .block_perm()
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .hit_enemy_inf()
+                                         .rotate()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .claw_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(3)
+                                         .pull_ally(5)
+                                )
+                                ,
+                            FaceKey::B => side(Health::Full)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .death()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .claw_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(3)
+                                         .pull_ally(5)
+                                )
+                                ,
+                            FaceKey::C => side(Health::Half)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .death()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .claw_enemy(4)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(4)
+                                         .pull_ally(5)
+                                )
+                                ,
+                            FaceKey::D => side(Health::Empty)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .death()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .claw_enemy(4)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(4)
+                                         .pull_ally(5)
+                                )
+                                ,
+                        },
+                    )
+                    .set_troupe_type(TroupeType::Diamond),
+            );
 
-            card_defs.register_card(troupe.troupe_card(
-                62,
-                TroupeType::Club,
-                enum_map! {
-                    FaceKey::A => side(Health::Full)
-                        .block_perm()
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .claw_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .hit_enemy(3)
-                                 .rotate()
-                        )
-                        ,
-                    FaceKey::B => side(Health::Full)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .claw_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .inspire_ally()
-                        )
-                        ,
-                    FaceKey::C => side(Health::Half)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .claw_enemy(4)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .inspire_ally()
-                        )
-                        ,
-                    FaceKey::D => side(Health::Empty)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .hit_enemy(6)
-                                 .push_enemy_inf()
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .claw_enemy(4)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Spade)
-                                 .inspire_ally()
-                        )
-                        ,
-                },
-            ));
+            card_defs.register_card(
+                troupe
+                    .card(
+                        62,
+                        enum_map! {
+                            FaceKey::A => side(Health::Full)
+                                .block_perm()
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .claw_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .hit_enemy(3)
+                                         .rotate()
+                                )
+                                ,
+                            FaceKey::B => side(Health::Full)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .claw_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .inspire_ally()
+                                )
+                                ,
+                            FaceKey::C => side(Health::Half)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .claw_enemy(4)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .inspire_ally()
+                                )
+                                ,
+                            FaceKey::D => side(Health::Empty)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .hit_enemy(6)
+                                         .push_enemy_inf()
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .claw_enemy(4)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Spade)
+                                         .inspire_ally()
+                                )
+                                ,
+                        },
+                    )
+                    .set_troupe_type(TroupeType::Club),
+            );
 
-            card_defs.register_card(troupe.troupe_card(
-                63,
-                TroupeType::Spade,
-                enum_map! {
-                    FaceKey::A => side(Health::Full)
-                        .block_perm()
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .heal_ally()
-                                 .hit_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .hit_enemy(3)
-                                 .pull_ally(5)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .hit_enemy_inf()
-                                 .rotate()
-                        )
-                        ,
-                    FaceKey::B => side(Health::Full)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .heal_ally()
-                                 .hit_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .hit_enemy(3)
-                                 .pull_ally(5)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .inspire_ally()
-                        )
-                        ,
-                    FaceKey::C => side(Health::Half)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .heal_ally()
-                                 .hit_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .hit_enemy(3)
-                                 .pull_ally(5)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .inspire_ally()
-                        )
-                        ,
-                    FaceKey::D => side(Health::Empty)
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Heart)
-                                 .heal_ally()
-                                 .hit_enemy(3)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Diamond)
-                                 .hit_enemy(3)
-                                 .pull_ally(5)
-                        )
-                        .add_row(row()
-                                 .troupe_condition(TroupeType::Club)
-                                 .inspire_ally()
-                        )
-                        ,
-                },
-            ));
+            card_defs.register_card(
+                troupe
+                    .card(
+                        63,
+                        enum_map! {
+                            FaceKey::A => side(Health::Full)
+                                .block_perm()
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .heal_ally()
+                                         .hit_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .hit_enemy(3)
+                                         .pull_ally(5)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .hit_enemy_inf()
+                                         .rotate()
+                                )
+                                ,
+                            FaceKey::B => side(Health::Full)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .heal_ally()
+                                         .hit_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .hit_enemy(3)
+                                         .pull_ally(5)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .inspire_ally()
+                                )
+                                ,
+                            FaceKey::C => side(Health::Half)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .heal_ally()
+                                         .hit_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .hit_enemy(3)
+                                         .pull_ally(5)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .inspire_ally()
+                                )
+                                ,
+                            FaceKey::D => side(Health::Empty)
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Heart)
+                                         .heal_ally()
+                                         .hit_enemy(3)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Diamond)
+                                         .hit_enemy(3)
+                                         .pull_ally(5)
+                                )
+                                .add_row(row()
+                                         .troupe_condition(TroupeType::Club)
+                                         .inspire_ally()
+                                )
+                                ,
+                        },
+                    )
+                    .set_troupe_type(TroupeType::Spade),
+            );
         }
 
         {
@@ -4766,20 +4777,22 @@ impl CardDefs {
         }
 
         {
-            let quest = CharBuilder::new(Class::Quest, Allegiance::Monster);
+            let quest = CharBuilder::new(Class::Quest, Allegiance::Neutral);
 
-            card_defs.register_card(quest.card(
+            let card_101 = quest.card(
                 101,
                 enum_map! {
                     FaceKey::A => side(Health::Full)
+                        .allegiance_hero()
                         .on_hit_reaction(&ROW_DEATH)
-                        .feature(Features::Resilient)
+                        .feature(Features::Tough)
                         .add_row(row()
                                  .heal_ally()
                         )
                         ,
                     FaceKey::B => side(Health::Full)
-                        .feature(Features::Resilient)
+                        .allegiance_monster()
+                        .feature(Features::Tough)
                         .on_hit_reaction(&ROW_HEAL_ENEMY)
 
                         .add_row(row()
@@ -4799,7 +4812,33 @@ impl CardDefs {
                                  .push_enemy(2)
                         )
                         ,
-                    FaceKey::C => side(Health::Half),
+                    FaceKey::C => side(Health::Full).feature(Features::Invulnerable).feature(Features::WinBlocker).key_rotate(),
+                    FaceKey::D => side(Health::Full).feature(Features::Invulnerable).feature(Features::WinBlocker).key_open(),
+                },
+            );
+
+            card_defs.register_card(card_101.clone());
+            let mut card_111 = card_101.clone();
+            card_111.id = 111;
+            card_111.faces[FaceKey::A].allegiance = Allegiance::Monster;
+            card_defs.register_card(card_111);
+
+            card_defs.register_card(quest.card(
+                102,
+                enum_map! {
+                    FaceKey::A => side(Health::Full).add_row(row()
+                        .key_any(2)
+                        .is_mandatory()
+                        )
+                        ,
+                    FaceKey::B => side(Health::Half)
+                        .on_hit_reaction(&ROW_DEATH)
+                        .add_row(row()
+                            .key_any(1)
+                            .is_mandatory()
+                        )
+                        ,
+                    FaceKey::C => side(Health::Empty),
                     FaceKey::D => side(Health::Empty),
                 },
             ));
@@ -4808,12 +4847,14 @@ impl CardDefs {
                 103,
                 enum_map! {
                     FaceKey::A => side(Health::Empty)
+                        .allegiance_monster()
                         .add_row(row()
                                  .hit_enemy_inf()
                                  .rotate()
                         )
                         ,
                     FaceKey::B => side(Health::Half)
+                        .allegiance_monster()
                         .rage(1)
                         .add_row(row()
                                  .claw_enemy(4)
@@ -4821,10 +4862,14 @@ impl CardDefs {
                         )
                         ,
                     FaceKey::C => side(Health::Full)
+                        .allegiance_monster()
                         .rage(2)
                         .add_row(row().death())
                     ,
-                    FaceKey::D => side(Health::Empty)
+                    FaceKey::D => side(Health::Full)
+                        // To spec, face D should be blank
+                        // But that's not supported, so we just make it a clone of face C
+                        .allegiance_monster()
                         .rage(2)
                         .add_row(row().death())
                     ,

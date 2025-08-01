@@ -16,3 +16,5 @@ fn main() {
         true,
     );
 }
+
+// cargo run -p cli --bin a_star -- --pile "3B 102A 2B 101C 6B 8B 4B 1B 9B 5B 7B"

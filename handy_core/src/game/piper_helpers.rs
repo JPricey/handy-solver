@@ -25,7 +25,7 @@ pub fn range_with_modifier(range: Range, modifier: ModifierAmount) -> Range {
         Range::Inf => range,
         Range::Int(amount) => Range::Int(size_with_modifier(amount, modifier)),
         // TODO: incorporate modifiers for stances?
-        Range::Stance(stance_type) => Range::Stance(stance_type), 
+        Range::Stance(stance_type) => Range::Stance(stance_type),
     }
 }
 
@@ -43,7 +43,8 @@ pub fn modifier_range_type_for_action(action: &Action) -> ModifierRangeType {
         | Action::Claws(range)
         | Action::Hit(range)
         | Action::Quicken(range)
-        | Action::Delay(range) => match range {
+        | Action::Delay(range)
+        | Action::Key(range) => match range {
             Range::Inf => ModifierRangeType::Infinity,
             Range::Int(_) => ModifierRangeType::Discrete,
             Range::Stance(_) => ModifierRangeType::Discrete,
@@ -79,6 +80,7 @@ pub fn action_with_modified_range(action: &Action, modifier: ModifierAmount) -> 
         Action::Claws(range) => Action::Claws(range_with_modifier(*range, modifier)),
         Action::Quicken(range) => Action::Quicken(range_with_modifier(*range, modifier)),
         Action::Delay(range) => Action::Delay(range_with_modifier(*range, modifier)),
+        Action::Key(range) => Action::Key(range_with_modifier(*range, modifier)),
         Action::Death
         | Action::Void
         | Action::CallAssist
